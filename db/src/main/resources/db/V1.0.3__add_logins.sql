@@ -1,0 +1,10 @@
+
+CREATE TABLE IF NOT EXISTS logins (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user INT NOT NULL REFERENCES users(id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+    last_access DATETIME NOT NULL DEFAULT now(),
+    access_token VARCHAR(255) NOT NULL,
+    refresh_token VARCHAR(255) NOT NULL
+) DEFAULT CHARACTER SET 'utf8mb4';

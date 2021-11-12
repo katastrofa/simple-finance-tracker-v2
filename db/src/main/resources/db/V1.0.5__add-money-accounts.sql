@@ -1,0 +1,13 @@
+
+CREATE TABLE IF NOT EXISTS money_accounts (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    start_amount DECIMAL(24, 2) NOT NULL,
+    currency VARCHAR(16) NOT NULL REFERENCES currencies(id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+    created DATETIME NOT NULL DEFAULT now(),
+    account INT NOT NULL REFERENCES accounts(id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE
+) DEFAULT CHARACTER SET 'utf8mb4';
