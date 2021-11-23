@@ -54,6 +54,21 @@ lazy val shared = crossProject(JSPlatform, JVMPlatform)
   .settings(basicSettings)
   .jsConfigure(_.enablePlugins(ScalaJSWeb))
 
+lazy val datePicker = (project in file("date-picker"))
+  .enablePlugins(ScalaJSPlugin, ScalaJSWeb, ScalaJSBundlerPlugin)
+  .settings(basicSettings)
+  .settings(
+    name := "react-date-picker",
+    scalaJSUseMainModuleInitializer := true,
+
+    libraryDependencies += "com.github.japgolly.scalajs-react" %%% "core" % "2.0.0",
+
+    Compile / npmDependencies ++= Seq(
+      "react" -> "17.0.2",
+      "react-dom" -> "17.0.2"
+    )
+  )
+
 lazy val frontend = (project in file("frontend"))
   .dependsOn(shared.js)
   .enablePlugins(ScalaJSPlugin, ScalaJSWeb, ScalaJSBundlerPlugin)
@@ -80,4 +95,4 @@ lazy val root = (project in file("."))
 //      "org.typelevel"   %% "munit-cats-effect-3" % MunitCatsEffectVersion % Test,
 //    testFrameworks += new TestFramework("munit.Framework")
   )
-  .aggregate(shared.jvm, shared.js, db, backend, frontend)
+  .aggregate(shared.jvm, shared.js, db, backend, datePicker, frontend)
