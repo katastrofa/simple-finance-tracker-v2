@@ -1,28 +1,96 @@
-.collection {
-  border: 1px solid #212121;
+
+body {
+  display: flex;
+  flex-direction: column;
 }
 
-.collection .collection-item {
-  background-color: #424242;
-  border-bottom: 1px solid #212121;
+.sft-calendar-picker {
+  max-width: 10rem;
 }
 
-.collection a.collection-item {
-  color: #fafafa;
+.sidenav .collapsible li, .sidenav.fixed .collapsible li {
+  display: block;
 }
 
-.collection .collection-item.active {
-  background-color: #616161;
-  color: #fafafa;
-  font-weight: bold;
+.sidenav ul li ul li {
+  line-height: 32px;
 }
 
-.collection a.collection-item:not(.active):hover {
-  background-color: #616161;
+.sft-calendar-picker {
+  display: inline-block;
+  max-width: 7rem;
 }
 
-.collection.with-header .collection-header {
-  background-color: #424242;
-  color: #fafafa;
-  border-bottom: 1px solid #212121;
+.sft-calendar-picker .input-field {
+  display: inline-block;
+  max-width: 7rem;
+}
+
+#main-date-to {
+  margin-right: 300px;
+}
+
+.sft-calendar-picker .input-field input {
+  max-width: 7rem;
+}
+
+table.small th {
+  padding: 10px 8px;
+}
+
+table.small td {
+  padding: 5px 8px;
+}
+
+table.small td {
+  font-size: 13px;
+}
+
+table.small td > i {
+  font-size: 1.3rem;
+}
+
+div.padding {
+  padding: 10px 20px;
+}
+
+table.transactions {
+  table-layout: fixed;
+  width: 100%;
+  white-space: nowrap;
+}
+
+table.transactions th, table.transactions td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+table.transactions td.check, table.transactions th.check {
+  width: 2rem;
+}
+
+table.transactions td.date, table.transactions th.date {
+  width: 6.5rem;
+}
+
+table.transactions td.amount, table.transactions th.amount {
+  width: 6.5rem;
+}
+
+table.transactions td.status, table.transactions th.status {
+  width: 2.5rem;
+}
+
+
+@media only screen and (min-width: 993px) {
+  body.has-fixed-sidenav {
+    padding-left: 300px;
+  }
+}
+
+@media only screen and (max-width: 992px) {
+  #main-date-to {
+    margin-right: auto;
+  }
 }

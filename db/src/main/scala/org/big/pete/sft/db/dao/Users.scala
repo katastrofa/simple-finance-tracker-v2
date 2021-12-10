@@ -1,9 +1,9 @@
 package org.big.pete.sft.db.dao
 
 import doobie.ConnectionIO
-import org.big.pete.sft.db.domain.{Account, Login, User}
+import org.big.pete.sft.domain.Account
+import org.big.pete.sft.db.domain.{Login, User}
 import doobie.implicits._
-//import doobie.implicits.javasql._
 import doobie.implicits.javatimedrivernative._
 import doobie.util.fragment.Fragment
 

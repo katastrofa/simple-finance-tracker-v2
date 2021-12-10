@@ -4,6 +4,7 @@ import io.circe.generic.JsonCodec
 import org.big.pete.sft.db.domain.{Login, User}
 import org.http4s.Uri
 
+
 object domain {
   case class AuthUser(dbUser: User, login: Login)
   case class LoginRedirect(uri: Uri)
