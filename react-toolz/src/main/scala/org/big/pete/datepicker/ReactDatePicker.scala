@@ -39,7 +39,8 @@ object ReactDatePicker {
 
   case class Props(
       id: String,
-      onSelect: LocalDate => SyncIO[Unit],
+      cls: String,
+      onSelect: LocalDate => SyncIO[LocalDate],
       initialDate: Option[LocalDate],
       isOpened: Boolean,
       keyBindings: KeyBindings
@@ -63,13 +64,20 @@ object ReactDatePicker {
   {
     private val inputRef = Ref[html.Input]
 
-    def onSelectDate(onSelect: LocalDate => SyncIO[Unit])(e: ReactMouseEventFromHtml): SyncIO[Unit] = {
+    def finishSelection(validatedDate: LocalDate): SyncIO[Unit] = $.modState { state =>
+      if (state.selected != validatedDate)
+        state.copy(selected = validatedDate)
+      else
+        state
+    }
+
+    def onSelectDate(onSelect: LocalDate => SyncIO[LocalDate])(e: ReactMouseEventFromHtml): SyncIO[Unit] = {
       val newSelected = LocalDate.of(
         e.target.getAttribute(YearAttr.attrName).toInt,
         e.target.getAttribute(MonthAttr.attrName).toInt,
         e.target.getAttribute(DayAttr.attrName).toInt
       )
-      $.modState(_.copy(editing = None, selected = newSelected)) >> closeModal >> onSelect(newSelected)
+      $.modState(_.copy(editing = None, selected = newSelected)) >> closeModal >> onSelect(newSelected).flatMap(finishSelection)
     }
 
     def parseInputChange(e: ReactFormEventFromInput): SyncIO[Unit] = {
@@ -128,9 +136,9 @@ object ReactDatePicker {
       modifiers.forall(e.getModifierState) && unusedModifiers.forall(str => !e.getModifierState(str))
     }
 
-    def onInputKey(selected: LocalDate, initial: LocalDate, keys: KeyBindings, onSelect: LocalDate => SyncIO[Unit])(e: ReactKeyboardEventFromInput): SyncIO[Unit] = {
+    def onInputKey(selected: LocalDate, initial: LocalDate, keys: KeyBindings, onSelect: LocalDate => SyncIO[LocalDate])(e: ReactKeyboardEventFromInput): SyncIO[Unit] = {
       if (e.key == "Enter")
-        e.preventDefaultCB >> $.modState(_.copy(editing = None)) >> closeModal >> onSelect(selected)
+        e.preventDefaultCB >> $.modState(_.copy(editing = None)) >> closeModal >> onSelect(selected).flatMap(finishSelection)
       else if (e.key == "Escape")
         e.preventDefaultCB >> $.modState(_.copy(editing = None, selected = initial)) >> closeModal
       else if (e.key == keys.prevDay.key && validateModifiers(e, keys.prevDay.modifiers))
@@ -154,7 +162,7 @@ object ReactDatePicker {
     }
 
     def render(prop: Props, state: State): VdomTagOf[Div] = {
-      <.div(^.cls := "input-field",
+      <.div(^.cls := s"input-field ${prop.cls}",
         wrapContent(state, prop.id, Array("datepicker-modal"), Array("datepicker-container")) {
           <.div(^.cls := "datepicker-calendar-container",
             <.div(^.cls := "datepicker-calendar",
@@ -187,8 +195,8 @@ object ReactDatePicker {
     .build
 
 
-  def apply(id: String, onSelect: LocalDate => SyncIO[Unit]): Unmounted[Props, State, Backend] =
-    apply(id, onSelect, None, isOpened = false, DefaultKeyBindings)
-  def apply(id: String, onSelect: LocalDate => SyncIO[Unit], initialDate: Option[LocalDate], isOpened: Boolean, keyBindings: KeyBindings): Unmounted[Props, State, Backend] =
-    DatePicker.apply(Props(id, onSelect, initialDate, isOpened, keyBindings))
+  def apply(id: String, cls: String, onSelect: LocalDate => SyncIO[LocalDate]): Unmounted[Props, State, Backend] =
+    apply(id, cls, onSelect, None, isOpened = false, DefaultKeyBindings)
+  def apply(id: String, cls: String, onSelect: LocalDate => SyncIO[LocalDate], initialDate: Option[LocalDate], isOpened: Boolean, keyBindings: KeyBindings): Unmounted[Props, State, Backend] =
+    DatePicker.apply(Props(id, cls, onSelect, initialDate, isOpened, keyBindings))
 }

@@ -65,8 +65,9 @@ class AuthHelper[F[_]: MonadCancelThrow](
 
   private def verifyLogin(cookie: AuthCookieData, browserInfo: String): OptionT[F, AuthUser] = {
     OptionT.liftF(Users.getLogins(cookie.id).transact(transactor)).flatMap { logins =>
-      val auth = logins.find { case (login, _) => generateAuthCode(cookie.id, login.accessToken, browserInfo) == cookie.authCode }
-        .map { case (login, user) => AuthUser(user, login) }
+      val auth = logins.find { case (login, _) =>
+        generateAuthCode(cookie.id, login.accessToken, browserInfo) == cookie.authCode
+      }.map { case (login, user) => AuthUser(user, login) }
       OptionT.fromOption[F](auth)
     }
   }
@@ -100,7 +101,7 @@ class AuthHelper[F[_]: MonadCancelThrow](
       result => Found(Location(uri"/")).map(_.addCookie(
         ResponseCookie(
           AuthCookieName,
-          generateAuthCode(result._2, result._1.access_token, parseBrowserInfo(request)),
+          result._2.toString + AuthCookieSeparator + generateAuthCode(result._2, result._1.access_token, parseBrowserInfo(request)),
           Some(HttpDate.unsafeFromEpochSecond((System.currentTimeMillis() / 1000) + 2592000)),
           path = Some("/")
         )
@@ -146,9 +147,9 @@ class AuthHelper[F[_]: MonadCancelThrow](
 
   private def storeLogin(token: GoogleTokenResponse, person: PersonResponse): EitherT[F, String, Int] = {
     val result = for {
-      email <- OptionT.fromOption[F](person.emails.headOption.map(_.value))
+      email <- OptionT.fromOption[F](person.emailAddresses.headOption.map(_.value))
       user <- OptionT(Users.getUser(email).transact(transactor))
-      _ <- OptionT.liftF(Users.storeLogin(user.id, token.access_token, token.refresh_token).transact(transactor))
+      _ <- OptionT.liftF(Users.storeLogin(user.id, token.access_token, "").transact(transactor))
     } yield user.id
 
     EitherT.fromOptionF[F, String, Int](result.value, "Could not store login in DB")

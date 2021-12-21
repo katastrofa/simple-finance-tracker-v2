@@ -2,7 +2,7 @@ package org.big.pete.sft.domain
 
 import enumeratum.{Enum, EnumEntry}
 
-import java.time.{LocalDate, LocalDateTime}
+import java.time.LocalDate
 
 
 sealed trait TransactionType extends EnumEntry
@@ -25,7 +25,7 @@ object TransactionTracking extends Enum[TransactionTracking] {
 
 case class Account(id: Int, name: String, permalink: String)
 case class Currency(id: Int, name: String, symbol: String)
-case class MoneyAccount(id: Int, name: String, startAmount: BigDecimal, currencyId: Int, created: LocalDateTime, accountId: Int)
+case class MoneyAccount(id: Int, name: String, startAmount: BigDecimal, currencyId: Int, created: LocalDate, accountId: Int)
 case class Category(id: Int, name: String, description: Option[String], parent: Option[Int], accountId: Int)
 case class Transaction(
     id: Int,
@@ -39,6 +39,9 @@ case class Transaction(
     destinationAmount: Option[BigDecimal],
     destinationMoneyAccountId: Option[Int]
 )
+
+case class EnhancedMoneyAccount(id: Int, name: String, startAmount: BigDecimal, currency: Currency, created: LocalDate, periodStatus: PeriodAmountStatus)
+case class PeriodAmountStatus(start: BigDecimal, end: BigDecimal)
 
 object domain {
 

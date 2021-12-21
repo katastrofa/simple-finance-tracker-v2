@@ -12,7 +12,17 @@ body {
   display: block;
 }
 
+.collapsible .active .collapsible-body {
+  display: block;
+}
+
 .sidenav ul li ul li {
+  line-height: 32px;
+}
+
+.sidenav h6 {
+  display: inline-block;
+  height: 32px;
   line-height: 32px;
 }
 
@@ -26,7 +36,12 @@ body {
   max-width: 7rem;
 }
 
-#main-date-to {
+nav .date-select {
+  width: 7rem;
+  display: inline-block;
+}
+
+nav .date-select-to {
   margin-right: 300px;
 }
 
@@ -54,31 +69,44 @@ div.padding {
   padding: 10px 20px;
 }
 
-table.transactions {
+table.sft {
   table-layout: fixed;
   width: 100%;
   white-space: nowrap;
 }
 
-table.transactions th, table.transactions td {
+table.sft a {
+  color: inherit;
+  display: block;
+}
+
+table.sft a:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+table.sft th, table.sft td {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-table.transactions td.check, table.transactions th.check {
+table.sft td.check, table.sft th.check {
   width: 2rem;
 }
 
-table.transactions td.date, table.transactions th.date {
+table.sft td.id, table.sft th.id {
+  width: 3rem;
+}
+
+table.sft td.date, table.sft th.date {
   width: 6.5rem;
 }
 
-table.transactions td.amount, table.transactions th.amount {
+table.sft td.amount, table.sft th.amount {
   width: 6.5rem;
 }
 
-table.transactions td.status, table.transactions th.status {
+table.sft td.status, table.sft th.status {
   width: 2.5rem;
 }
 
@@ -90,7 +118,7 @@ table.transactions td.status, table.transactions th.status {
 }
 
 @media only screen and (max-width: 992px) {
-  #main-date-to {
+  .date-select-to {
     margin-right: auto;
   }
 }

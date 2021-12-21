@@ -13,11 +13,11 @@ object domain {
   }
 
   @JsonCodec
-  case class GoogleTokenResponse(access_token: String, expires_in: Int, refresh_token: String, scope: String, token_type: String)
+  case class GoogleTokenResponse(access_token: String, expires_in: Int, id_token: String, scope: String, token_type: String)
   @JsonCodec
-  case class NameObject(displayName: String)
+  case class NameObject(displayName: String, familyName: String, givenName: String)
   @JsonCodec
   case class EmailObject(value: String)
   @JsonCodec
-  case class PersonResponse(names: List[NameObject], emails: List[EmailObject])
+  case class PersonResponse(names: List[NameObject], emailAddresses: List[EmailObject])
 }

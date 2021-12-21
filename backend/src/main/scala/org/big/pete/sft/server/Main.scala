@@ -23,6 +23,8 @@ object Main extends IOApp with LogSupport {
   dbConfig.setPassword(mainConfig.getString("db.pass"))
   dbConfig.setMaximumPoolSize(mainConfig.getInt("db.poolSize"))
 
+  val useHttps: Boolean = mainConfig.getBoolean("server.use-https")
+
   val resources: Resource[IO, (SttpBackend[IO, Any], HikariTransactor[IO], TLSContext[IO])] = for {
     sttp <- AsyncHttpClientCatsBackend.resource[IO]()
     transactor <- HikariTransactor.fromHikariConfig[IO](dbConfig, global)
@@ -35,7 +37,8 @@ object Main extends IOApp with LogSupport {
       val authHelper = new AuthHelper[IO](mainConfig, dsl, sttp, transactor)
       val server = new SftV2Server[IO](authHelper, dsl, mainConfig.getString("server.ip"), mainConfig.getInt("server.port"))
 
-      server.stream(tls).compile.drain.as(ExitCode.Success)
+      val tlsOpt = if (useHttps) Some(tls) else None
+      server.stream(tlsOpt).compile.drain.as(ExitCode.Success)
     }
   }
 }

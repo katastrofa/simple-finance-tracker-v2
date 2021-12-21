@@ -7,7 +7,7 @@ import japgolly.scalajs.react.component.ScalaFn
 import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.react.MICheckbox
 import org.big.pete.react.MICheckbox.Status
-import org.big.pete.sft.domain.{TransactionTracking, TransactionType}
+import org.big.pete.sft.domain.{EnhancedMoneyAccount, TransactionTracking, TransactionType}
 import org.big.pete.sft.front.domain.CategoryTree
 
 
@@ -16,7 +16,8 @@ object SidenavFilters {
       activeFilter: Option[FiltersOpen],
       onOpenFilter: FiltersOpen => SyncIO[Unit],
       transactions: TransactionsProps,
-      categories: CategoriesProps
+      categories: CategoriesProps,
+      moneyAccounts: MoneyAccountProps
   )
 
   case class CollapsibleHeaderProps(text: String, section: FiltersOpen, onOpenFilter: FiltersOpen => SyncIO[Unit])
@@ -33,10 +34,16 @@ object SidenavFilters {
       onCategoryFilterChange: (Status, String) => SyncIO[Unit],
       categoryTree: List[CategoryTree]
   )
+  case class MoneyAccountProps(
+      moneyAccountsActiveFilters: Set[Int],
+      onMoneyAccountFilterChange: (Status, String) => SyncIO[Unit],
+      moneyAccounts: List[EnhancedMoneyAccount]
+  )
 
   sealed trait FiltersOpen
   case object TransactionsFiltersOpen extends FiltersOpen
   case object CategoriesFiltersOpen extends FiltersOpen
+  case object MoneyAccountFiltersOpen extends FiltersOpen
 
 
   val component: Component[Props, Unit, Unit, CtorType.Props] = ScalaComponent.builder[Props]
@@ -48,6 +55,9 @@ object SidenavFilters {
         ),
         <.li(^.classSet("bold waves-effect" -> true, "active" -> props.activeFilter.contains(CategoriesFiltersOpen)),
           categoriesFilterComponent(props.onOpenFilter -> props.categories)
+        ),
+        <.li(^.classSet("bold waves-effect" -> true, "active" -> props.activeFilter.contains(MoneyAccountFiltersOpen)),
+          moneyAccountsFilterComponent(props.onOpenFilter -> props.moneyAccounts)
         )
       )
     }.build
@@ -67,7 +77,8 @@ object SidenavFilters {
 
         def expandTransactionTypes(transactionType: TransactionType) =
           MICheckbox.component.withKey(s"ttf-${transactionType.toString}").apply(MICheckbox.Props(
-            tagMods => <.li(tagMods: _*),
+            <.li(_: _*),
+            Map.empty,
             transactionType.toString,
             transactionType.toString,
             Status.fromBoolean(props.transactionTypeActiveFilters.contains(transactionType)),
@@ -77,6 +88,7 @@ object SidenavFilters {
         def expandTracking(tracking: TransactionTracking) =
           MICheckbox.component.withKey(s"ttf-${tracking.toString}").apply(MICheckbox.Props(
             <.li(_: _*),
+            Map.empty,
             tracking.toString,
             tracking.toString,
             Status.fromBoolean(props.trackingActiveFilters.contains(tracking)),
@@ -136,6 +148,7 @@ object SidenavFilters {
         def expandCategory(cat: CategoryTree) =
           MICheckbox.component.withKey(s"cf-${cat.id}").apply(MICheckbox.Props(
             <.li(_: _*),
+            Map.empty,
             cat.id.toString,
             generateName(cat),
             getStatus(cat),
@@ -146,6 +159,28 @@ object SidenavFilters {
           collapsibleHeaderComponent.apply(CollapsibleHeaderProps("Categories", CategoriesFiltersOpen, onOpenFilter)),
           <.div(^.cls := "collapsible-body",
             <.ul(props.categoryTree.map(expandCategory).toVdomArray)
+          )
+        )
+      }.build
+
+  val moneyAccountsFilterComponent: Component[(FiltersOpen => SyncIO[Unit], MoneyAccountProps), Unit, Unit, CtorType.Props] =
+    ScalaComponent.builder[(FiltersOpen => SyncIO[Unit], MoneyAccountProps)]
+      .stateless
+      .render_P { case (onOpenFilter, props) =>
+        def expandMoneyAccount(ma: EnhancedMoneyAccount) =
+          MICheckbox.component.withKey(s"maf-${ma.id}").apply(MICheckbox.Props(
+            <.li(_: _*),
+            Map.empty,
+            ma.id.toString,
+            ma.name,
+            Status.fromBoolean(props.moneyAccountsActiveFilters.contains(ma.id)),
+            props.onMoneyAccountFilterChange
+          ))
+
+        <.div(
+          collapsibleHeaderComponent.apply(CollapsibleHeaderProps("Money Account", MoneyAccountFiltersOpen, onOpenFilter)),
+          <.div(^.cls := "collapsible-body",
+            <.ul(props.moneyAccounts.map(expandMoneyAccount).toVdomArray)
           )
         )
       }.build

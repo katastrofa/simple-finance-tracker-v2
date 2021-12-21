@@ -13,11 +13,11 @@ object TopHeader {
   case class Props(
       initialFromDate: Option[LocalDate],
       initialToDate: Option[LocalDate],
-      onFromDateChange: LocalDate => SyncIO[Unit],
-      onToDateChange: LocalDate => SyncIO[Unit]
+      onFromDateChange: LocalDate => SyncIO[LocalDate],
+      onToDateChange: LocalDate => SyncIO[LocalDate]
   )
 
-  val Obj: Component[Props, Unit, Unit, CtorType.Props] = ScalaComponent.builder[Props]
+  val component: Component[Props, Unit, Unit, CtorType.Props] = ScalaComponent.builder[Props]
     .stateless
     .render_P { props =>
       <.div(
@@ -27,17 +27,15 @@ object TopHeader {
           <.div(
             ^.cls := "nav-wrapper center-align center",
             List(
-              /// TODO: Hook the date change, load initial date
               ReactDatePicker.DatePicker.withKey("key-date-select-from").apply(
                 ReactDatePicker.Props(
-                  "date-select-from", props.onFromDateChange, props.initialFromDate, isOpened = false,
+                  "date-select-from", "date-select date-select-from", props.onFromDateChange, props.initialFromDate, isOpened = false,
                   ReactDatePicker.ExtendedKeyBindings
                 )
               ),
-              /// TODO: Hook the date change, load initial date
               ReactDatePicker.DatePicker.withKey("key-date-select-to").apply(
                 ReactDatePicker.Props(
-                  "date-select-to", props.onToDateChange, props.initialToDate, isOpened = false,
+                  "date-select-to", "date-select date-select-to", props.onToDateChange, props.initialToDate, isOpened = false,
                   ReactDatePicker.ExtendedKeyBindings
                 )
               )

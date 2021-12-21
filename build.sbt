@@ -1,3 +1,5 @@
+import java.nio.file.StandardCopyOption
+
 val Http4sVersion = "1.0.0-M29"
 val CirceVersion = "0.14.1"
 val MunitVersion = "0.7.29"
@@ -10,7 +12,6 @@ val ScalaJsReactVersion = "2.0.0"
 val MyProjectName = "simple-finance-tracker-v2"
 
 scalaVersion := MyScalaVersion
-
 
 lazy val basicSettings = Seq(
   organization := "org.big.pete",
@@ -58,6 +59,7 @@ lazy val backend = (project in file("backend"))
     libraryDependencies += "ch.qos.logback" % "logback-classic" % LogbackVersion,
     libraryDependencies += "org.scalameta" %% "svm-subs" % "20.2.0",
     libraryDependencies += "com.typesafe" % "config" % "1.4.1",
+    libraryDependencies += "mysql" % "mysql-connector-java" % "8.0.27",
     addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.13.2" cross CrossVersion.full),
     addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"),
 
@@ -69,6 +71,17 @@ lazy val shapeFun = (project in file("shape-fun"))
   .settings(
     name := s"shape-fun",
     libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.7"
+  )
+
+lazy val scalajsToolz = (project in file("scalajs-toolz"))
+  .enablePlugins(ScalaJSPlugin, ScalaJSWeb, ScalaJSBundlerPlugin)
+  .settings(basicSettings)
+  .settings(
+    name := "scalajs-toolz",
+    scalaJSUseMainModuleInitializer := false,
+    Compile / npmDependencies ++= Seq(
+      "js-cookie" -> "3.0.1"
+    )
   )
 
 lazy val reactToolz = (project in file("react-toolz"))
@@ -95,7 +108,7 @@ lazy val reactToolz = (project in file("react-toolz"))
   )
 
 lazy val frontend = (project in file("frontend"))
-  .dependsOn(sharedJs, reactToolz)
+  .dependsOn(sharedJs, reactToolz, scalajsToolz)
   .enablePlugins(ScalaJSPlugin, ScalaJSWeb, ScalaJSBundlerPlugin)
   .settings(basicSettings)
   .settings(
@@ -111,7 +124,16 @@ lazy val frontend = (project in file("frontend"))
     Compile / npmDependencies ++= Seq(
       "react" -> "17.0.2",
       "react-dom" -> "17.0.2"
-    )
+    ),
+
+    Compile / fastOptJS / webpack := {
+      val compiled = (Compile / fastOptJS / webpack).value
+      compiled.foreach { attributed =>
+        val destinationPath = file(s"frontend/src/main/assets/ignore/${attributed.data.name}").toPath
+        java.nio.file.Files.copy(attributed.data.toPath, destinationPath, StandardCopyOption.REPLACE_EXISTING)
+      }
+      compiled
+    }
   )
 
 
@@ -124,4 +146,4 @@ lazy val root = (project in file("."))
 //      "org.typelevel"   %% "munit-cats-effect-3" % MunitCatsEffectVersion % Test,
 //    testFrameworks += new TestFramework("munit.Framework")
   )
-  .aggregate(shared.jvm, shared.js, db, backend, reactToolz, frontend)
+  .aggregate(shared.jvm, shared.js, db, backend, scalajsToolz, reactToolz, frontend)

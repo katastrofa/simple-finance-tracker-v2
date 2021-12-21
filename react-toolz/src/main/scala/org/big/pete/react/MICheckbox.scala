@@ -3,7 +3,7 @@ package org.big.pete.react
 import cats.effect.SyncIO
 import enumeratum.{Enum, EnumEntry}
 import japgolly.scalajs.react.{CtorType, Ref, ScalaComponent}
-import japgolly.scalajs.react.component.Scala.{BackendScope, Component, Unmounted}
+import japgolly.scalajs.react.component.Scala.{Component, Unmounted}
 import japgolly.scalajs.react.util.EffectCatsEffect.syncIO
 import japgolly.scalajs.react.vdom.html_<^._
 import org.scalajs.dom.html
@@ -34,31 +34,23 @@ object MICheckbox {
   }
 
   case class Props(
-      element: Seq[TagMod] => VdomElement,
+      wrappingElement: Seq[TagMod] => VdomElement,
+      classes: Map[String, Boolean],
       value: String,
       text: String,
-      initialStatus: Status,
-      onStateChange: (Status, String) => SyncIO[Unit]
+      status: Status,
+      statusChange: (Status, String) => SyncIO[Unit]
   )
-  case class State(status: Status)
 
-  class Backend($: BackendScope[Props, State]) {
+  class Backend {
     private val inputRef = Ref[html.Input]
 
-    def cycleState(props: Props): SyncIO[Unit] = $.state.flatMap { state =>
-      val (cb, newStatus) = state.status match {
-        case Status.`none` | Status.`indeterminate` =>
-          val cb = inputRef.foreach { ref =>
-            ref.indeterminate = false
-            ref.checked = true
-          }
-          cb -> Status.checkedStatus
-        case Status.`checkedStatus` =>
-          val cb = inputRef.foreach(_.checked = false)
-          cb -> Status.none
+    def cycleState(props: Props): SyncIO[Unit] = {
+      val newStatus = props.status match {
+        case Status.`none` | Status.`indeterminate` => Status.checkedStatus
+        case Status.`checkedStatus` => Status.none
       }
-
-      cb >> $.setState(state.copy(status = newStatus)) >> props.onStateChange(newStatus, props.value)
+      props.statusChange(newStatus, props.value)
     }
 
     def setInput(status: Status): SyncIO[Unit] = status match {
@@ -76,44 +68,30 @@ object MICheckbox {
       }
     }
 
-    def render(prop: Props, state: State): VdomElement = {
-      prop.element { Seq(
-        ^.cls := "checkbox",
+    def render(props: Props): VdomElement = {
+      props.wrappingElement { Seq(
+        ^.classSet1M("checkbox", props.classes),
         <.label(
-          <.input(^.`type` := "checkbox", ^.value := prop.value).withRef(inputRef),
-          MaterialIcon(Status.statusToIcon(state.status), cycleState(prop)),
-          <.span(prop.text)
+          <.input(^.`type` := "checkbox", ^.value := props.value).withRef(inputRef),
+          MaterialIcon(Status.statusToIcon(props.status), cycleState(props)),
+          <.span(props.text)
         )
       )}
     }
   }
 
-  val component: Component[Props, State, Backend, CtorType.Props] =
+  val component: Component[Props, Unit, Backend, CtorType.Props] =
     ScalaComponent.builder[Props]
-      .initialStateFromProps(props => State(props.initialStatus))
+      .stateless
       .renderBackend[Backend]
-      .componentDidMount(fn => fn.backend.setInput(fn.state.status))
+      .componentDidMount(fn => fn.backend.setInput(fn.props.status))
       .build
 
-  def apply(element: Seq[TagMod] => VdomElement, value: String, text: String): Unmounted[Props, State, Backend] =
-    component.apply(Props(element, value, text, Status.`none`, (_, _) => SyncIO.unit))
-
   def apply(
-      element: Seq[TagMod] => VdomElement,
+      wrappingElement: Seq[TagMod] => VdomElement,
       value: String,
       text: String,
-      initialStatus: Status,
-      key: String
-  ): Unmounted[Props, State, Backend] =
-    apply(element, value, text, initialStatus, (_, _) => SyncIO.unit, key)
-
-  def apply(
-      element: Seq[TagMod] => VdomElement,
-      value: String,
-      text: String,
-      initialStatus: Status,
-      onStateChange: (Status, String) => SyncIO[Unit],
-      key: String
-  ): Unmounted[Props, State, Backend] =
-    component.withKey(key).apply(Props(element, value, text, initialStatus, onStateChange))
+      statusChange: (Status, String) => SyncIO[Unit]
+  ): Unmounted[Props, Unit, Backend] =
+    component(Props(wrappingElement, Map.empty, value, text, Status.none, statusChange))
 }

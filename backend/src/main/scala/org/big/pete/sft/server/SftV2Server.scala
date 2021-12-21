@@ -8,10 +8,11 @@ import fs2.Stream
 import fs2.io.net.tls.TLSContext
 import org.big.pete.sft.server.auth.AuthHelper
 import org.big.pete.sft.server.auth.domain.AuthUser
-import org.http4s.{AuthedRoutes, HttpRoutes, Request, Response}
+import org.http4s.{AuthedRoutes, HttpRoutes, MediaType, Request, Response, StaticFile}
 import org.http4s.dsl.Http4sDsl
 import org.http4s.dsl.impl.QueryParamDecoderMatcher
 import org.http4s.ember.server.EmberServerBuilder
+import org.http4s.headers.`Content-Type`
 import org.http4s.server.staticcontent.{FileService, fileService}
 import org.http4s.server.{AuthMiddleware, Router}
 
@@ -33,22 +34,30 @@ class SftV2Server[F[_]: Async](authHelper: AuthHelper[F], dsl: Http4sDsl[F], ipA
   }
 
   val apiRoutes: AuthedRoutes[AuthUser, F] = AuthedRoutes.of {
-    case GET -> Root as user => Ok(s"Authed user: ${user.dbUser.toString}, ${user.login.toString}")
-    case GET -> Root / "api" as user => Ok(s"api for ${user.dbUser.displayName}")
+    case request @ GET -> Root as _ =>
+      StaticFile.fromPath(fs2.io.file.Path("./frontend/src/main/assets/index-main.html"), Some(request.req))
+        .map(_.withContentType(`Content-Type`(MediaType.text.html)))
+        .getOrElseF(NotFound())
+    case GET -> Root / "api" as user =>
+      Ok(s"api for ${user.dbUser.displayName}")
   }
 
-  def stream(tls: TLSContext[F]): Stream[F, Nothing] = {
+  def stream(tlsOpt: Option[TLSContext[F]]): Stream[F, Nothing] = {
     val httpApp: Kleisli[F, Request[F], Response[F]] = Router(
       "" -> loginSupportRoutes.combineK(authMiddleware(apiRoutes)),
-      "static" -> fileService[F](FileService.Config("./static-assets"))
+      "static" -> fileService[F](FileService.Config("./static-assets")),
+      "dev-assets" -> fileService[F](FileService.Config("./frontend/src/main/assets"))
     ).orNotFound
 
-    Stream.resource(
+    def standardServerBuilder =
       EmberServerBuilder.default[F]
         .withHost(Ipv4Address.fromString(ipAddress).get)
         .withPort(Port.fromInt(port).get)
-        .withTLS(tls)
         .withHttpApp(httpApp)
+
+    Stream.resource(
+      tlsOpt.map(tls => standardServerBuilder.withTLS(tls))
+        .getOrElse(standardServerBuilder)
         .build >> Resource.eval(Async[F].never)
     )
   }.drain
