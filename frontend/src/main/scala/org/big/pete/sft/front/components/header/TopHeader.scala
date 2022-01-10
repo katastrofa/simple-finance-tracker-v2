@@ -1,6 +1,6 @@
 package org.big.pete.sft.front.components.header
 
-import cats.effect.SyncIO
+import japgolly.scalajs.react.callback.CallbackTo
 import japgolly.scalajs.react.component.Scala.Component
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{CtorType, ScalaComponent}
@@ -13,8 +13,8 @@ object TopHeader {
   case class Props(
       initialFromDate: Option[LocalDate],
       initialToDate: Option[LocalDate],
-      onFromDateChange: LocalDate => SyncIO[LocalDate],
-      onToDateChange: LocalDate => SyncIO[LocalDate]
+      onFromDateChange: LocalDate => CallbackTo[LocalDate],
+      onToDateChange: LocalDate => CallbackTo[LocalDate]
   )
 
   val component: Component[Props, Unit, Unit, CtorType.Props] = ScalaComponent.builder[Props]

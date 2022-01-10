@@ -1,7 +1,7 @@
 package org.big.pete
 
-import cats.effect.SyncIO
 //import japgolly.scalajs.react.vdom.html_<^._
+import japgolly.scalajs.react.callback.CallbackTo
 import org.big.pete.datepicker.ReactDatePicker
 //import org.big.pete.react.MICheckbox
 import org.scalajs.dom.{HTMLInputElement, console, document}
@@ -10,7 +10,7 @@ import org.scalajs.dom.{HTMLInputElement, console, document}
 object TestMain {
   def main(args: Array[String]): Unit = {
     document.getElementsByClassName("sft-calendar-picker").foreach { el =>
-      ReactDatePicker(el.id, "", ld => SyncIO { console.log(ld.toString); ld }, None, isOpened = false, ReactDatePicker.ExtendedKeyBindings)
+      ReactDatePicker(el.id, "", ld => CallbackTo { console.log(ld.toString); ld }, None, isOpened = false, ReactDatePicker.ExtendedKeyBindings)
         .renderIntoDOM(el)
     }
     document.getElementsByTagName("INPUT")

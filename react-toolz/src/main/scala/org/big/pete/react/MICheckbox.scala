@@ -1,10 +1,8 @@
 package org.big.pete.react
 
-import cats.effect.SyncIO
 import enumeratum.{Enum, EnumEntry}
-import japgolly.scalajs.react.{CtorType, Ref, ScalaComponent}
+import japgolly.scalajs.react.{Callback, CtorType, Ref, ScalaComponent}
 import japgolly.scalajs.react.component.Scala.{Component, Unmounted}
-import japgolly.scalajs.react.util.EffectCatsEffect.syncIO
 import japgolly.scalajs.react.vdom.html_<^._
 import org.scalajs.dom.html
 
@@ -39,13 +37,13 @@ object MICheckbox {
       value: String,
       text: String,
       status: Status,
-      statusChange: (Status, String) => SyncIO[Unit]
+      statusChange: (Status, String) => Callback
   )
 
   class Backend {
     private val inputRef = Ref[html.Input]
 
-    def cycleState(props: Props): SyncIO[Unit] = {
+    def cycleState(props: Props): Callback = {
       val newStatus = props.status match {
         case Status.`none` | Status.`indeterminate` => Status.checkedStatus
         case Status.`checkedStatus` => Status.none
@@ -53,7 +51,7 @@ object MICheckbox {
       props.statusChange(newStatus, props.value)
     }
 
-    def setInput(status: Status): SyncIO[Unit] = status match {
+    def setInput(status: Status): Callback = status match {
       case Status.`none` => inputRef.foreach { ref =>
         ref.checked = false
         ref.indeterminate = false
@@ -91,7 +89,7 @@ object MICheckbox {
       wrappingElement: Seq[TagMod] => VdomElement,
       value: String,
       text: String,
-      statusChange: (Status, String) => SyncIO[Unit]
+      statusChange: (Status, String) => Callback
   ): Unmounted[Props, Unit, Backend] =
     component(Props(wrappingElement, Map.empty, value, text, Status.none, statusChange))
 }

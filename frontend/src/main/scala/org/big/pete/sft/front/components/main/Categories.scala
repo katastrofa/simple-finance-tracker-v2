@@ -38,7 +38,7 @@ object Categories {
   val categoryComponent: Component[CategoryProps, CtorType.Props] = ScalaFnComponent.apply[CategoryProps] { props =>
     <.tr(
       <.td(^.cls := "id hide-on-small-only right-align", props.category.id.toString),
-      <.td(^.cls := "name", props.category.name),
+      <.td(^.cls := "name", CategoryTree.name(props.category)),
       <.td(^.cls := "description", props.category.description.getOrElse("").toString)
     )
   }

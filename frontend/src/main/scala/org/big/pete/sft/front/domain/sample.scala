@@ -4,6 +4,7 @@ import org.big.pete.sft.domain.{Account, Category, Currency, EnhancedMoneyAccoun
 
 import java.time.LocalDate
 
+
 object sample {
   val accounts: List[Account] = List(
     Account(1, "Osobne", "osobne"),

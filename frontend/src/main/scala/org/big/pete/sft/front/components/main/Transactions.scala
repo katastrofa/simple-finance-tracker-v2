@@ -1,9 +1,8 @@
 package org.big.pete.sft.front.components.main
 
-import cats.effect.SyncIO
 import japgolly.scalajs.react.component.Scala
 import japgolly.scalajs.react.component.ScalaFn.Component
-import japgolly.scalajs.react.{CtorType, ScalaComponent, ScalaFnComponent}
+import japgolly.scalajs.react.{Callback, CtorType, ScalaComponent, ScalaFnComponent}
 import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.react.{MICheckbox, MaterialIcon}
 import org.big.pete.sft.domain.TransactionTracking
@@ -19,14 +18,14 @@ object Transactions {
 
   case class Props(
       transactions: List[EnhancedTransaction],
-      checkTransaction: (MICheckbox.Status, String) => SyncIO[Unit],
-      trackingChanged: (Int, TransactionTracking) => SyncIO[Unit]
+      checkTransaction: (MICheckbox.Status, String) => Callback,
+      trackingChanged: (Int, TransactionTracking) => Callback
   )
-  case class HeaderProps(checkTransaction: (MICheckbox.Status, String) => SyncIO[Unit])
+  case class HeaderProps(checkTransaction: (MICheckbox.Status, String) => Callback)
   case class TransactionProps(
       transaction: EnhancedTransaction,
-      checkTransaction: (MICheckbox.Status, String) => SyncIO[Unit],
-      trackingChanged: (Int, TransactionTracking) => SyncIO[Unit]
+      checkTransaction: (MICheckbox.Status, String) => Callback,
+      trackingChanged: (Int, TransactionTracking) => Callback
   )
 
   val component: Scala.Component[Props, Unit, Unit, CtorType.Props] = ScalaComponent.builder[Props]

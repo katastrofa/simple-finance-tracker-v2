@@ -1,7 +1,6 @@
 package org.big.pete.react
 
-import cats.effect.SyncIO
-import japgolly.scalajs.react.BackendScope
+import japgolly.scalajs.react.{BackendScope, Callback}
 import org.scalajs.dom.html.Div
 
 
@@ -18,10 +17,10 @@ object Modal {
     implicit val isOpenL: isOpenPath.Lens[S, Boolean]
     val $: BackendScope[P, S]
 
-    def closeModal: SyncIO[Unit] =
+    def closeModal: Callback =
       $.modState(isOpenL().set(_)(false))
 
-    def openModal: SyncIO[Unit] =
+    def openModal: Callback =
       $.modState(isOpenL().set(_)(true))
 
     def wrapContent(state: S, id: String, modalClasses: Array[String], contentWrapperClasses: Array[String])(content: TagMod): VdomTagOf[Div] = {

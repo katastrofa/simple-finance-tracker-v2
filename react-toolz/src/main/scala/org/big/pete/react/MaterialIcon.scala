@@ -1,9 +1,10 @@
 package org.big.pete.react
 
-import cats.effect.SyncIO
+import japgolly.scalajs.react.callback.Callback
 import japgolly.scalajs.react.{CtorType, ScalaComponent}
 import japgolly.scalajs.react.component.Scala.{Component, Unmounted}
 import japgolly.scalajs.react.vdom.html_<^._
+
 
 object MaterialIcon {
   sealed trait DomType
@@ -16,7 +17,7 @@ object MaterialIcon {
   case object medium extends Size
   case object large extends Size
 
-  case class Props(dom: DomType, size: Size, icon: String, onClick: SyncIO[Unit], additionalClasses: Set[String])
+  case class Props(dom: DomType, size: Size, icon: String, onClick: Callback, additionalClasses: Set[String])
 
   val Icon: Component[Props, Unit, Unit, CtorType.Props] = ScalaComponent.builder[Props].stateless.noBackend
     .render_P { props =>
@@ -35,11 +36,11 @@ object MaterialIcon {
     }.build
 
   def apply(icon: String): Unmounted[Props, Unit, Unit] =
-    Icon(Props(i, small, icon, SyncIO.unit, Set.empty))
+    Icon(Props(i, small, icon, Callback.empty, Set.empty))
   def apply(icon: String, additionalClasses: Set[String]) =
-    Icon(Props(i, small, icon, SyncIO.unit, additionalClasses))
-  def apply(icon: String, onClick: SyncIO[Unit]): Unmounted[Props, Unit, Unit] =
+    Icon(Props(i, small, icon, Callback.empty, additionalClasses))
+  def apply(icon: String, onClick: Callback): Unmounted[Props, Unit, Unit] =
     Icon(Props(i, small, icon, onClick, Set.empty))
-  def apply(dom: DomType, size: Size, icon: String, onClick: SyncIO[Unit]): Unmounted[Props, Unit, Unit] =
+  def apply(dom: DomType, size: Size, icon: String, onClick: Callback): Unmounted[Props, Unit, Unit] =
     Icon(Props(dom, size, icon, onClick, Set.empty))
 }

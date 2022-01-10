@@ -1,8 +1,8 @@
 package org.big.pete.datepicker
 
-import cats.effect.SyncIO
+import japgolly.scalajs.react.callback.CallbackTo
 import japgolly.scalajs.react.component.Scala.{Component, Unmounted}
-import japgolly.scalajs.react.{BackendScope, CtorType, ReactFormEventFromInput, ReactKeyboardEventFromInput, ReactMouseEventFromHtml, Ref, ScalaComponent}
+import japgolly.scalajs.react.{BackendScope, Callback, CtorType, ReactFormEventFromInput, ReactKeyboardEventFromInput, ReactMouseEventFromHtml, Ref, ScalaComponent}
 import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.datepicker.parts.CalendarTable.{DayAttr, MonthAttr, YearAttr}
 import org.big.pete.datepicker.parts.CalendarTable
@@ -40,7 +40,7 @@ object ReactDatePicker {
   case class Props(
       id: String,
       cls: String,
-      onSelect: LocalDate => SyncIO[LocalDate],
+      onSelect: LocalDate => CallbackTo[LocalDate],
       initialDate: Option[LocalDate],
       isOpened: Boolean,
       keyBindings: KeyBindings
@@ -64,14 +64,14 @@ object ReactDatePicker {
   {
     private val inputRef = Ref[html.Input]
 
-    def finishSelection(validatedDate: LocalDate): SyncIO[Unit] = $.modState { state =>
+    def finishSelection(validatedDate: LocalDate): Callback = $.modState { state =>
       if (state.selected != validatedDate)
         state.copy(selected = validatedDate)
       else
         state
     }
 
-    def onSelectDate(onSelect: LocalDate => SyncIO[LocalDate])(e: ReactMouseEventFromHtml): SyncIO[Unit] = {
+    def onSelectDate(onSelect: LocalDate => CallbackTo[LocalDate])(e: ReactMouseEventFromHtml): Callback = {
       val newSelected = LocalDate.of(
         e.target.getAttribute(YearAttr.attrName).toInt,
         e.target.getAttribute(MonthAttr.attrName).toInt,
@@ -80,7 +80,7 @@ object ReactDatePicker {
       $.modState(_.copy(editing = None, selected = newSelected)) >> closeModal >> onSelect(newSelected).flatMap(finishSelection)
     }
 
-    def parseInputChange(e: ReactFormEventFromInput): SyncIO[Unit] = {
+    def parseInputChange(e: ReactFormEventFromInput): Callback = {
       $.modState { oldState =>
         var cleanDate = cleanText(e.target.value)
         val newSelected = if (PartialDateRegex.matches(cleanDate))
@@ -111,12 +111,12 @@ object ReactDatePicker {
     def formatDate(date: LocalDate): String =
       date.format(DateFormat)
 
-    def moveSelected(months: Int, days: Int): SyncIO[Unit] =
+    def moveSelected(months: Int, days: Int): Callback =
       inputRef.foreach(_.select()) >> $.modState {state =>
         state.copy(editing = None, selected = state.selected.plusMonths(months.toLong).plusDays(days.toLong))
       }
 
-    def backspaceHandling(e: ReactKeyboardEventFromInput): SyncIO[Unit] = {
+    def backspaceHandling(e: ReactKeyboardEventFromInput): Callback = {
       e.key match {
         case "Backspace" =>
           val text = e.target.value
@@ -125,9 +125,9 @@ object ReactDatePicker {
           else if (text.length == 8 && "[0-9]{4}-[0-9]{2}-".r.matches(text))
             e.preventDefaultCB >> e.stopPropagationCB >> $.modState(_.copy(editing = Some(text.substring(0, 6))))
           else
-            SyncIO.unit
+            Callback.empty
         case _ =>
-          SyncIO.unit
+          Callback.empty
       }
     }
 
@@ -136,7 +136,7 @@ object ReactDatePicker {
       modifiers.forall(e.getModifierState) && unusedModifiers.forall(str => !e.getModifierState(str))
     }
 
-    def onInputKey(selected: LocalDate, initial: LocalDate, keys: KeyBindings, onSelect: LocalDate => SyncIO[LocalDate])(e: ReactKeyboardEventFromInput): SyncIO[Unit] = {
+    def onInputKey(selected: LocalDate, initial: LocalDate, keys: KeyBindings, onSelect: LocalDate => CallbackTo[LocalDate])(e: ReactKeyboardEventFromInput): Callback = {
       if (e.key == "Enter")
         e.preventDefaultCB >> $.modState(_.copy(editing = None)) >> closeModal >> onSelect(selected).flatMap(finishSelection)
       else if (e.key == "Escape")
@@ -158,7 +158,7 @@ object ReactDatePicker {
       else if (keys.nextYear.exists(key => e.key == key.key && validateModifiers(e, key.modifiers)))
         e.stopPropagationCB >> moveSelected(12, 0)
       else
-        SyncIO.unit
+        Callback.empty
     }
 
     def render(prop: Props, state: State): VdomTagOf[Div] = {
@@ -195,8 +195,8 @@ object ReactDatePicker {
     .build
 
 
-  def apply(id: String, cls: String, onSelect: LocalDate => SyncIO[LocalDate]): Unmounted[Props, State, Backend] =
+  def apply(id: String, cls: String, onSelect: LocalDate => CallbackTo[LocalDate]): Unmounted[Props, State, Backend] =
     apply(id, cls, onSelect, None, isOpened = false, DefaultKeyBindings)
-  def apply(id: String, cls: String, onSelect: LocalDate => SyncIO[LocalDate], initialDate: Option[LocalDate], isOpened: Boolean, keyBindings: KeyBindings): Unmounted[Props, State, Backend] =
+  def apply(id: String, cls: String, onSelect: LocalDate => CallbackTo[LocalDate], initialDate: Option[LocalDate], isOpened: Boolean, keyBindings: KeyBindings): Unmounted[Props, State, Backend] =
     DatePicker.apply(Props(id, cls, onSelect, initialDate, isOpened, keyBindings))
 }

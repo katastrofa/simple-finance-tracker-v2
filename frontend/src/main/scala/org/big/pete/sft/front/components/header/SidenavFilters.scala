@@ -1,6 +1,6 @@
 package org.big.pete.sft.front.components.header
 
-import cats.effect.SyncIO
+import japgolly.scalajs.react.callback.Callback
 import japgolly.scalajs.react.{CtorType, ReactFormEventFromInput, ScalaComponent, ScalaFnComponent}
 import japgolly.scalajs.react.component.Scala.Component
 import japgolly.scalajs.react.component.ScalaFn
@@ -14,29 +14,29 @@ import org.big.pete.sft.front.domain.CategoryTree
 object SidenavFilters {
   case class Props(
       activeFilter: Option[FiltersOpen],
-      onOpenFilter: FiltersOpen => SyncIO[Unit],
+      onOpenFilter: FiltersOpen => Callback,
       transactions: TransactionsProps,
       categories: CategoriesProps,
       moneyAccounts: MoneyAccountProps
   )
 
-  case class CollapsibleHeaderProps(text: String, section: FiltersOpen, onOpenFilter: FiltersOpen => SyncIO[Unit])
+  case class CollapsibleHeaderProps(text: String, section: FiltersOpen, onOpenFilter: FiltersOpen => Callback)
   case class TransactionsProps(
       transactionTypeActiveFilters: Set[TransactionType],
-      onTransactionTypeChange: (Status, String) => SyncIO[Unit],
+      onTransactionTypeChange: (Status, String) => Callback,
       trackingActiveFilters: Set[TransactionTracking],
-      onTrackingChange: (Status, String) => SyncIO[Unit],
+      onTrackingChange: (Status, String) => Callback,
       contentFilter: String,
-      onContentFilterChange: ReactFormEventFromInput => SyncIO[Unit]
+      onContentFilterChange: ReactFormEventFromInput => Callback
   )
   case class CategoriesProps(
       categoriesActiveFilters: Set[Int],
-      onCategoryFilterChange: (Status, String) => SyncIO[Unit],
+      onCategoryFilterChange: (Status, String) => Callback,
       categoryTree: List[CategoryTree]
   )
   case class MoneyAccountProps(
       moneyAccountsActiveFilters: Set[Int],
-      onMoneyAccountFilterChange: (Status, String) => SyncIO[Unit],
+      onMoneyAccountFilterChange: (Status, String) => Callback,
       moneyAccounts: List[EnhancedMoneyAccount]
   )
 
@@ -70,8 +70,8 @@ object SidenavFilters {
       )
     }
 
-  val transactionFiltersComponent: Component[(FiltersOpen => SyncIO[Unit], TransactionsProps), Unit, Unit, CtorType.Props] =
-    ScalaComponent.builder[(FiltersOpen => SyncIO[Unit], TransactionsProps)]
+  val transactionFiltersComponent: Component[(FiltersOpen => Callback, TransactionsProps), Unit, Unit, CtorType.Props] =
+    ScalaComponent.builder[(FiltersOpen => Callback, TransactionsProps)]
       .stateless
       .render_P { case (onOpenFilter, props) =>
 
@@ -124,13 +124,10 @@ object SidenavFilters {
         )
       }.build
 
-  val categoriesFilterComponent: Component[(FiltersOpen => SyncIO[Unit], CategoriesProps), Unit, Unit, CtorType.Props] =
-    ScalaComponent.builder[(FiltersOpen => SyncIO[Unit], CategoriesProps)]
+  val categoriesFilterComponent: Component[(FiltersOpen => Callback, CategoriesProps), Unit, Unit, CtorType.Props] =
+    ScalaComponent.builder[(FiltersOpen => Callback, CategoriesProps)]
       .stateless
       .render_P { case (onOpenFilter, props) =>
-        def generateName(cat: CategoryTree): String =
-          "-".repeat(cat.treeLevel) + " " + cat.name
-
         def getStatus(cat: CategoryTree): Status = {
           def hasCheckedChild(catToCheck: CategoryTree): Boolean =
             catToCheck.children.exists { childCat =>
@@ -145,26 +142,30 @@ object SidenavFilters {
             Status.none
         }
 
-        def expandCategory(cat: CategoryTree) =
+        def mapCategory(cat: CategoryTree) = {
           MICheckbox.component.withKey(s"cf-${cat.id}").apply(MICheckbox.Props(
             <.li(_: _*),
             Map.empty,
             cat.id.toString,
-            generateName(cat),
+            CategoryTree.name(cat),
             getStatus(cat),
             props.onCategoryFilterChange
           ))
+        }
+
+        def expandCategory(cat: CategoryTree): List[CategoryTree] =
+          cat :: cat.children.flatMap(expandCategory)
 
         <.div(
           collapsibleHeaderComponent.apply(CollapsibleHeaderProps("Categories", CategoriesFiltersOpen, onOpenFilter)),
           <.div(^.cls := "collapsible-body",
-            <.ul(props.categoryTree.map(expandCategory).toVdomArray)
+            <.ul(props.categoryTree.flatMap(expandCategory).map(mapCategory).toVdomArray)
           )
         )
       }.build
 
-  val moneyAccountsFilterComponent: Component[(FiltersOpen => SyncIO[Unit], MoneyAccountProps), Unit, Unit, CtorType.Props] =
-    ScalaComponent.builder[(FiltersOpen => SyncIO[Unit], MoneyAccountProps)]
+  val moneyAccountsFilterComponent: Component[(FiltersOpen => Callback, MoneyAccountProps), Unit, Unit, CtorType.Props] =
+    ScalaComponent.builder[(FiltersOpen => Callback, MoneyAccountProps)]
       .stateless
       .render_P { case (onOpenFilter, props) =>
         def expandMoneyAccount(ma: EnhancedMoneyAccount) =

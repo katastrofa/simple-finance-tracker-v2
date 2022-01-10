@@ -26,6 +26,9 @@ object CategoryTree {
     groupedData.getOrElse(None, List.empty[Category])
       .map(cat => catToTree(cat, 0))
   }
+
+  def name(cat: CategoryTree): String =
+    "-".repeat(cat.treeLevel) + " " + cat.name
 }
 
 case class EnhancedTransaction(

@@ -93,9 +93,7 @@ lazy val reactToolz = (project in file("react-toolz"))
 
     libraryDependencies += "com.beachape" %%% "enumeratum" % EnumeratumVersion,
 
-    libraryDependencies +="com.github.japgolly.scalajs-react" %%% "core-ext-cats" % ScalaJsReactVersion,
-    libraryDependencies +="com.github.japgolly.scalajs-react" %%% "core-ext-cats_effect" % ScalaJsReactVersion,
-    libraryDependencies +="com.github.japgolly.scalajs-react" %%% "core-bundle-cats_effect" % ScalaJsReactVersion,
+    libraryDependencies +="com.github.japgolly.scalajs-react" %%% "core" % ScalaJsReactVersion,
 
     libraryDependencies += "io.github.cquiroz" %%% "scala-java-time" % "2.3.0",
     libraryDependencies += "io.github.cquiroz" %%% "scala-java-time-tzdb" % "2.3.0",
@@ -115,10 +113,7 @@ lazy val frontend = (project in file("frontend"))
     name := s"$MyProjectName-frontend",
     scalaJSUseMainModuleInitializer := true,
 
-    libraryDependencies +="com.github.japgolly.scalajs-react" %%% "core-ext-cats" % ScalaJsReactVersion,
-    libraryDependencies +="com.github.japgolly.scalajs-react" %%% "core-ext-cats_effect" % ScalaJsReactVersion,
-    libraryDependencies +="com.github.japgolly.scalajs-react" %%% "core-bundle-cats_effect" % ScalaJsReactVersion,
-
+    libraryDependencies +="com.github.japgolly.scalajs-react" %%% "core" % ScalaJsReactVersion,
     libraryDependencies += "com.github.japgolly.scalajs-react" %%% "extra" % ScalaJsReactVersion,
 
     Compile / npmDependencies ++= Seq(
@@ -128,8 +123,10 @@ lazy val frontend = (project in file("frontend"))
 
     Compile / fastOptJS / webpack := {
       val compiled = (Compile / fastOptJS / webpack).value
+      val log = streams.value.log
       compiled.foreach { attributed =>
         val destinationPath = file(s"frontend/src/main/assets/ignore/${attributed.data.name}").toPath
+        log.info(s"Copying: ${destinationPath.toString}")
         java.nio.file.Files.copy(attributed.data.toPath, destinationPath, StandardCopyOption.REPLACE_EXISTING)
       }
       compiled

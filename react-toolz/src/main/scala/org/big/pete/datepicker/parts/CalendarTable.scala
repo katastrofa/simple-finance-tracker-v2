@@ -1,7 +1,6 @@
 package org.big.pete.datepicker.parts
 
-import cats.effect.SyncIO
-import japgolly.scalajs.react.{CtorType, ReactMouseEventFromHtml, ScalaFnComponent}
+import japgolly.scalajs.react.{Callback, CtorType, ReactMouseEventFromHtml, ScalaFnComponent}
 import japgolly.scalajs.react.component.ScalaFn.Component
 import japgolly.scalajs.react.vdom.html_<^._
 import org.scalajs.dom.html.TableCell
@@ -23,8 +22,8 @@ object CalendarTable {
     (DayOfWeek.SATURDAY, "Saturday", "S")
   )
 
-  case class LineProps(start: LocalDate, selected: Int, onSelectDate: ReactMouseEventFromHtml => SyncIO[Unit])
-  case class Props(id: String, selected: LocalDate, onSelectDate: ReactMouseEventFromHtml => SyncIO[Unit])
+  case class LineProps(start: LocalDate, selected: Int, onSelectDate: ReactMouseEventFromHtml => Callback)
+  case class Props(id: String, selected: LocalDate, onSelectDate: ReactMouseEventFromHtml => Callback)
 
   val CalendarTableHeader: Component[Unit, CtorType.Nullary] = ScalaFnComponent.apply[Unit] { _ =>
     def expandHeader(day: (DayOfWeek, String, String)): VdomTagOf[TableCell] =
