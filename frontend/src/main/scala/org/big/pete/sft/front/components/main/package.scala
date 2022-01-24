@@ -13,14 +13,22 @@ package object main {
   def formatAmount(currency: String, amount: BigDecimal): String =
     "%s%.2f".format(currency, amount)
 
-  def tableWrap(head: VdomElement, body: VdomArray, foot: VdomElement): VdomTagOf[Element] =
+  def tableWrap(
+      preTable: TagMod,
+      head: VdomElement,
+      body: VdomArray,
+      foot: VdomElement,
+      postTable: TagMod
+  ): VdomTagOf[Element] =
     <.main(
       <.div(^.cls := "padding",
+        preTable,
         <.table(^.cls := "striped small sft",
           <.thead(head),
           <.tbody(body),
           <.tfoot(foot)
-        )
+        ),
+        postTable
       )
     )
 }

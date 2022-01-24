@@ -43,7 +43,9 @@ object Routing {
       setMoneyAccountsFilter: (MICheckbox.Status, String) => Callback,
       checkTransaction: (MICheckbox.Status, String) => Callback,
       transactionTrackingClick: (Int, TransactionTracking) => Callback,
-      onPageChange: (SftPages, Option[SftPages]) => Callback
+      onPageChange: (SftPages, Option[SftPages]) => Callback,
+
+      publishAccount: (String, String) => Callback
   )
 
   class Backend() {

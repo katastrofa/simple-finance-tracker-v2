@@ -19,7 +19,11 @@ object FullPage extends EffectSyntax {
     .render_P { props =>
       val mainPage = props.activePage match {
         case SftMain.AccountsSelectionPage =>
-          Accounts.component.apply(Accounts.Props(props.p.accounts, Accounts.AccountProps(props.router, props.activePage, props.p.onPageChange)))
+          Accounts.component.apply(Accounts.Props(
+            props.p.accounts,
+            Accounts.AccountProps(props.router, props.activePage, props.p.onPageChange),
+            props.p.publishAccount
+          ))
         case SftMain.TransactionsPage(_) =>
           Transactions.component.apply(Transactions.Props(props.p.displayTransactions, props.p.checkTransaction, props.p.transactionTrackingClick))
         case SftMain.CategoriesPage(_) =>

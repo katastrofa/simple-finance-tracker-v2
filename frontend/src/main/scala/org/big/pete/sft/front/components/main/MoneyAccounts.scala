@@ -19,9 +19,11 @@ object MoneyAccounts {
         .toVdomArray
 
       tableWrap(
+        TagMod.empty,
         headerComponent(),
         moneyAccounts,
-        headerComponent()
+        headerComponent(),
+        TagMod.empty
       )
     }.build
 

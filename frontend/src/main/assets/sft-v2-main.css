@@ -26,6 +26,28 @@ body {
   line-height: 32px;
 }
 
+.modal.open {
+  display: block;
+  z-index: 1000;
+}
+
+.modal button.btn {
+  margin-left: 1rem;
+  display: inline-flex;
+}
+
+.modal button.btn i {
+  margin-right: 0.5rem;
+}
+
+a.btn.nice {
+  display: inline-flex;
+}
+
+a.btn.nice i {
+  margin-right: 0.5rem;
+}
+
 .sft-calendar-picker {
   display: inline-block;
   max-width: 7rem;

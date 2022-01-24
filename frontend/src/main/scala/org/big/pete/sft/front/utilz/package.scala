@@ -21,4 +21,9 @@ package object utilz {
 
   def getAccountId(page: SftPages, accounts: List[Account]): Option[Int] =
     getAccount(page, accounts).map(_.id)
+
+  def parsePermalink(full: String): String =
+    full.trim.toLowerCase
+      .replaceAll("\\s+", "-")
+      .replaceAll("[^a-z0-9_-]+", "_")
 }

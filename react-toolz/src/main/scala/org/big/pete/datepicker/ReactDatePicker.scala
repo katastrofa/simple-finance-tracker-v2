@@ -17,6 +17,8 @@ import scala.util.Try
 
 
 object ReactDatePicker {
+  case class KeyBinding(key: String, modifiers: List[String] = List.empty[String])
+
   final val PartialDateRegex = "([0-9]{4})[^0-9-]*".r
   final val DefaultKeyBindings = KeyBindings(
     KeyBinding("ArrowUp"),
@@ -57,7 +59,6 @@ object ReactDatePicker {
       prevYear: Option[KeyBinding] = None,
       nextYear: Option[KeyBinding] = None
   )
-  case class KeyBinding(key: String, modifiers: List[String] = List.empty[String])
 
   class Backend(override val $: BackendScope[Props, State])(implicit val isOpenL: isOpenPath.Lens[State, Boolean])
     extends ModalSupport[Props, State]

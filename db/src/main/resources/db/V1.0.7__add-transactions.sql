@@ -15,5 +15,8 @@ CREATE TABLE IF NOT EXISTS transactions (
     dest_amount DECIMAL(24, 2),
     dest_money_account INT REFERENCES money_accounts(id)
         ON UPDATE SET NULL
+        ON DELETE SET NULL,
+    owner INT REFERENCES users(id)
+        ON UPDATE SET NULL
         ON DELETE SET NULL
 ) DEFAULT CHARACTER SET 'utf8mb4';

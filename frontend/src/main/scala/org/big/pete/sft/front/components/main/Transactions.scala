@@ -37,9 +37,11 @@ object Transactions {
       }.toVdomArray
 
       tableWrap(
+        TagMod.empty,
         headerComponent(HeaderProps(props.checkTransaction)),
         reactTransactions,
-        headerComponent(HeaderProps(props.checkTransaction))
+        headerComponent(HeaderProps(props.checkTransaction)),
+        TagMod.empty
       )
     }.build
 

@@ -8,7 +8,9 @@ import com.typesafe.config.Config
 import doobie.syntax.ToConnectionIOOps
 import doobie.util.transactor.Transactor
 import io.circe.jawn
+import org.big.pete.cache.BpCache
 import org.big.pete.sft.db.dao.Users
+import org.big.pete.sft.db.domain.User
 import org.big.pete.sft.server.auth.domain._
 import org.http4s.dsl.Http4sDsl
 import org.http4s.{AuthedRequest, HttpDate, Request, RequestCookie, Response, ResponseCookie}
@@ -22,6 +24,7 @@ class AuthHelper[F[_]: MonadCancelThrow](
     config: Config,
     dsl: Http4sDsl[F],
     sttpBackend: SttpBackend[F, Any],
+    usersCache: BpCache[F, Int, User],
     implicit val transactor: Transactor[F]
 ) extends FunctorSyntax with FlatMapSyntax with MonadCancelSyntax with ToConnectionIOOps
 {
@@ -64,12 +67,11 @@ class AuthHelper[F[_]: MonadCancelThrow](
   }
 
   private def verifyLogin(cookie: AuthCookieData, browserInfo: String): OptionT[F, AuthUser] = {
-    OptionT.liftF(Users.getLogins(cookie.id).transact(transactor)).flatMap { logins =>
-      val auth = logins.find { case (login, _) =>
-        generateAuthCode(cookie.id, login.accessToken, browserInfo) == cookie.authCode
-      }.map { case (login, user) => AuthUser(user, login) }
-      OptionT.fromOption[F](auth)
-    }
+    for {
+      logins <- OptionT.liftF(Users.getLogins(cookie.id).transact(transactor))
+      login <- OptionT.fromOption(logins.find(login => generateAuthCode(cookie.id, login.accessToken, browserInfo) == cookie.authCode))
+      user <- OptionT(usersCache.get(login.userId))
+    } yield AuthUser(user, login)
   }
 
   private def generateAuthCode(userId: Int, token: String, browserInfo: String): String = {

@@ -9,5 +9,8 @@ CREATE TABLE IF NOT EXISTS money_accounts (
     created DATE NOT NULL,
     account INT NOT NULL REFERENCES accounts(id)
         ON UPDATE CASCADE
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
+    owner INT REFERENCES users(id)
+        ON UPDATE SET NULL
+        ON DELETE SET NULL
 ) DEFAULT CHARACTER SET 'utf8mb4';

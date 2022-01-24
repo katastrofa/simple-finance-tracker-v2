@@ -28,6 +28,25 @@ body.dark {
   padding-left: 10px;
 }
 
+.input-field .autocomplete-content.dropdown-content.visible, .input-field .autocomplete-content.dropdown-content.test {
+  display: block;
+  width: 100%;
+  opacity: 1;
+  height: 100%;
+  top: 46px;
+}
+
+.input-field .dropdown-content li {
+  min-height: 36px;
+  line-height: 1rem;
+}
+
+.input-field .dropdown-content li > span {
+  line-height: 14px;
+  padding: 12px 16px;
+}
+
+
 /*.dpick-container.modal-content {*/
 /*  display: -webkit-box;*/
 /*  display: -webkit-flex;*/

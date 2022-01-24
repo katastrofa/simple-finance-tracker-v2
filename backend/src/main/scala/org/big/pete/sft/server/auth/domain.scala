@@ -6,7 +6,7 @@ import org.http4s.Uri
 
 
 object domain {
-  case class AuthUser(dbUser: User, login: Login)
+  case class AuthUser(db: User, login: Login)
   case class LoginRedirect(uri: Uri)
   case class AuthCookieData(id: Int, authCode: String) {
     override def toString: String = s"$id$AuthCookieSeparator$authCode"

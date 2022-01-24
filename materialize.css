@@ -5133,7 +5133,7 @@ button.btn-floating {
 }
 
 .dropdown-content {
-  background-color: #fff;
+  background-color: #142228;
   margin: 0;
   display: none;
   min-width: 100px;
@@ -5158,7 +5158,7 @@ button.btn-floating {
   text-align: left;
 }
 .dropdown-content li:hover, .dropdown-content li.active {
-  background-color: #eee;
+  background-color: #253f4a;
 }
 .dropdown-content li:focus {
   outline: none;
@@ -5169,7 +5169,7 @@ button.btn-floating {
 }
 .dropdown-content li > a, .dropdown-content li > span {
   font-size: 16px;
-  color: #6d4c41;
+  color: #eeeeee;
   display: block;
   line-height: 22px;
   padding: 14px 16px;
@@ -5188,7 +5188,7 @@ button.btn-floating {
 }
 
 body.keyboard-focused .dropdown-content li:focus {
-  background-color: #dadada;
+  background-color: #17282f;
 }
 
 .input-field.col .dropdown-content [type=checkbox] + label {
@@ -6616,7 +6616,7 @@ body.keyboard-focused .select-dropdown.dropdown-content li:focus {
 }
 
 .select-dropdown li.optgroup {
-  border-top: 1px solid #eee;
+  border-top: 1px solid #253f4a;
 }
 .select-dropdown li.optgroup.selected > span {
   color: rgba(0, 0, 0, 0.7);
