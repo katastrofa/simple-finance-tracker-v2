@@ -7,7 +7,7 @@ import doobie.syntax.ToConnectionIOOps
 import doobie.util.transactor.Transactor
 import io.circe.syntax.EncoderOps
 import org.big.pete.cache.BpCache
-import org.big.pete.sft.db.dao.{Users, Accounts => DbAccounts}
+import org.big.pete.sft.db.dao.{Users, General => DbAccounts}
 import org.big.pete.sft.db.domain.User
 import org.big.pete.sft.domain.{Account, AccountEdit}
 import org.big.pete.sft.domain.Implicits._

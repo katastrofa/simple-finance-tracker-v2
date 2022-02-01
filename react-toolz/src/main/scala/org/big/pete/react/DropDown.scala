@@ -1,9 +1,10 @@
 package org.big.pete.react
 
-import japgolly.scalajs.react.{Callback, CtorType, ReactFormEventFromInput, ReactKeyboardEventFromInput, ReactMouseEventFromHtml, Reusability, ScalaComponent}
+import japgolly.scalajs.react.{Callback, CtorType, ReactFormEventFromInput, ReactKeyboardEventFromInput, ReactMouseEventFromHtml, Ref, Reusability, ScalaComponent}
 import japgolly.scalajs.react.component.Scala.{BackendScope, Component}
 import japgolly.scalajs.react.extra.{EventListener, OnUnmount}
 import japgolly.scalajs.react.vdom.html_<^._
+import org.scalajs.dom.html
 import org.scalajs.dom.html.Div
 
 import scala.annotation.{nowarn, tailrec}
@@ -31,11 +32,15 @@ class DropDown[T: Reusability] {
   /// TODO: css
   class Backend($: BackendScope[Props, State]) extends OnUnmount {
 
+    private val inputRef = Ref[html.Input]
+
     def isActive(state: State): Boolean =
       state.text.nonEmpty || state.focus
 
-    def focusIn: Callback = $.modState(_.copy(focus = true))
-    def focusOut: Callback = $.modState(_.copy(focus = false))
+    def focusIn: Callback =
+      inputRef.foreach(_.select()) >> $.modState(_.copy(focus = true))
+    def focusOut: Callback =
+      $.modState(_.copy(focus = false))
 
     def dropDownOpen(state: State): Boolean =
       state.focus
@@ -207,7 +212,7 @@ class DropDown[T: Reusability] {
         <.input(^.id := props.id, ^.`type` := "text", ^.tabIndex := props.tabIndex, ^.value := state.text, ^.cls := "autocomplete",
           ^.onChange ==> textChange,
           ^.onKeyDown ==> onInputKey
-        ),
+        ).withRef(inputRef),
         <.ul(
           ^.classSet("autocomplete-content" -> true, "dropdown-content" -> true, "visible" -> dropDownOpen(state), "test" -> true),
           ^.height := s"${ulHeight}px",

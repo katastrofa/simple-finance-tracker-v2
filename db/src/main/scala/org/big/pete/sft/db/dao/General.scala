@@ -5,10 +5,10 @@ import doobie.ConnectionIO
 import doobie.implicits._
 import doobie.Fragments.in
 import org.big.pete.sft.db.domain.User
-import org.big.pete.sft.domain.{Account, AccountEdit}
+import org.big.pete.sft.domain.{Account, AccountEdit, Currency}
 
 
-object Accounts {
+object General {
   def getAccount(permalink: String): ConnectionIO[Option[Account]] =
     sql"SELECT * FROM accounts WHERE permalink = $permalink LIMIT 1".query[Account].option
 
@@ -45,4 +45,7 @@ object Accounts {
 
   private def cleanPermalink(permalink: String): String =
     permalink.replaceAll("[^a-zA-Z0-9-_.]", "")
+
+  def listCurrencies: ConnectionIO[List[Currency]] =
+    sql"SELECT * FROM currencies".query[Currency].to[List]
 }

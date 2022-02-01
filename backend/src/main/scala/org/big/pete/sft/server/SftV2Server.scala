@@ -7,21 +7,23 @@ import com.comcast.ip4s.{Ipv4Address, Port}
 import fs2.Stream
 import fs2.io.net.tls.TLSContext
 import org.big.pete.cache.BpCache
-import org.big.pete.sft.domain.{Account, AccountEdit, ApiAction, Category, CategoryDeleteStrategies}
+import org.big.pete.sft.domain.{Account, AccountEdit, ApiAction, Category, CategoryDeleteStrategies, MoneyAccount, MoneyAccountDeleteStrategy}
 import org.big.pete.sft.domain.Implicits._
-import org.big.pete.sft.server.api.{Accounts, Categories}
+import org.big.pete.sft.server.api.{Accounts, Categories, MoneyAccounts}
 import org.big.pete.sft.server.auth.AuthHelper
 import org.big.pete.sft.server.auth.domain.AuthUser
 import org.big.pete.sft.server.security.AccessHelper
-import org.http4s.{AuthedRoutes, HttpRoutes, MediaType, Request, Response, StaticFile}
+import org.http4s.{AuthedRoutes, HttpRoutes, MediaType, QueryParamDecoder, Request, Response, StaticFile}
 import org.http4s.circe.CirceEntityDecoder._
 import org.http4s.circe.CirceEntityEncoder._
 import org.http4s.dsl.Http4sDsl
-import org.http4s.dsl.impl.QueryParamDecoderMatcher
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.headers.`Content-Type`
 import org.http4s.server.staticcontent.{FileService, fileService}
 import org.http4s.server.{AuthMiddleware, Router}
+
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 
 class SftV2Server[F[_]: Async](
@@ -30,6 +32,7 @@ class SftV2Server[F[_]: Async](
     accessHelper: AccessHelper[F],
     accountsApi: Accounts[F],
     categoriesApi: Categories[F],
+    moneyAccountsApi: MoneyAccounts[F],
     dsl: Http4sDsl[F],
     ipAddress: String,
     port: Int
@@ -38,7 +41,9 @@ class SftV2Server[F[_]: Async](
     with FlatMapSyntax
 {
   import dsl._
-  import SftV2Server.{CodeQueryParamMatcher, ErrorQueryParamMatcher}
+  import SftV2Server.{CodeQueryParamMatcher, ErrorQueryParamMatcher, StartDateParamMatcher, EndDateParamMatcher}
+
+
 
   val authMiddleware: AuthMiddleware[F, AuthUser] =
     AuthMiddleware(authHelper.authSftUser, authHelper.loginRedirectHandler)
@@ -107,6 +112,36 @@ class SftV2Server[F[_]: Async](
           categoriesApi.deleteCategory(catId, account.id, strategies.shiftSubCats, strategies.shiftTransactions)
         }
       } yield response
+
+    case GET -> Root / "api" / permalink / "money-accounts" :? StartDateParamMatcher(start) +& EndDateParamMatcher(end) as user =>
+      for {
+        account <- accountsCache.get(permalink).map(_.get)
+        response <- accessHelper.verifyAccess(permalink, ApiAction.Basic, user) {
+          moneyAccountsApi.listExtendedMoneyAccounts(account.id, start, end)
+        }
+      } yield response
+    case request @ PUT -> Root / "api" / permalink / "money-accounts" as user =>
+      for {
+        account <- accountsCache.get(permalink).map(_.get)
+        ma <- request.req.as[MoneyAccount]
+          .map(_.copy(owner = Some(user.db.id), accountId = account.id))
+        response <- accessHelper.verifyAccess(permalink, ApiAction.ModifyOwnMoneyAccount, user)(moneyAccountsApi.addMoneyAccount(ma))
+      } yield response
+    case request @ POST -> Root / "api" / permalink / "money-accounts" as user =>
+      for {
+        account <- accountsCache.get(permalink).map(_.get)
+        ma <- request.req.as[MoneyAccount]
+        apiAction = if (ma.owner.contains(user.db.id)) ApiAction.ModifyOwnMoneyAccount else ApiAction.ModifyMoneyAccount
+        response <- accessHelper.verifyAccess(permalink, apiAction, user)(moneyAccountsApi.editMoneyAccount(ma, account.id))
+      } yield response
+    case request @ DELETE -> Root / "api" / permalink / "money-accounts" / IntVar(maId) as user =>
+      for {
+        account <- accountsCache.get(permalink).map(_.get)
+        strategy <- request.req.as[MoneyAccountDeleteStrategy]
+        response <- accessHelper.verifyAccess(permalink, ApiAction.DeleteMoneyAccount, user) {
+          moneyAccountsApi.deleteMoneyAccount(maId, account.id, strategy.shiftTransactions)
+        }
+      } yield response
   }
 
   def stream(tlsOpt: Option[TLSContext[F]]): Stream[F, Nothing] = {
@@ -131,6 +166,14 @@ class SftV2Server[F[_]: Async](
 }
 
 object SftV2Server {
+  import org.http4s.dsl.impl.QueryParamDecoderMatcher
+
+  implicit val localDateParamDecoder: QueryParamDecoder[LocalDate] =
+    QueryParamDecoder[String].map(date => LocalDate.parse(date, DateTimeFormatter.ofPattern("yyyy-MM-dd")))
+
   object CodeQueryParamMatcher extends QueryParamDecoderMatcher[String]("code")
   object ErrorQueryParamMatcher extends QueryParamDecoderMatcher[String]("error")
+
+  object StartDateParamMatcher extends QueryParamDecoderMatcher[LocalDate]("start")
+  object EndDateParamMatcher extends QueryParamDecoderMatcher[LocalDate]("end")
 }

@@ -11,10 +11,19 @@ import org.big.pete.sft.json.BpJson
 import wvlet.log.LogSupport
 
 import java.time.format.DateTimeFormatter
-import java.time.LocalDateTime
+import java.time.{LocalDate, LocalDateTime}
 
 
 object domain {
+  case class Balance(
+      date: LocalDate,
+      transactionType: TransactionType,
+      amount: BigDecimal,
+      moneyAccount: Int,
+      destinationAmount: Option[BigDecimal],
+      destinationMoneyAccountId: Option[Int]
+  )
+
   final val MySqlDateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
   def localDateTimeFromString(time: String): LocalDateTime =
     LocalDateTime.parse(time, MySqlDateTimeFormatter)

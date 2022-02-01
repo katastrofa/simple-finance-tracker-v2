@@ -83,6 +83,7 @@ case class UserPermissions(global: Set[ApiAction], perAccount: Map[Int, Set[ApiA
 
 case class ShiftStrategy(newId: Option[Int])
 case class CategoryDeleteStrategies(shiftSubCats: ShiftStrategy, shiftTransactions: ShiftStrategy)
+case class MoneyAccountDeleteStrategy(shiftTransactions: ShiftStrategy)
 case class AccountEdit(oldPermalink: String, id: Int, name: String, permalink: String, owner: Option[Int])
 case class NotAllowedResponse(message: String)
 
@@ -115,6 +116,8 @@ object Implicits {
   implicit val shiftStrategyDecoder: Decoder[ShiftStrategy] = deriveDecoder[ShiftStrategy]
   implicit val categoryDeleteStrategiesEncoder: Encoder[CategoryDeleteStrategies] = deriveEncoder[CategoryDeleteStrategies]
   implicit val categoryDeleteStrategiesDecoder: Decoder[CategoryDeleteStrategies] = deriveDecoder[CategoryDeleteStrategies]
+  implicit val moneyAccountDeleteStrategyEncoder: Encoder[MoneyAccountDeleteStrategy] = deriveEncoder[MoneyAccountDeleteStrategy]
+  implicit val moneyAccountDeleteStrategyDecoder: Decoder[MoneyAccountDeleteStrategy] = deriveDecoder[MoneyAccountDeleteStrategy]
 }
 
 object domain {

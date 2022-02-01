@@ -1,13 +1,15 @@
 package org.big.pete.sft.front
 
+import io.circe.Decoder
 import japgolly.scalajs.react.{CtorType, ReactFormEventFromInput, ScalaComponent}
 import japgolly.scalajs.react.callback.{AsyncCallback, Callback, CallbackTo}
 import japgolly.scalajs.react.component.Scala.{BackendScope, Component, Unmounted}
 import japgolly.scalajs.react.extra.Ajax
 import japgolly.scalajs.react.extra.internal.AjaxException
 import org.big.pete.BPJson
+import org.big.pete.datepicker.ReactDatePicker
 import org.big.pete.react.MICheckbox
-import org.big.pete.sft.domain.{Account, Category, EnhancedMoneyAccount, Transaction, TransactionTracking, TransactionType}
+import org.big.pete.sft.domain.{Account, Category, Currency, EnhancedMoneyAccount, MoneyAccount, PeriodAmountStatus, Transaction, TransactionTracking, TransactionType}
 import org.big.pete.sft.front.SftMain.{AccountsSelectionPage, SftPages}
 import org.big.pete.sft.front.components.header.SidenavFilters.FiltersOpen
 import org.big.pete.sft.front.domain.{CategoryTree, EnhancedTransaction}
@@ -33,6 +35,7 @@ object SftState {
       checkedTransactions: Set[Int],
 
       accounts: List[Account],
+      currencies: List[Currency],
       categories: Map[Int, Category],
       moneyAccounts: Map[Int, EnhancedMoneyAccount],
       transactions: List[Transaction],
@@ -123,27 +126,35 @@ object SftState {
     @nowarn
     def transactionTrackingClick(id: Int, tracking: TransactionTracking): Callback = Callback.empty
 
-    /// TODO: Do this
-    def loadAccounts: AsyncCallback[List[Account]] = {
-      import org.big.pete.sft.domain.Implicits._
-
+    def ajaxCall[T: Decoder](method: String, apiPath: String, payload: Option[String], empty: => T): AsyncCallback[T] = {
       $.props.async.flatMap { props =>
-        Ajax("GET", props.apiBase + "/accounts")
-          .send
+        val step1 = Ajax(method, props.apiBase + apiPath)
+        payload.map(str => step1.send(str))
+          .getOrElse(step1.send)
           .validateStatusIs(200)(displayException)
           .asAsyncCallback
           .flatMap { response =>
-            BPJson.extract[List[Account]](response.responseText) match {
-              case Left(value) => displayExceptionStr(value).async >> AsyncCallback.pure(List.empty)
+            BPJson.extract[T](response.responseText) match {
+              case Left(value) => displayExceptionStr(value).async >> AsyncCallback.pure(empty)
               case Right(value) => AsyncCallback.pure(value)
             }
           }
       }
     }
 
+    def loadAccounts: AsyncCallback[List[Account]] = {
+      import org.big.pete.sft.domain.Implicits._
+      ajaxCall[List[Account]]("GET", "/accounts", None, List.empty)
+    }
+
+    def loadCurrencies: AsyncCallback[List[Currency]] = {
+      import org.big.pete.sft.domain.Implicits._
+      ajaxCall[List[Currency]]("GET", "/currencies", None, List.empty)
+    }
+
     /// TODO: Do this
     @nowarn
-    def loadTransactions(accountPermalink: String): AsyncCallback[List[Transaction]] = {
+    def loadTransactions(accountPermalink: String, start: LocalDate, end: LocalDate): AsyncCallback[List[Transaction]] = {
 //      AsyncCallback.delay {
 //        val accountId = sample.accounts.find(_.permalink == accountPermalink).get.id
 //        val categoryIds = sample.categories.filter(_.accountId == accountId).map(_.id).toSet
@@ -152,44 +163,44 @@ object SftState {
       AsyncCallback.pure(List.empty)
     }
 
-    /// TODO: Do this
-    @nowarn
-    def loadMoneyAccounts(accountPermalink: String): AsyncCallback[Map[Int, EnhancedMoneyAccount]] = {
-//      AsyncCallback.delay {
-//        val accountId = sample.accounts.find(_.permalink == accountPermalink).get.id
-//        sample.moneyAccounts.filter(_._1 == accountId).map { case (_, ma) => ma.id -> ma }.toMap
-//      }
-      AsyncCallback.pure(Map.empty)
+    def loadMoneyAccounts(accountPermalink: String, start: LocalDate, end: LocalDate): AsyncCallback[Map[Int, EnhancedMoneyAccount]] = {
+      import org.big.pete.sft.domain.Implicits._
+
+      val apiPath = "/" + accountPermalink + "/money-accounts?" +
+        "start=" + start.format(ReactDatePicker.DateFormat) +
+        "&end=" + end.format(ReactDatePicker.DateFormat)
+      ajaxCall[List[EnhancedMoneyAccount]]("GET", apiPath, None, List.empty)
+        .map(_.map(ma => ma.id -> ma).toMap)
     }
 
-    /// TODO: Do this
-    @nowarn
     def loadCategories(accountPermalink: String): AsyncCallback[Map[Int, Category]] = {
-//      AsyncCallback.delay {
-//        val accountId = sample.accounts.find(_.permalink == accountPermalink).get.id
-//        sample.categories.filter(_.accountId == accountId).map(cat => cat.id -> cat).toMap
-//      }
-      AsyncCallback.pure(Map.empty)
+      import org.big.pete.sft.domain.Implicits._
+
+      ajaxCall[List[Category]]("GET", "/" + accountPermalink + "/categories", None, List.empty)
+        .map(_.map(cat => cat.id -> cat).toMap)
     }
 
     def refreshAccount(account: String, newPage: SftPages): AsyncCallback[Unit] = {
       $.state.async.flatMap { state =>
         val data = AsyncCallback.sequence(List(
           if (state.accounts.isEmpty) loadAccounts else AsyncCallback.pure(state.accounts),
+          if (state.currencies.isEmpty) loadCurrencies else AsyncCallback.pure(state.currencies),
           loadCategories(account),
-          loadMoneyAccounts(account),
-          loadTransactions(account)
+          loadMoneyAccounts(account, state.from, state.to),
+          loadTransactions(account, state.from, state.to)
         ))
 
         data.flatMap { dataList =>
           val accounts = dataList.head.asInstanceOf[List[Account]]
-          val cats = dataList(1).asInstanceOf[Map[Int, Category]]
-          val moneyAccounts = dataList(2).asInstanceOf[Map[Int, EnhancedMoneyAccount]]
-          val transactions = dataList(3).asInstanceOf[List[Transaction]]
+          val currencies = dataList(1).asInstanceOf[List[Currency]]
+          val cats = dataList(2).asInstanceOf[Map[Int, Category]]
+          val moneyAccounts = dataList(3).asInstanceOf[Map[Int, EnhancedMoneyAccount]]
+          val transactions = dataList(4).asInstanceOf[List[Transaction]]
 
           $.modStateAsync(s => s.copy(
             activePage = Some(newPage),
             accounts = accounts,
+            currencies = currencies,
             categories = cats,
             moneyAccounts = moneyAccounts,
             transactions = transactions,
@@ -207,16 +218,26 @@ object SftState {
 
     def onPageClick(newPage: SftPages, oldPage: Option[SftPages]): Callback = {
       val aCall = (oldPage, newPage) match {
-        case (None, AccountsSelectionPage) =>
-          loadAccounts.flatMap(accounts => $.modStateAsync(_.copy(accounts = accounts, activePage = Some(AccountsSelectionPage)))).map(_ => 3)
+        case (None, AccountsSelectionPage) => for {
+          ajaxData <- AsyncCallback.sequence(List(loadAccounts, loadCurrencies))
+          _ <- $.modStateAsync(_.copy(
+            accounts = ajaxData.head.asInstanceOf[List[Account]],
+            currencies = ajaxData.last.asInstanceOf[List[Currency]],
+            activePage = Some(AccountsSelectionPage)
+          ))
+        } yield 3
+
         case (None, page) if getAccountPermalink(page).nonEmpty =>
           val account = getAccountPermalink(page)
           refreshAccount(account.get, page).map(_ => 10)
+
         case (Some(_), AccountsSelectionPage) =>
           AsyncCallback.pure(1)
+
         case (Some(old), page) if getAccountPermalink(old) != getAccountPermalink(page) =>
           val account = getAccountPermalink(page)
           refreshAccount(account.get, page).map(_ => 15)
+
         case _ =>
           AsyncCallback.pure(999)
       }
@@ -231,20 +252,64 @@ object SftState {
     def displayExceptionStr(error: String): Callback =
       Callback.log(error)
 
-    def publishAccount(name: String, permalink: String): Callback = {
-      import org.big.pete.sft.domain.Implicits._
-
+    def ajaxUpdate[T: Decoder](method: String, apiPath: String, payload: String, update: T => Callback): Callback = {
       $.props.flatMap { props =>
-        Ajax("PUT", props.apiBase + "/accounts")
+        Ajax(method, props.apiBase + apiPath)
           .setRequestContentTypeJsonUtf8
-          .send(BPJson.write(Account(-1, name, permalink, None)))
+          .send(payload)
           .validateStatusIs(200)(displayException)
           .onComplete { response =>
-            BPJson.extract[Account](response.responseText) match {
+            BPJson.extract[T](response.responseText) match {
               case Left(value) => displayExceptionStr(value)
-              case Right(account) => $.modState(state => state.copy(accounts = account :: state.accounts))
+              case Right(obj) => update(obj)
             }
           }.asCallback
+      }
+    }
+
+    def publishAccount(name: String, permalink: String): Callback = {
+      import org.big.pete.sft.domain.Implicits._
+      ajaxUpdate[Account](
+        "PUT",
+        "/accounts",
+        BPJson.write(Account(-1, name, permalink, None)),
+        account => $.modState(state => state.copy(accounts = state.accounts ++ List(account)))
+      )
+    }
+
+    def publishCategory(name: String, description: String, parent: Option[Int]): Callback = {
+      import org.big.pete.sft.domain.Implicits._
+
+      $.state.flatMap { state =>
+        val account = state.activePage.flatMap(getAccountPermalink).getOrElse("")
+        ajaxUpdate[Category](
+          "PUT",
+          "/" + account + "/categories",
+          BPJson.write(Category(-1, name, if (description.nonEmpty) Some(description) else None, parent, -1, None)),
+          cat => $.modState { state =>
+            val newCats = state.categories + (cat.id -> cat)
+            state.copy(categories = newCats, categoryTree = CategoryTree.generateTree(newCats.values.toList))
+          }
+        )
+      }
+    }
+
+    def publishMoneyAccount(name: String, startAmount: BigDecimal, currency: Int, created: LocalDate): Callback = {
+      import org.big.pete.sft.domain.Implicits._
+
+      $.state.flatMap { state =>
+        val account = state.activePage.flatMap(getAccountPermalink).getOrElse("")
+        ajaxUpdate[MoneyAccount](
+          "PUT",
+          "/" + account + "/categories",
+          BPJson.write(MoneyAccount(-1, name, startAmount, currency, created, -1, None)),
+          ma => $.modState { state =>
+            val currencyObj = state.currencies.find(_.id == ma.currencyId).get
+            val period = PeriodAmountStatus(ma.startAmount, ma.startAmount)
+            val enhanced = EnhancedMoneyAccount(ma.id, ma.name, ma.startAmount, currencyObj, ma.created, period, ma.owner)
+            state.copy(moneyAccounts = state.moneyAccounts + (ma.id -> enhanced))
+          }
+        )
       }
     }
 
@@ -261,6 +326,7 @@ object SftState {
         state.moneyAccountsActiveFilters,
         state.checkedTransactions,
         state.accounts,
+        state.currencies,
         state.moneyAccounts,
         state.categoryTree,
         state.displayTransactions,
@@ -275,7 +341,9 @@ object SftState {
         checkTransaction,
         transactionTrackingClick,
         onPageClick,
-        publishAccount
+        publishAccount,
+        publishCategory,
+        publishMoneyAccount
       ))
     }
 
@@ -319,7 +387,7 @@ object SftState {
   }
 
   val component: Component[Props, State, Backend, CtorType.Props] = ScalaComponent.builder[Props]
-    .initialStateFromProps(p => State(p.initialFrom, p.initialTo, None, None, Set.empty, Set.empty, "", Set.empty, Set.empty, Set.empty, List.empty, Map.empty, Map.empty, List.empty, List.empty, List.empty))
+    .initialStateFromProps(p => State(p.initialFrom, p.initialTo, None, None, Set.empty, Set.empty, "", Set.empty, Set.empty, Set.empty, List.empty, List.empty, Map.empty, Map.empty, List.empty, List.empty, List.empty))
     .renderBackend[Backend]
     .componentDidMount(_.backend.onPageClick(AccountsSelectionPage, None))
     .build

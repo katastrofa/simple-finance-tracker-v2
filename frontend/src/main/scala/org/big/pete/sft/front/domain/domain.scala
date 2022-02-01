@@ -1,14 +1,25 @@
 package org.big.pete.sft.front.domain
 
-import org.big.pete.sft.domain.{Category, EnhancedMoneyAccount, Transaction, TransactionTracking, TransactionType}
+import japgolly.scalajs.react.Reusability
+import org.big.pete.sft.domain.{Category, Currency, EnhancedMoneyAccount, Transaction, TransactionTracking, TransactionType}
 
 import java.time.LocalDate
 import scala.annotation.tailrec
 
 
-case class CategoryTree(id: Int, name: String, description: Option[String], treeLevel: Int, children: List[CategoryTree])
+case class CategoryTree(id: Int, name: String, description: Option[String], treeLevel: Int, children: List[CategoryTree]) {
+  override def equals(obj: Any): Boolean = {
+    if (!obj.isInstanceOf[CategoryTree])
+      false
+    else {
+      val o = obj.asInstanceOf[CategoryTree]
+      id == o.id && name == o.name && description == o.description && treeLevel == o.treeLevel && children == o.children
+    }
+  }
+}
 
 object CategoryTree {
+
   def generateTree(categories: List[Category]): List[CategoryTree] = {
     val groupedData = categories.groupBy(_.parent)
 
@@ -86,6 +97,12 @@ object EnhancedTransaction {
       destinationMoneyAccount.map(_.name)
     )
   }
+}
+
+object Implicits {
+  implicit val currencyReuse: Reusability[Currency] = Reusability.derive[Currency]
+  implicit val categoryTreeReuse: Reusability[CategoryTree] = Reusability.by_==[CategoryTree]
+
 }
 
 object domain {

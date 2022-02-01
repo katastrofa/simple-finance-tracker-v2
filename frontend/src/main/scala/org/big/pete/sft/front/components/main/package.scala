@@ -2,6 +2,7 @@ package org.big.pete.sft.front.components
 
 import japgolly.scalajs.react.vdom.VdomElement
 import japgolly.scalajs.react.vdom.html_<^._
+import org.big.pete.sft.domain.Currency
 import org.scalajs.dom.html.Element
 
 import java.time.format.DateTimeFormatter
@@ -12,6 +13,9 @@ package object main {
 
   def formatAmount(currency: String, amount: BigDecimal): String =
     "%s%.2f".format(currency, amount)
+
+  def displayCurrency(currency: Currency): String =
+    s"${currency.name} (${currency.symbol})"
 
   def tableWrap(
       preTable: TagMod,

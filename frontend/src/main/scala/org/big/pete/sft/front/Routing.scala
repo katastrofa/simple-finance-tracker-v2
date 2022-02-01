@@ -6,7 +6,7 @@ import japgolly.scalajs.react.component.Scala.Component
 import japgolly.scalajs.react.extra.router.{BaseUrl, RouterCtl, RouterWithProps, RouterWithPropsConfig, RouterWithPropsConfigDsl, SetRouteVia}
 import japgolly.scalajs.react.vdom.VdomElement
 import org.big.pete.react.MICheckbox
-import org.big.pete.sft.domain.{Account, EnhancedMoneyAccount, TransactionTracking, TransactionType}
+import org.big.pete.sft.domain.{Account, Currency, EnhancedMoneyAccount, TransactionTracking, TransactionType}
 import org.big.pete.sft.front.SftMain.{AccountsSelectionPage, CategoriesPage, MoneyAccountsPage, SftPages, TransactionsPage}
 import org.big.pete.sft.front.components.header.SidenavFilters.FiltersOpen
 import org.big.pete.sft.front.domain.{CategoryTree, EnhancedTransaction}
@@ -28,6 +28,7 @@ object Routing {
       checkedTransactions: Set[Int],
 
       accounts: List[Account],
+      currencies: List[Currency],
       moneyAccounts: Map[Int, EnhancedMoneyAccount],
 
       categoryTree: List[CategoryTree],
@@ -45,7 +46,9 @@ object Routing {
       transactionTrackingClick: (Int, TransactionTracking) => Callback,
       onPageChange: (SftPages, Option[SftPages]) => Callback,
 
-      publishAccount: (String, String) => Callback
+      publishAccount: (String, String) => Callback,
+      publishCategory: (String, String, Option[Int]) => Callback,
+      publishMoneyAccount: (String, BigDecimal, Int, LocalDate) => Callback
   )
 
   class Backend() {

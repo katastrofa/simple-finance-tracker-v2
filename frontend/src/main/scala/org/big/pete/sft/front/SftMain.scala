@@ -1,6 +1,10 @@
 package org.big.pete.sft.front
 
 import japgolly.scalajs.react.extra.router.BaseUrl
+import org.big.pete.react.DropDown
+import org.big.pete.sft.domain.Currency
+import org.big.pete.sft.front.domain.CategoryTree
+import org.big.pete.sft.front.domain.Implicits._
 import org.scalajs.dom.document
 
 import java.time.LocalDate
@@ -14,6 +18,8 @@ object SftMain {
   case class CategoriesPage(account: String) extends SftPages
   case class MoneyAccountsPage(account: String) extends SftPages
 
+  val dropDownCategoryTree = new DropDown[CategoryTree]
+  val dropDownCurrency = new DropDown[Currency]
 
   @JSExport
   def main(args: Array[String]): Unit = {

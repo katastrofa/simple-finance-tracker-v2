@@ -25,11 +25,19 @@ object FullPage extends EffectSyntax {
             props.p.publishAccount
           ))
         case SftMain.TransactionsPage(_) =>
-          Transactions.component.apply(Transactions.Props(props.p.displayTransactions, props.p.checkTransaction, props.p.transactionTrackingClick))
+          Transactions.component.apply(Transactions.Props(
+            props.p.displayTransactions,
+            props.p.checkTransaction,
+            props.p.transactionTrackingClick
+          ))
         case SftMain.CategoriesPage(_) =>
-          Categories.component.apply(Categories.Props(props.p.categoryTree))
+          Categories.component.apply(Categories.Props(props.p.categoryTree, props.p.publishCategory))
         case SftMain.MoneyAccountsPage(_) =>
-          MoneyAccounts.component.apply(MoneyAccounts.Props(props.p.moneyAccounts.values.toList))
+          MoneyAccounts.component.apply(MoneyAccounts.Props(
+            props.p.moneyAccounts.values.toList,
+            props.p.currencies,
+            props.p.publishMoneyAccount
+          ))
       }
 
       ReactFragment(

@@ -8,10 +8,10 @@ import doobie.hikari.HikariTransactor
 import doobie.syntax.ToConnectionIOOps
 import fs2.io.net.tls.TLSContext
 import org.big.pete.cache.FullBpCache
-import org.big.pete.sft.db.dao.{Accounts, Users}
+import org.big.pete.sft.db.dao.{General, Users}
 import org.big.pete.sft.db.domain.User
 import org.big.pete.sft.domain.Account
-import org.big.pete.sft.server.api.{Categories, Accounts => AccountsApi}
+import org.big.pete.sft.server.api.{Categories, MoneyAccounts, Accounts => AccountsApi}
 import org.big.pete.sft.server.auth.AuthHelper
 import org.big.pete.sft.server.security.AccessHelper
 import org.http4s.dsl.Http4sDsl
@@ -36,7 +36,7 @@ object Main extends IOApp with LogSupport with ToConnectionIOOps {
     sttp <- AsyncHttpClientCatsBackend.resource[IO]()
     transactor <- HikariTransactor.fromHikariConfig[IO](dbConfig, global)
     tls <- Resource.eval(TLSContext.Builder.forAsync[IO].system)
-    accountsCache <- Resource.eval(FullBpCache.apply[String, Account](100, Accounts.getAccount(_).transact(transactor)))
+    accountsCache <- Resource.eval(FullBpCache.apply[String, Account](100, General.getAccount(_).transact(transactor)))
     usersCache <- Resource.eval(FullBpCache.apply[Int, User](100, Users.getUser(_).transact(transactor)))
   } yield (sttp, transactor, tls, accountsCache, usersCache)
 
@@ -47,6 +47,7 @@ object Main extends IOApp with LogSupport with ToConnectionIOOps {
       val accessHelper = new AccessHelper[IO](accountsCache, dsl, transactor)
       val accountsApi = new AccountsApi[IO](usersCache, accountsCache, dsl, transactor)
       val categoriesApi = new Categories[IO](dsl, transactor)
+      val moneyAccountsApi = new MoneyAccounts[IO](dsl, transactor)
 
       val server = new SftV2Server[IO](
         accountsCache,
@@ -54,6 +55,7 @@ object Main extends IOApp with LogSupport with ToConnectionIOOps {
         accessHelper,
         accountsApi,
         categoriesApi,
+        moneyAccountsApi,
         dsl,
         mainConfig.getString("server.ip"),
         mainConfig.getInt("server.port")
