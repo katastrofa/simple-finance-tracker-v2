@@ -11,7 +11,7 @@ import org.big.pete.cache.FullBpCache
 import org.big.pete.sft.db.dao.{General, Users}
 import org.big.pete.sft.db.domain.User
 import org.big.pete.sft.domain.Account
-import org.big.pete.sft.server.api.{Categories, MoneyAccounts, Accounts => AccountsApi}
+import org.big.pete.sft.server.api.{Categories, MoneyAccounts, Transactions, General => GeneralApi}
 import org.big.pete.sft.server.auth.AuthHelper
 import org.big.pete.sft.server.security.AccessHelper
 import org.http4s.dsl.Http4sDsl
@@ -45,9 +45,10 @@ object Main extends IOApp with LogSupport with ToConnectionIOOps {
       val dsl = Http4sDsl[IO]
       val authHelper = new AuthHelper[IO](mainConfig, dsl, sttp, usersCache, transactor)
       val accessHelper = new AccessHelper[IO](accountsCache, dsl, transactor)
-      val accountsApi = new AccountsApi[IO](usersCache, accountsCache, dsl, transactor)
+      val accountsApi = new GeneralApi[IO](usersCache, accountsCache, dsl, transactor)
       val categoriesApi = new Categories[IO](dsl, transactor)
       val moneyAccountsApi = new MoneyAccounts[IO](dsl, transactor)
+      val transactionsApi = new Transactions[IO](dsl, transactor)
 
       val server = new SftV2Server[IO](
         accountsCache,
@@ -56,6 +57,7 @@ object Main extends IOApp with LogSupport with ToConnectionIOOps {
         accountsApi,
         categoriesApi,
         moneyAccountsApi,
+        transactionsApi,
         dsl,
         mainConfig.getString("server.ip"),
         mainConfig.getInt("server.port")

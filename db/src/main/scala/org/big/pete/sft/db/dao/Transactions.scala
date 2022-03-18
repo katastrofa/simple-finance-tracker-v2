@@ -6,6 +6,7 @@ import doobie.implicits._
 import doobie.implicits.javatimedrivernative._
 import doobie.Fragments.in
 import org.big.pete.sft.db.domain.Balance
+import org.big.pete.sft.domain.Transaction
 
 import java.time.LocalDate
 
@@ -32,4 +33,40 @@ object Transactions {
       in(fr"dest_money_account", moneyAccounts) ++
       fr") AND date <= $until ORDER BY date"
     ).query[Balance].to[List]
+
+  /*
+  case class Transaction(
+    id: Int,
+    date: LocalDate,
+    transactionType: TransactionType,
+    amount: BigDecimal,
+    description: String,
+    categoryId: Int,
+    moneyAccount: Int,
+    tracking: TransactionTracking,
+    destinationAmount: Option[BigDecimal],
+    destinationMoneyAccountId: Option[Int],
+    owner: Option[Int]
+)
+  * */
+
+  def getTransaction(id: Int): ConnectionIO[Option[Transaction]] =
+    sql"SELECT * FROM transactions WHERE id = $id".query[Transaction].option
+
+  def listTransactions(accountId: Int, start: LocalDate, end: LocalDate): ConnectionIO[List[Transaction]] = {
+    sql"""SELECT t.* FROM transactions AS t
+         JOIN money_accounts AS m
+            ON t.money_account = m.id
+         WHERE t.date >= $start AND t.date <= $end AND m.account = $accountId
+        """.query[Transaction].to[List]
+  }
+
+  def addTransaction(trans: Transaction): ConnectionIO[Int] =
+    sql"""INSERT INTO transactions (
+                date, type, amount, description, category, money_account, tracking, dest_amount, dest_money_account, owner
+            ) VALUE (
+                ${trans.date}, ${trans.transactionType}, ${trans.amount}, ${trans.description}, ${trans.categoryId},
+                ${trans.moneyAccount}, ${trans.tracking}, ${trans.destinationAmount}, ${trans.destinationMoneyAccountId},
+                ${trans.owner}
+            )""".update.withUniqueGeneratedKeys[Int]("id")
 }

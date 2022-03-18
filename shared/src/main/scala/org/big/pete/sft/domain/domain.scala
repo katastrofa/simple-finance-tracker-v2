@@ -50,8 +50,8 @@ case object ApiAction extends Enum[ApiAction] with CirceEnum[ApiAction] {
 }
 
 case class Account(id: Int, name: String, permalink: String, owner: Option[Int])
-case class Currency(id: Int, name: String, symbol: String)
-case class MoneyAccount(id: Int, name: String, startAmount: BigDecimal, currencyId: Int, created: LocalDate, accountId: Int, owner: Option[Int])
+case class Currency(id: String, name: String, symbol: String)
+case class MoneyAccount(id: Int, name: String, startAmount: BigDecimal, currencyId: String, created: LocalDate, accountId: Int, owner: Option[Int])
 case class Category(id: Int, name: String, description: Option[String], parent: Option[Int], accountId: Int, owner: Option[Int])
 case class Transaction(
     id: Int,

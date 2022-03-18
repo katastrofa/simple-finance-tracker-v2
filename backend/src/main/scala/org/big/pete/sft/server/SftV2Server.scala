@@ -7,9 +7,9 @@ import com.comcast.ip4s.{Ipv4Address, Port}
 import fs2.Stream
 import fs2.io.net.tls.TLSContext
 import org.big.pete.cache.BpCache
-import org.big.pete.sft.domain.{Account, AccountEdit, ApiAction, Category, CategoryDeleteStrategies, MoneyAccount, MoneyAccountDeleteStrategy}
+import org.big.pete.sft.domain.{Account, AccountEdit, ApiAction, Category, CategoryDeleteStrategies, MoneyAccount, MoneyAccountDeleteStrategy, Transaction}
 import org.big.pete.sft.domain.Implicits._
-import org.big.pete.sft.server.api.{Accounts, Categories, MoneyAccounts}
+import org.big.pete.sft.server.api.{Categories, General, MoneyAccounts, Transactions}
 import org.big.pete.sft.server.auth.AuthHelper
 import org.big.pete.sft.server.auth.domain.AuthUser
 import org.big.pete.sft.server.security.AccessHelper
@@ -30,9 +30,10 @@ class SftV2Server[F[_]: Async](
     accountsCache: BpCache[F, String, Account],
     authHelper: AuthHelper[F],
     accessHelper: AccessHelper[F],
-    accountsApi: Accounts[F],
+    generalApi: General[F],
     categoriesApi: Categories[F],
     moneyAccountsApi: MoneyAccounts[F],
+    transactionsApi: Transactions[F],
     dsl: Http4sDsl[F],
     ipAddress: String,
     port: Int
@@ -63,26 +64,29 @@ class SftV2Server[F[_]: Async](
     case GET -> Root / "api" as user =>
       Ok(s"api for ${user.db.displayName}")
 
+    case GET -> Root / "api" / "currencies" as user =>
+      accessHelper.verifyAccess(ApiAction.Basic, user)(generalApi.listCurrencies)
+
     case GET -> Root / "api" / "accounts" as user =>
-      accessHelper.verifyAccess(ApiAction.Basic, user)(accountsApi.listAccounts(user))
+      accessHelper.verifyAccess(ApiAction.Basic, user)(generalApi.listAccounts(user))
     case request @ PUT -> Root / "api" / "accounts" as user =>
       for {
         account <- request.req.as[Account]
           .map(_.copy(owner = Some(user.db.id)))
-        response <- accessHelper.verifyAccess(ApiAction.ModifyOwnAccount, user)(accountsApi.addAccount(user, account))
+        response <- accessHelper.verifyAccess(ApiAction.ModifyOwnAccount, user)(generalApi.addAccount(user, account))
       } yield response
     case request @ POST -> Root / "api" / "accounts" as user =>
       for {
         accountEdit <- request.req.as[AccountEdit]
         owner <- accountsCache.get(accountEdit.oldPermalink).map(_.get.owner)
         apiAction = if (owner.contains(user.db.id)) ApiAction.ModifyOwnAccount else ApiAction.ModifyAccount
-        response <- accessHelper.verifyAccess(apiAction, user)(accountsApi.editAccount(accountEdit))
+        response <- accessHelper.verifyAccess(apiAction, user)(generalApi.editAccount(accountEdit))
       } yield response
     case DELETE -> Root / "api" / "accounts" / permalink as user =>
       for {
         account <- accountsCache.get(permalink).map(_.get)
         apiAction = if (account.owner.contains(user.db.id)) ApiAction.DeleteOwnAccount else ApiAction.DeleteAccount
-        response <- accessHelper.verifyAccess(apiAction, user)(accountsApi.deleteAccount(account.id, permalink))
+        response <- accessHelper.verifyAccess(apiAction, user)(generalApi.deleteAccount(account.id, permalink))
       } yield response
 
     case GET -> Root / "api" / permalink / "categories" as user =>
@@ -141,6 +145,24 @@ class SftV2Server[F[_]: Async](
         response <- accessHelper.verifyAccess(permalink, ApiAction.DeleteMoneyAccount, user) {
           moneyAccountsApi.deleteMoneyAccount(maId, account.id, strategy.shiftTransactions)
         }
+      } yield response
+
+    case GET -> Root / "api" / permalink / "transactions" :? StartDateParamMatcher(start) +& EndDateParamMatcher(end) as user =>
+      for {
+        account <- accountsCache.get(permalink).map(_.get)
+        response <- accessHelper.verifyAccess(permalink, ApiAction.Basic, user)(
+          transactionsApi.listTransaction(account.id, start, end)
+        )
+      } yield response
+    /// TODO: Verify the MA and cat are from this account
+    case request @ PUT -> Root / "api" / permalink / "transactions" as user =>
+      for {
+//        account <- accountsCache.get(permalink).map(_.get)
+        trans <- request.req.as[Transaction]
+          .map(_.copy(owner = Some(user.db.id)))
+        response <- accessHelper.verifyAccess(permalink, ApiAction.ModifyOwnTransactions, user)(
+          transactionsApi.addTransaction(trans)
+        )
       } yield response
   }
 

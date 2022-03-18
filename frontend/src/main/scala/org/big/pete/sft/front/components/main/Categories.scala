@@ -8,7 +8,8 @@ import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.react.{MaterialIcon, TextInput}
 import org.big.pete.sft.front.SftMain
 import org.big.pete.sft.front.domain.CategoryTree
-import org.scalajs.dom.html.Div
+import org.big.pete.sft.front.helpers.{AddModal, ModalButtons}
+import org.scalajs.dom.html.Form
 
 
 object Categories {
@@ -18,17 +19,16 @@ object Categories {
   case class CategoryProps(category: CategoryTree)
   final val TopLevelCat: CategoryTree = CategoryTree(-42, "Top Level", None, 0, List.empty)
 
-  case class ModalProps(
-      isOpen: Boolean,
+  case class FormProps(
       categories: List[CategoryTree],
       publish: (String, String, Option[Int]) => Callback,
       close: Callback
   )
-  case class ModalState(name: String, description: String, parent: CategoryTree)
+  case class FormState(name: String, description: String, parent: CategoryTree)
 
   implicit val propsReuse: Reusability[Props] = Reusability.caseClassExcept[Props]("publish")
-  implicit val modalPropsReuse: Reusability[ModalProps] = Reusability.caseClassExcept[ModalProps]("publish", "close")
-  implicit val modalStateReuse: Reusability[ModalState] = Reusability.derive[ModalState]
+  implicit val formPropsReuse: Reusability[FormProps] = Reusability.caseClassExcept[FormProps]("publish", "close")
+  implicit val formStateReuse: Reusability[FormState] = Reusability.derive[FormState]
 
 
   val component: Scala.Component[Props, Boolean, Unit, CtorType.Props] = ScalaComponent.builder[Props]
@@ -41,7 +41,9 @@ object Categories {
       val categoryLines = props.categories.flatMap(expandCategories).toVdomArray
 
       tableWrap(
-        addCategoryModal.apply(ModalProps(isOpen, props.categories, props.publish, $.modState(_ => false))),
+        AddModal.component(AddModal.Props("add-category-modal", isOpen))(
+          addCategoryModal.apply(FormProps(props.categories, props.publish, $.modState(_ => false)))
+        ),
         headerComponent(),
         categoryLines,
         headerComponent(),
@@ -53,85 +55,6 @@ object Categories {
       )
     }.configure(Reusability.shouldComponentUpdate)
     .build
-
-
-  class ModalBackend($: BackendScope[ModalProps, ModalState]) {
-    def changeName(e: ReactFormEventFromInput): Callback =
-      $.modState(_.copy(name = e.target.value))
-
-    def changeDescription(e: ReactFormEventFromInput): Callback =
-      $.modState(_.copy(description = e.target.value))
-
-    def changeParent(cat: CategoryTree): Callback =
-      $.modState(_.copy(parent = cat))
-
-    def clean: Callback =
-      $.modState(_ => ModalState("", "", TopLevelCat))
-
-    def publish: Callback = for {
-      props <- $.props
-      state <- $.state
-      _ <- props.close
-      _ <- props.publish(state.name, state.description, Some(state.parent.id))
-      _ <- clean
-    } yield ()
-
-
-    def render(props: ModalProps, state: ModalState): VdomTagOf[Div] = {
-      <.div(^.id := "add-category-modal",
-        ^.tabIndex := 1,
-        ^.classSet("modal" -> true, "open" -> props.isOpen),
-        <.div(^.cls := "modal-content",
-          <.div(^.cls := "container",
-            <.form(
-              <.div(^.cls := "row",
-                TextInput.component(TextInput.Props("add-category-name", "Name", state.name, changeName, 101, List("col", "s12")))
-              ),
-              <.div(^.cls := "row",
-                TextInput.component(TextInput.Props("add-category-desc", "Description", state.description, changeDescription, 102, List("col", "s12")))
-              ),
-              <.div(^.cls := "row",
-                SftMain.dropDownCategoryTree.component(SftMain.dropDownCategoryTree.Props(
-                  "add-category-parent",
-                  "Parent",
-                  TopLevelCat :: props.categories,
-                  CategoryTree.name,
-                  cat => s"add-cat-${cat.id}",
-                  changeParent,
-                  Some(state.parent)
-                ))
-              ),
-              <.div(^.cls := "row",
-                <.div(^.cls := "col s12 right-align",
-                  <.button(^.cls := "waves-effect waves-light btn",
-                    ^.`type` := "button",
-                    ^.tabIndex := 103,
-                    ^.onClick --> publish,
-                    MaterialIcon("add_task"),
-                    "Add"
-                  ),
-                  <.button(^.cls := "waves-effect waves-light btn",
-                    ^.`type` := "button",
-                    ^.tabIndex := 104,
-                    ^.onClick --> (props.close >> clean),
-                    MaterialIcon("highlight_off"),
-                    "Close"
-                  )
-                )
-              )
-            )
-          )
-        )
-      )
-    }
-  }
-
-  val addCategoryModal: Scala.Component[ModalProps, ModalState, ModalBackend, CtorType.Props] = ScalaComponent.builder[ModalProps]
-    .initialState(ModalState("", "", TopLevelCat))
-    .renderBackend[ModalBackend]
-    .configure(Reusability.shouldComponentUpdate)
-    .build
-
 
   val headerComponent: Component[Unit, CtorType.Nullary] = ScalaFnComponent.apply[Unit] { _ =>
     <.tr(
@@ -148,5 +71,60 @@ object Categories {
       <.td(^.cls := "description", props.category.description.getOrElse("").toString)
     )
   }
+
+
+  class FormBackend($: BackendScope[FormProps, FormState]) {
+    def changeName(e: ReactFormEventFromInput): Callback =
+      $.modState(_.copy(name = e.target.value))
+
+    def changeDescription(e: ReactFormEventFromInput): Callback =
+      $.modState(_.copy(description = e.target.value))
+
+    def changeParent(cat: CategoryTree): Callback =
+      $.modState(_.copy(parent = cat))
+
+    def clean: Callback =
+      $.modState(_ => FormState("", "", TopLevelCat))
+
+    def publish: Callback = for {
+      props <- $.props
+      state <- $.state
+      _ <- props.close
+      _ <- props.publish(state.name, state.description, Some(state.parent.id))
+      _ <- clean
+    } yield ()
+
+
+    def render(props: FormProps, state: FormState): VdomTagOf[Form] = {
+      <.form(
+        <.div(^.cls := "row",
+          TextInput.component(TextInput.Props("add-category-name", "Name", state.name, changeName, 101, List("col", "s12")))
+        ),
+        <.div(^.cls := "row",
+          TextInput.component(TextInput.Props("add-category-desc", "Description", state.description, changeDescription, 102, List("col", "s12")))
+        ),
+        <.div(^.cls := "row",
+          SftMain.dropDownCategoryTree.component(SftMain.dropDownCategoryTree.Props(
+            "add-category-parent",
+            "Parent",
+            TopLevelCat :: props.categories,
+            CategoryTree.name,
+            cat => s"add-cat-${cat.id}",
+            changeParent,
+            Some(state.parent),
+            103,
+            List("col", "s12")
+          ))
+        ),
+        ModalButtons.add(104, publish, props.close >> clean)
+      )
+    }
+  }
+
+  val addCategoryModal: Scala.Component[FormProps, FormState, FormBackend, CtorType.Props] = ScalaComponent.builder[FormProps]
+    .initialState(FormState("", "", TopLevelCat))
+    .renderBackend[FormBackend]
+    .configure(Reusability.shouldComponentUpdate)
+    .build
 
 }

@@ -48,7 +48,8 @@ object Routing {
 
       publishAccount: (String, String) => Callback,
       publishCategory: (String, String, Option[Int]) => Callback,
-      publishMoneyAccount: (String, BigDecimal, Int, LocalDate) => Callback
+      publishMoneyAccount: (String, BigDecimal, String, LocalDate) => Callback,
+      publishTransaction: (LocalDate, TransactionType, BigDecimal, String, Int, Int, Option[BigDecimal], Option[Int]) => Callback
   )
 
   class Backend() {

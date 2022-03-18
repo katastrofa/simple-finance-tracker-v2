@@ -16,6 +16,7 @@ import org.big.pete.sft.front.domain.{CategoryTree, EnhancedTransaction}
 import org.big.pete.sft.front.utilz.getAccountPermalink
 
 import java.time.LocalDate
+import java.time.chrono.ChronoLocalDate
 import scala.annotation.nowarn
 
 
@@ -127,6 +128,7 @@ object SftState {
     def transactionTrackingClick(id: Int, tracking: TransactionTracking): Callback = Callback.empty
 
     def ajaxCall[T: Decoder](method: String, apiPath: String, payload: Option[String], empty: => T): AsyncCallback[T] = {
+      Callback.log(s"AJAX - $method $apiPath with payload $payload").async >>
       $.props.async.flatMap { props =>
         val step1 = Ajax(method, props.apiBase + apiPath)
         payload.map(str => step1.send(str))
@@ -152,15 +154,13 @@ object SftState {
       ajaxCall[List[Currency]]("GET", "/currencies", None, List.empty)
     }
 
-    /// TODO: Do this
-    @nowarn
     def loadTransactions(accountPermalink: String, start: LocalDate, end: LocalDate): AsyncCallback[List[Transaction]] = {
-//      AsyncCallback.delay {
-//        val accountId = sample.accounts.find(_.permalink == accountPermalink).get.id
-//        val categoryIds = sample.categories.filter(_.accountId == accountId).map(_.id).toSet
-//        sample.transactions.filter(transaction => categoryIds.contains(transaction.categoryId))
-//      }
-      AsyncCallback.pure(List.empty)
+      import org.big.pete.sft.domain.Implicits._
+
+      val apiPath = "/" + accountPermalink + "/transactions?" +
+        "start=" + start.format(ReactDatePicker.DateFormat) +
+        "&end=" + end.format(ReactDatePicker.DateFormat)
+      ajaxCall[List[Transaction]]("GET", apiPath, None, List.empty)
     }
 
     def loadMoneyAccounts(accountPermalink: String, start: LocalDate, end: LocalDate): AsyncCallback[Map[Int, EnhancedMoneyAccount]] = {
@@ -253,6 +253,7 @@ object SftState {
       Callback.log(error)
 
     def ajaxUpdate[T: Decoder](method: String, apiPath: String, payload: String, update: T => Callback): Callback = {
+      Callback.log(s"AJAX - $method $apiPath with $payload") >>
       $.props.flatMap { props =>
         Ajax(method, props.apiBase + apiPath)
           .setRequestContentTypeJsonUtf8
@@ -282,10 +283,13 @@ object SftState {
 
       $.state.flatMap { state =>
         val account = state.activePage.flatMap(getAccountPermalink).getOrElse("")
+        val realParent = parent.flatMap(p => if (p == -42) None else Some(p))
+        val realDescription = if (description.nonEmpty) Some(description) else None
+
         ajaxUpdate[Category](
           "PUT",
           "/" + account + "/categories",
-          BPJson.write(Category(-1, name, if (description.nonEmpty) Some(description) else None, parent, -1, None)),
+          BPJson.write(Category(-1, name, realDescription, realParent, -1, None)),
           cat => $.modState { state =>
             val newCats = state.categories + (cat.id -> cat)
             state.copy(categories = newCats, categoryTree = CategoryTree.generateTree(newCats.values.toList))
@@ -294,23 +298,87 @@ object SftState {
       }
     }
 
-    def publishMoneyAccount(name: String, startAmount: BigDecimal, currency: Int, created: LocalDate): Callback = {
+    def publishMoneyAccount(name: String, startAmount: BigDecimal, currency: String, created: LocalDate): Callback = {
       import org.big.pete.sft.domain.Implicits._
 
       $.state.flatMap { state =>
         val account = state.activePage.flatMap(getAccountPermalink).getOrElse("")
         ajaxUpdate[MoneyAccount](
           "PUT",
-          "/" + account + "/categories",
+          "/" + account + "/money-accounts",
           BPJson.write(MoneyAccount(-1, name, startAmount, currency, created, -1, None)),
-          ma => $.modState { state =>
-            val currencyObj = state.currencies.find(_.id == ma.currencyId).get
+          ma => $.modState { oldState =>
+            val currencyObj = oldState.currencies.find(_.id == ma.currencyId).get
             val period = PeriodAmountStatus(ma.startAmount, ma.startAmount)
             val enhanced = EnhancedMoneyAccount(ma.id, ma.name, ma.startAmount, currencyObj, ma.created, period, ma.owner)
-            state.copy(moneyAccounts = state.moneyAccounts + (ma.id -> enhanced))
+            oldState.copy(moneyAccounts = oldState.moneyAccounts + (ma.id -> enhanced))
           }
         )
       }
+    }
+
+    def publishTransaction(
+        date: LocalDate,
+        transactionType: TransactionType,
+        amount: BigDecimal,
+        description: String,
+        category: Int,
+        moneyAccount: Int,
+        destinationAmount: Option[BigDecimal],
+        destinationMoneyAccountId: Option[Int]
+    ): Callback = {
+      import org.big.pete.sft.domain.Implicits._
+
+      $.state.flatMap { state =>
+        val account = state.activePage.flatMap(getAccountPermalink).getOrElse("")
+        ajaxUpdate[Transaction](
+          "PUT",
+          "/" + account + "/transactions",
+          BPJson.write(Transaction(-1, date, transactionType, amount, description, category, moneyAccount,
+            TransactionTracking.None, destinationAmount, destinationMoneyAccountId, None
+          )),
+          transaction => $.modState { oldState =>
+            oldState.copy(
+              moneyAccounts = updateMoneyAccountsWithTransaction(transaction, oldState.from, oldState.to, oldState.moneyAccounts),
+              transactions = oldState.transactions ++ List(transaction),
+              displayTransactions = filterTransactions(oldState)
+            )
+          }
+        )
+      }
+    }
+
+    def updateMoneyAccountsWithTransaction(
+        transaction: Transaction,
+        from: LocalDate,
+        to: LocalDate,
+        moneyAccounts: Map[Int, EnhancedMoneyAccount]
+    ): Map[Int, EnhancedMoneyAccount] = {
+      if (transaction.date.isBefore(to.asInstanceOf[ChronoLocalDate])) {
+        val updater = {
+          if (transaction.date.isAfter(from.asInstanceOf[ChronoLocalDate]))
+            (period: PeriodAmountStatus, operation: (BigDecimal, BigDecimal) => BigDecimal, value: BigDecimal) =>
+              PeriodAmountStatus(period.start, operation(period.end, value))
+          else
+            (period: PeriodAmountStatus, operation: (BigDecimal, BigDecimal) => BigDecimal, value: BigDecimal) =>
+              PeriodAmountStatus(operation(period.start, value), operation(period.end, value))
+        }
+
+        moneyAccounts.map { case (id, ma) =>
+          transaction.transactionType match {
+            case TransactionType.Income if id == transaction.moneyAccount =>
+              id -> ma.copy(periodStatus = updater(ma.periodStatus, _ + _, transaction.amount))
+            case TransactionType.Expense if id == transaction.moneyAccount =>
+              id -> ma.copy(periodStatus = updater(ma.periodStatus, _ - _, transaction.amount))
+            case TransactionType.Transfer if id == transaction.moneyAccount =>
+              id -> ma.copy(periodStatus = updater(ma.periodStatus, _ - _, transaction.amount))
+            case TransactionType.Transfer if transaction.destinationMoneyAccountId.contains(id) =>
+              id -> ma.copy(periodStatus = updater(ma.periodStatus, _ + _, transaction.destinationAmount.get))
+            case _ =>
+              id -> ma
+          }
+        }
+      } else moneyAccounts
     }
 
     def render(state: State): Unmounted[Routing.Props, Unit, Routing.Backend] = {

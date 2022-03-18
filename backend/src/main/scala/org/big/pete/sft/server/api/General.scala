@@ -7,7 +7,7 @@ import doobie.syntax.ToConnectionIOOps
 import doobie.util.transactor.Transactor
 import io.circe.syntax.EncoderOps
 import org.big.pete.cache.BpCache
-import org.big.pete.sft.db.dao.{Users, General => DbAccounts}
+import org.big.pete.sft.db.dao.{Users, General => DBG}
 import org.big.pete.sft.db.domain.User
 import org.big.pete.sft.domain.{Account, AccountEdit}
 import org.big.pete.sft.domain.Implicits._
@@ -17,7 +17,7 @@ import org.http4s.dsl.Http4sDsl
 import org.http4s.circe.CirceEntityEncoder._
 
 
-class Accounts[F[_]: MonadCancelThrow](
+class General[F[_]: MonadCancelThrow](
     usersCache: BpCache[F, Int, User],
     accountsCache: BpCache[F, String, Account],
     dsl: Http4sDsl[F],
@@ -25,9 +25,16 @@ class Accounts[F[_]: MonadCancelThrow](
 ) extends ToConnectionIOOps with FunctorSyntax with FlatMapSyntax {
   import dsl._
 
+  def listCurrencies: F[Response[F]] = {
+    for {
+      currencies <- DBG.listCurrencies.transact(transactor)
+      response <- Ok(currencies.asJson)
+    } yield response
+  }
+
   def listAccounts(authUser: AuthUser): F[Response[F]] = {
     for {
-      accounts <- DbAccounts.listAccounts(authUser.db).transact(transactor)
+      accounts <- DBG.listAccounts(authUser.db).transact(transactor)
       _ <- accounts.map(account => accountsCache.put(account.permalink, account)).sequence
       response <- Ok(accounts.asJson)
     } yield response
@@ -36,8 +43,8 @@ class Accounts[F[_]: MonadCancelThrow](
   def addAccount(authUser: AuthUser, account: Account): F[Response[F]] = {
     val permissions = authUser.db.permissions
     for {
-      newId <- DbAccounts.addAccount(account).transact(transactor)
-      newAccount <- DbAccounts.getAccount(newId).transact(transactor)
+      newId <- DBG.addAccount(account).transact(transactor)
+      newAccount <- DBG.getAccount(newId).transact(transactor)
       newPermissions = permissions.copy(perAccount = permissions.perAccount + (newId -> permissions.default))
       _ <- Users.updatePermissions(authUser.db.id, newPermissions).transact(transactor)
       _ <- usersCache.remove(authUser.db.id)
@@ -49,8 +56,8 @@ class Accounts[F[_]: MonadCancelThrow](
   def editAccount(account: AccountEdit): F[Response[F]] = {
     for {
       _ <- accountsCache.remove(account.oldPermalink)
-      _ <- DbAccounts.editAccount(account).transact(transactor)
-      newAccount <- DbAccounts.getAccount(account.id).transact(transactor)
+      _ <- DBG.editAccount(account).transact(transactor)
+      newAccount <- DBG.getAccount(account.id).transact(transactor)
       _ <- accountsCache.put(newAccount.get.permalink, newAccount.get)
       response <- Ok(newAccount.get.asJson)
     } yield response
@@ -58,7 +65,7 @@ class Accounts[F[_]: MonadCancelThrow](
 
   def deleteAccount(id: Int, permalink: String): F[Response[F]] = {
     for {
-      _ <- DbAccounts.deleteAccount(id).traverse(_.transact(transactor))
+      _ <- DBG.deleteAccount(id).traverse(_.transact(transactor))
       _ <- accountsCache.remove(permalink)
       _ <- usersCache.clear()
       response <- Ok("")

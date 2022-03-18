@@ -102,6 +102,7 @@ object EnhancedTransaction {
 object Implicits {
   implicit val currencyReuse: Reusability[Currency] = Reusability.derive[Currency]
   implicit val categoryTreeReuse: Reusability[CategoryTree] = Reusability.by_==[CategoryTree]
+  implicit val enhancedMoneyAccountReuse: Reusability[EnhancedMoneyAccount] = Reusability.derive[EnhancedMoneyAccount]
 
 }
 

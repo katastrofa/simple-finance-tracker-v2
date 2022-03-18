@@ -1,6 +1,6 @@
 package org.big.pete.react
 
-import japgolly.scalajs.react.component.Scala.{BackendScope, Component}
+import japgolly.scalajs.react.component.Scala.{BackendScope, Component, Unmounted}
 import japgolly.scalajs.react.extra.{EventListener, OnUnmount}
 import japgolly.scalajs.react.{Callback, CtorType, ReactFormEventFromInput, Reusability, ScalaComponent}
 import japgolly.scalajs.react.vdom.html_<^._
@@ -43,4 +43,14 @@ object TextInput {
     .configure(EventListener.install("focusout", _.backend.focusOut))
     .configure(Reusability.shouldComponentUpdate)
     .build
+
+  def apply(
+      id: String,
+      label: String,
+      value: String,
+      onChange: ReactFormEventFromInput => Callback,
+      tabIndex: Int = -1,
+      classes: List[String] = List.empty
+  ): Unmounted[Props, State, Backend] =
+    component.apply(Props(id, label, value, onChange, tabIndex, classes))
 }

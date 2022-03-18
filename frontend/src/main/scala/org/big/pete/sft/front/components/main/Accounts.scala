@@ -1,15 +1,17 @@
 package org.big.pete.sft.front.components.main
 
 import japgolly.scalajs.react.component.Scala
+import japgolly.scalajs.react.component.Scala.BackendScope
 import japgolly.scalajs.react.component.ScalaFn.Component
 import japgolly.scalajs.react.extra.router.RouterCtl
-import japgolly.scalajs.react.hooks.Hooks
-import japgolly.scalajs.react.{Callback, CtorType, ReactFormEventFromInput, ScalaComponent, ScalaFnComponent}
+import japgolly.scalajs.react.{Callback, CtorType, ReactFormEventFromInput, Reusability, ScalaComponent, ScalaFnComponent}
 import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.react.{MaterialIcon, TextInput}
 import org.big.pete.sft.domain.Account
 import org.big.pete.sft.front.SftMain.{SftPages, TransactionsPage}
+import org.big.pete.sft.front.helpers.{AddModal, ModalButtons}
 import org.big.pete.sft.front.utilz
+import org.scalajs.dom.html.Form
 
 
 object Accounts {
@@ -20,7 +22,12 @@ object Accounts {
       onPageChange: (SftPages, Option[SftPages]) => Callback
   )
 
-  case class ModalProps(isOpen: Boolean, publish: (String, String) => Callback, close: Callback)
+  case class FormProps(publish: (String, String) => Callback, close: Callback)
+  case class FormState(name: String, permalink: String)
+
+  implicit val formPropsReuse: Reusability[FormProps] = Reusability.caseClassExcept[FormProps]("publish", "close")
+  implicit val formStateReuse: Reusability[FormState] = Reusability.derive[FormState]
+
 
   val component: Scala.Component[Props, Boolean, Unit, CtorType.Props] = ScalaComponent.builder[Props]
     .initialState[Boolean](false)
@@ -30,7 +37,9 @@ object Accounts {
       }.toVdomArray
 
       tableWrap(
-        addModal.apply(ModalProps(isOpen, props.publish, $.modState(_ => false))),
+        AddModal.component(AddModal.Props("add-account-modal", isOpen))(
+          addModal.apply(FormProps(props.publish, $.modState(_ => false)))
+        ),
         headerComponent(),
         accounts,
         headerComponent(),
@@ -41,55 +50,6 @@ object Accounts {
         )
       )
     }.build
-
-  val addModal: Component[ModalProps, CtorType.Props] = ScalaFnComponent.withHooks[ModalProps]
-    .useState[String]("")
-    .useState[String]("")
-    .render { (props: ModalProps, name: Hooks.UseState[String], permalink: Hooks.UseState[String]) =>
-      def changeName(e: ReactFormEventFromInput): Callback =
-        name.modState(_ => e.target.value) >> permalink.modState(_ => utilz.parsePermalink(e.target.value))
-      def changePermalink(e: ReactFormEventFromInput): Callback =
-        permalink.modState(_ => utilz.parsePermalink(e.target.value))
-
-      <.div(^.id := "add-account-modal",
-        ^.tabIndex := 1,
-        ^.classSet("modal" -> true, "open" -> props.isOpen),
-        <.div(^.cls := "modal-content",
-          <.div(^.cls := "container",
-            <.form(
-              <.div(^.cls := "row",
-                TextInput.component(TextInput.Props("add-account-name", "Name", name.value, changeName, 101, List("col", "s12")))
-              ),
-              <.div(^.cls := "row",
-                TextInput.component(TextInput.Props("add-account-permalink", "Permalink", permalink.value, changePermalink, 102, List("col", "s12")))
-              ),
-              <.div(^.cls := "row",
-                <.div(^.cls := "col s12 right-align",
-                  <.button(^.cls := "waves-effect waves-light btn",
-                    ^.`type` := "button",
-                    ^.tabIndex := 103,
-                    ^.onClick --> (props.close >>
-                      props.publish(name.value, permalink.value) >>
-                      name.modState(_ => "") >>
-                      permalink.modState(_ => "")
-                    ),
-                    MaterialIcon("add_task"),
-                    "Add"
-                  ),
-                  <.button(^.cls := "waves-effect waves-light btn",
-                    ^.`type` := "button",
-                    ^.tabIndex := 104,
-                    ^.onClick --> (props.close >> name.modState(_ => "") >> permalink.modState(_ => "")),
-                    MaterialIcon("highlight_off"),
-                    "Close"
-                  )
-                )
-              )
-            )
-          )
-        )
-      )
-    }
 
   val headerComponent: Component[Unit, CtorType.Nullary] = ScalaFnComponent.apply[Unit] { _ =>
     <.tr(
@@ -113,4 +73,42 @@ object Accounts {
       <.td(^.cls := "permalink", account.permalink)
     )
   }
+
+  class FormBackend($: BackendScope[FormProps, FormState]) {
+    def changeName(e: ReactFormEventFromInput): Callback =
+      $.modState(_.copy(e.target.value, utilz.parsePermalink(e.target.value)))
+
+    def changePermalink(e: ReactFormEventFromInput): Callback =
+      $.modState(_.copy(permalink = utilz.parsePermalink(e.target.value)))
+
+    def clean: Callback =
+      $.modState(_.copy("", ""))
+
+    def publish: Callback = for {
+      props <- $.props
+      state <- $.state
+      _ <- props.close
+      _ <- props.publish(state.name, state.permalink)
+      _ <- clean
+    } yield ()
+
+    def render(props: FormProps, state: FormState): VdomTagOf[Form] = {
+      <.form(
+        <.div(^.cls := "row",
+          TextInput.component(TextInput.Props("add-account-name", "Name", state.name, changeName, 101, List("col", "s12")))
+        ),
+        <.div(^.cls := "row",
+          TextInput.component(TextInput.Props("add-account-permalink", "Permalink", state.permalink, changePermalink, 102, List("col", "s12")))
+        ),
+        ModalButtons.add(103, publish, props.close >> clean)
+      )
+    }
+  }
+
+  val addModal: Scala.Component[FormProps, FormState, FormBackend, CtorType.Props] = ScalaComponent.builder[FormProps]
+    .initialState(FormState("", ""))
+    .renderBackend[FormBackend]
+    .configure(Reusability.shouldComponentUpdate)
+    .build
+
 }

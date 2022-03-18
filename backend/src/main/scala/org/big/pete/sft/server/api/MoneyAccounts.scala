@@ -54,7 +54,7 @@ class MoneyAccounts[F[_]: Async: Parallel](
 
   private def enhanceMoneyAccount(
       calculatedBalances: Map[(Int, LocalDate), BigDecimal],
-      currencies: Map[Int, Currency],
+      currencies: Map[String, Currency],
       start: LocalDate,
       end: LocalDate
   )(
