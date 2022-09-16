@@ -60,7 +60,10 @@ class MoneyAccounts[F[_]: Async: Parallel](
   )(
       ma: MoneyAccount
   ): EnhancedMoneyAccount = {
-    val period = PeriodAmountStatus(calculatedBalances(ma.id -> start), calculatedBalances(ma.id -> end))
+    val period = PeriodAmountStatus(
+      calculatedBalances(ma.id -> start) + ma.startAmount,
+      calculatedBalances(ma.id -> end) + ma.startAmount
+    )
     EnhancedMoneyAccount(ma.id, ma.name, ma.startAmount, currencies(ma.currencyId), ma.created, period, ma.owner)
   }
 

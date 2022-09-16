@@ -45,6 +45,7 @@ object ReactDatePicker {
       onSelect: LocalDate => CallbackTo[LocalDate],
       initialDate: Option[LocalDate],
       isOpened: Boolean,
+      tabIndex: Option[Int],
       keyBindings: KeyBindings
   )
   case class State(isOpen: Boolean, editing: Option[String], selected: LocalDate) extends ModalState
@@ -178,7 +179,7 @@ object ReactDatePicker {
             )
           )
         },
-        <.input(^.id := prop.id, ^.`type` := "text", ^.cls := "datepicker",
+        <.input(^.id := prop.id, ^.`type` := "text", ^.cls := "datepicker", ^.tabIndex := prop.tabIndex.getOrElse(1),
           ^.value := fillInput(state),
           ^.onFocus --> openModal,
           ^.onChange ==> parseInputChange,
@@ -198,6 +199,10 @@ object ReactDatePicker {
 
   def apply(id: String, cls: String, onSelect: LocalDate => CallbackTo[LocalDate]): Unmounted[Props, State, Backend] =
     apply(id, cls, onSelect, None, isOpened = false, DefaultKeyBindings)
+  def apply(id: String, cls: String, tabIndex: Int, onSelect: LocalDate => CallbackTo[LocalDate]): Unmounted[Props, State, Backend] =
+    apply(id, cls, onSelect, None, isOpened = false, Some(tabIndex), DefaultKeyBindings)
   def apply(id: String, cls: String, onSelect: LocalDate => CallbackTo[LocalDate], initialDate: Option[LocalDate], isOpened: Boolean, keyBindings: KeyBindings): Unmounted[Props, State, Backend] =
-    DatePicker.apply(Props(id, cls, onSelect, initialDate, isOpened, keyBindings))
+    apply(id, cls, onSelect, initialDate, isOpened, None, keyBindings)
+  def apply(id: String, cls: String, onSelect: LocalDate => CallbackTo[LocalDate], initialDate: Option[LocalDate], isOpened: Boolean, tabIndex: Option[Int], keyBindings: KeyBindings): Unmounted[Props, State, Backend] =
+    DatePicker.apply(Props(id, cls, onSelect, initialDate, isOpened, tabIndex, keyBindings))
 }

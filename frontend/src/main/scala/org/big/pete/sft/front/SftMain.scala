@@ -28,8 +28,8 @@ object SftMain {
     val to = LocalDate.now().plusMonths(1L).withDayOfMonth(1).minusDays(1L)
     val baseUrl = (BaseUrl.fromWindowOrigin + "/api").value
 
-    val state = SftState.component.apply(SftState.Props(from, to, baseUrl))
-    state.renderIntoDOM(document.getElementById("sft-full"))
+    val route = Routing.component.apply(Routing.Props(from, to, baseUrl))
+    route.renderIntoDOM(document.getElementById("sft-full"))
     ()
   }
 }

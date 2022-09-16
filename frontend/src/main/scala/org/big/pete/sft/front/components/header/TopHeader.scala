@@ -29,13 +29,13 @@ object TopHeader {
             List(
               ReactDatePicker.DatePicker.withKey("key-date-select-from").apply(
                 ReactDatePicker.Props(
-                  "date-select-from", "date-select date-select-from", props.onFromDateChange, props.initialFromDate, isOpened = false,
+                  "date-select-from", "date-select date-select-from", props.onFromDateChange, props.initialFromDate, isOpened = false, Some(42),
                   ReactDatePicker.ExtendedKeyBindings
                 )
               ),
               ReactDatePicker.DatePicker.withKey("key-date-select-to").apply(
                 ReactDatePicker.Props(
-                  "date-select-to", "date-select date-select-to", props.onToDateChange, props.initialToDate, isOpened = false,
+                  "date-select-to", "date-select date-select-to", props.onToDateChange, props.initialToDate, isOpened = false, Some(43),
                   ReactDatePicker.ExtendedKeyBindings
                 )
               )

@@ -4,20 +4,23 @@ import japgolly.scalajs.react.callback.CallbackTo
 import japgolly.scalajs.react.component.Scala
 import japgolly.scalajs.react.component.Scala.BackendScope
 import japgolly.scalajs.react.component.ScalaFn.Component
-import japgolly.scalajs.react.{Callback, CtorType, ScalaComponent, ScalaFnComponent}
+import japgolly.scalajs.react.{Callback, CtorType, Reusability, ScalaComponent, ScalaFnComponent}
 import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.datepicker.ReactDatePicker
 import org.big.pete.react.{MICheckbox, MaterialIcon, TextInput}
 import org.big.pete.sft.domain.{EnhancedMoneyAccount, TransactionTracking, TransactionType}
 import org.big.pete.sft.front.SftMain.{dropDownCategoryTree, dropDownMoneyAccount}
 import org.big.pete.sft.front.domain.{CategoryTree, EnhancedTransaction}
-import org.big.pete.sft.front.helpers.ModalButtons
+import org.big.pete.sft.front.helpers.{AddModal, ModalButtons}
 import org.scalajs.dom.html.Form
 
 import java.time.LocalDate
 
 
 object Transactions {
+  import org.big.pete.react.Implicits._
+  import org.big.pete.sft.front.domain.Implicits._
+
   final val trackingToIcon = Map[TransactionTracking, String](
     TransactionTracking.None -> "horizontal_rule",
     TransactionTracking.Auto -> "blur_circular",
@@ -26,8 +29,11 @@ object Transactions {
 
   case class Props(
       transactions: List[EnhancedTransaction],
+      linearCats: List[CategoryTree],
+      moneyAccounts: Map[Int, EnhancedMoneyAccount],
       checkTransaction: (MICheckbox.Status, String) => Callback,
-      trackingChanged: (Int, TransactionTracking) => Callback
+      trackingChanged: (Int, TransactionTracking) => Callback,
+      publish: (LocalDate, TransactionType, BigDecimal, String, Int, Int, Option[BigDecimal], Option[Int]) => Callback
   )
   case class HeaderProps(checkTransaction: (MICheckbox.Status, String) => Callback)
   case class TransactionProps(
@@ -40,8 +46,8 @@ object Transactions {
       initialDate: LocalDate,
       linearCats: List[CategoryTree],
       moneyAccounts: Map[Int, EnhancedMoneyAccount],
-      close: Callback,
-      publish: (LocalDate, TransactionType, BigDecimal, String, Int, Int, Option[BigDecimal], Option[Int]) => Callback
+      publish: (LocalDate, TransactionType, BigDecimal, String, Int, Int, Option[BigDecimal], Option[Int]) => Callback,
+      close: Callback
   )
   case class FormState(
       date: LocalDate,
@@ -54,21 +60,31 @@ object Transactions {
       destinationMoneyAccountId: Option[Int]
   )
 
+  implicit val moneyAccountMapReuse: Reusability[Map[Int, EnhancedMoneyAccount]] = Reusability.map[Int, EnhancedMoneyAccount]
+  implicit val formPropsReuse: Reusability[FormProps] = Reusability.caseClassExcept[FormProps]("publish", "close")
+  implicit val formStateReuse: Reusability[FormState] = Reusability.derive[FormState]
 
-  val component: Scala.Component[Props, Unit, Unit, CtorType.Props] = ScalaComponent.builder[Props]
-    .stateless
-    .render_P { props =>
+
+  val component: Scala.Component[Props, Boolean, Unit, CtorType.Props] = ScalaComponent.builder[Props]
+    .initialState[Boolean](false)
+    .renderPS { ($, props, isOpen) =>
       val reactTransactions = props.transactions.map { transaction =>
         transactionComponent.withKey(s"t-${transaction.id}")
           .apply(TransactionProps(transaction, props.checkTransaction, props.trackingChanged))
       }.toVdomArray
 
       tableWrap(
-        TagMod.empty,
+        AddModal.component(AddModal.Props("add-transaction-modal", isOpen))(
+          transactionForm(FormProps(LocalDate.now(), props.linearCats, props.moneyAccounts, props.publish, $.modState(_ => false)))
+        ),
         headerComponent(HeaderProps(props.checkTransaction)),
         reactTransactions,
         headerComponent(HeaderProps(props.checkTransaction)),
-        TagMod.empty
+        <.a(^.cls := "waves-effect waves-light btn nice",
+          ^.onClick --> $.modState(_ => true),
+          MaterialIcon("add"),
+          "Add"
+        )
       )
     }.build
 
@@ -147,6 +163,7 @@ object Transactions {
             ld => $.modState(_.copy(date = ld)) >> CallbackTo.pure(ld),
             Some(state.date),
             isOpened = false,
+            Some(401),
             ReactDatePicker.ExtendedKeyBindings
           ))
         ),
@@ -227,5 +244,11 @@ object Transactions {
       )
     }
   }
+
+  val transactionForm: Scala.Component[FormProps, FormState, FormBackend, CtorType.Props] = ScalaComponent.builder[FormProps]
+    .initialStateFromProps(props => FormState(props.initialDate, TransactionType.Expense, BigDecimal(0), None, "", None, None, None))
+    .renderBackend[FormBackend]
+    .configure(Reusability.shouldComponentUpdate)
+    .build
 
 }

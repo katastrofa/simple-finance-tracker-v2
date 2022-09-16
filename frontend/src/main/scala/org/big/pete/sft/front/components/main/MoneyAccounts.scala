@@ -64,8 +64,8 @@ object MoneyAccounts {
     <.tr(
       <.th(^.cls := "id hide-on-small-only center-align", "ID"),
       <.th(^.cls := "name", "Name"),
-      <.th(^.cls := "currency", "Currency"),
-      <.th(^.cls := "date", "Created"),
+      <.th(^.cls := "currency hide-on-small-only", "Currency"),
+      <.th(^.cls := "date hide-on-small-only", "Created"),
       <.th(^.cls := "amount", "Start Amount", <.span("by period")),
       <.th(^.cls := "amount", "End Amount", <.span("by period"))
     )
@@ -75,8 +75,8 @@ object MoneyAccounts {
     <.tr(
       <.td(^.cls := "id hide-on-small-only right-align", props.account.id.toString),
       <.td(^.cls := "name", props.account.name),
-      <.td(^.cls := "currency", s"${props.account.currency.name} (${props.account.currency.symbol})"),
-      <.td(^.cls := "date", props.account.created.format(DateFormat)),
+      <.td(^.cls := "currency hide-on-small-only", s"${props.account.currency.name} (${props.account.currency.symbol})"),
+      <.td(^.cls := "date hide-on-small-only", props.account.created.format(DateFormat)),
       <.td(^.cls := "amount", formatAmount(props.account.currency.symbol, props.account.periodStatus.start)),
       <.td(^.cls := "amount", formatAmount(props.account.currency.symbol, props.account.periodStatus.end))
     )
@@ -133,6 +133,7 @@ object MoneyAccounts {
             ld => $.modState(_.copy(created = ld)) >> CallbackTo.pure(ld),
             Some(state.created),
             isOpened = false,
+            Some(304),
             ReactDatePicker.ExtendedKeyBindings
           ))
         ),

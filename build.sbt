@@ -1,14 +1,16 @@
 import java.nio.file.StandardCopyOption
 
-val Http4sVersion = "1.0.0-M30"
-val CirceVersion = "0.14.1"
-val MunitVersion = "0.7.29"
-val LogbackVersion = "1.2.7"
-val MunitCatsEffectVersion = "1.0.6"
+val Http4sVersion = "1.0.0-M35"
+val CirceVersion = "0.14.2"
+//val MunitVersion = "0.7.29"
+val LogbackVersion = "1.2.11"
+//val MunitCatsEffectVersion = "1.0.6"
 val EnumeratumVersion = "1.7.0"
+val CatsEffectVersion = "3.3.14"
 val MyScalaVersion = "2.13.7"
-val DoobieVersion = "1.0.0-RC1"
-val ScalaJsReactVersion = "2.0.0"
+val DoobieVersion = "1.0.0-RC2"
+val ScalaJsReactVersion = "2.1.1"
+val ReactVersion = "17.0.2"
 val MyProjectName = "simple-finance-tracker-v2"
 
 scalaVersion := MyScalaVersion
@@ -41,7 +43,7 @@ lazy val cache = (project in file("cache"))
   .settings(basicSettings)
   .settings(
     name := "scala-toolz-cache",
-    libraryDependencies += "org.typelevel" %% "cats-effect" % "3.3.4",
+    libraryDependencies += "org.typelevel" %% "cats-effect" % CatsEffectVersion,
     addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
   )
 
@@ -52,7 +54,7 @@ lazy val db = (project in file("db"))
     name := s"$MyProjectName-db",
     libraryDependencies += "org.tpolecat" %% "doobie-core" % DoobieVersion,
     libraryDependencies += "io.circe" %% "circe-jawn" % CirceVersion,
-    libraryDependencies += "org.wvlet.airframe" %% "airframe-log" % "21.10.0"
+    libraryDependencies += "org.wvlet.airframe" %% "airframe-log" % "22.7.3"
   )
 
 lazy val backend = (project in file("backend"))
@@ -61,15 +63,15 @@ lazy val backend = (project in file("backend"))
   .settings(
     name := s"$MyProjectName-backend",
 
-    libraryDependencies += "com.softwaremill.sttp.client3" %% "async-http-client-backend-cats" % "3.3.17",
+    libraryDependencies += "com.softwaremill.sttp.client3" %% "async-http-client-backend-cats" % "3.7.6",
     libraryDependencies += "org.tpolecat" %% "doobie-hikari" % DoobieVersion,
     libraryDependencies += "org.http4s" %% "http4s-ember-server" % Http4sVersion,
     libraryDependencies += "org.http4s" %% "http4s-circe" % Http4sVersion,
     libraryDependencies += "org.http4s" %% "http4s-dsl" % Http4sVersion,
     libraryDependencies += "ch.qos.logback" % "logback-classic" % LogbackVersion,
     libraryDependencies += "org.scalameta" %% "svm-subs" % "20.2.0",
-    libraryDependencies += "com.typesafe" % "config" % "1.4.1",
-    libraryDependencies += "mysql" % "mysql-connector-java" % "8.0.27",
+    libraryDependencies += "com.typesafe" % "config" % "1.4.2",
+    libraryDependencies += "mysql" % "mysql-connector-java" % "8.0.30",
 
     addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.13.2" cross CrossVersion.full),
     addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"),
@@ -81,7 +83,7 @@ lazy val shapeFun = (project in file("shape-fun"))
   .settings(basicSettings)
   .settings(
     name := s"shape-fun",
-    libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.7"
+    libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.9"
   )
 
 lazy val scalajsToolz = (project in file("scalajs-toolz"))
@@ -112,11 +114,11 @@ lazy val reactToolz = (project in file("react-toolz"))
 
     libraryDependencies += "io.github.cquiroz" %%% "scala-java-time" % "2.3.0",
     libraryDependencies += "io.github.cquiroz" %%% "scala-java-time-tzdb" % "2.3.0",
-    libraryDependencies += "com.chuusai" %%% "shapeless" % "2.3.7",
+    libraryDependencies += "com.chuusai" %%% "shapeless" % "2.3.9",
 
     Compile / npmDependencies ++= Seq(
-      "react" -> "17.0.2",
-      "react-dom" -> "17.0.2"
+      "react" -> ReactVersion,
+      "react-dom" -> ReactVersion
     )
   )
 
@@ -129,8 +131,8 @@ lazy val frontend = (project in file("frontend"))
     scalaJSUseMainModuleInitializer := true,
 
     Compile / npmDependencies ++= Seq(
-      "react" -> "17.0.2",
-      "react-dom" -> "17.0.2"
+      "react" -> ReactVersion,
+      "react-dom" -> ReactVersion
     ),
 
     Compile / fastOptJS / webpack := {

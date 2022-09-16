@@ -6,6 +6,7 @@ import japgolly.scalajs.react.callback.{AsyncCallback, Callback, CallbackTo}
 import japgolly.scalajs.react.component.Scala.{BackendScope, Component, Unmounted}
 import japgolly.scalajs.react.extra.Ajax
 import japgolly.scalajs.react.extra.internal.AjaxException
+import japgolly.scalajs.react.extra.router.RouterCtl
 import org.big.pete.BPJson
 import org.big.pete.datepicker.ReactDatePicker
 import org.big.pete.react.MICheckbox
@@ -21,11 +22,16 @@ import scala.annotation.nowarn
 
 
 object SftState {
-  case class Props(initialFrom: LocalDate, initialTo: LocalDate, apiBase: String)
+  case class Props(
+      router: RouterCtl[SftPages],
+      activePage: SftPages,
+      initialFrom: LocalDate,
+      initialTo: LocalDate,
+      apiBase: String
+  )
   case class State(
       from: LocalDate,
       to: LocalDate,
-      activePage: Option[SftPages],
 
       activeFilter: Option[FiltersOpen],
       transactionTypeActiveFilters: Set[TransactionType],
@@ -180,7 +186,7 @@ object SftState {
         .map(_.map(cat => cat.id -> cat).toMap)
     }
 
-    def refreshAccount(account: String, newPage: SftPages): AsyncCallback[Unit] = {
+    def refreshAccount(account: String): AsyncCallback[Unit] = {
       $.state.async.flatMap { state =>
         val data = AsyncCallback.sequence(List(
           if (state.accounts.isEmpty) loadAccounts else AsyncCallback.pure(state.accounts),
@@ -198,7 +204,6 @@ object SftState {
           val transactions = dataList(4).asInstanceOf[List[Transaction]]
 
           $.modStateAsync(s => s.copy(
-            activePage = Some(newPage),
             accounts = accounts,
             currencies = currencies,
             categories = cats,
@@ -222,26 +227,25 @@ object SftState {
           ajaxData <- AsyncCallback.sequence(List(loadAccounts, loadCurrencies))
           _ <- $.modStateAsync(_.copy(
             accounts = ajaxData.head.asInstanceOf[List[Account]],
-            currencies = ajaxData.last.asInstanceOf[List[Currency]],
-            activePage = Some(AccountsSelectionPage)
+            currencies = ajaxData.last.asInstanceOf[List[Currency]]
           ))
         } yield 3
 
         case (None, page) if getAccountPermalink(page).nonEmpty =>
           val account = getAccountPermalink(page)
-          refreshAccount(account.get, page).map(_ => 10)
+          refreshAccount(account.get).map(_ => 10)
 
         case (Some(_), AccountsSelectionPage) =>
           AsyncCallback.pure(1)
 
         case (Some(old), page) if getAccountPermalink(old) != getAccountPermalink(page) =>
           val account = getAccountPermalink(page)
-          refreshAccount(account.get, page).map(_ => 15)
+          refreshAccount(account.get).map(_ => 15)
 
         case _ =>
           AsyncCallback.pure(999)
       }
-      aCall.toCallback
+      Callback.log(s"State.onPageClick: ${oldPage.toString} -> ${newPage.toString}") >> aCall.toCallback
     }
 
     /// TODO: Do this
@@ -262,7 +266,7 @@ object SftState {
           .onComplete { response =>
             BPJson.extract[T](response.responseText) match {
               case Left(value) => displayExceptionStr(value)
-              case Right(obj) => update(obj)
+              case Right(obj) => Callback.log(s"Response - ${response.status} - ${response.responseText}") >> update(obj)
             }
           }.asCallback
       }
@@ -281,8 +285,8 @@ object SftState {
     def publishCategory(name: String, description: String, parent: Option[Int]): Callback = {
       import org.big.pete.sft.domain.Implicits._
 
-      $.state.flatMap { state =>
-        val account = state.activePage.flatMap(getAccountPermalink).getOrElse("")
+      $.props.flatMap { props =>
+        val account = getAccountPermalink(props.activePage).getOrElse("")
         val realParent = parent.flatMap(p => if (p == -42) None else Some(p))
         val realDescription = if (description.nonEmpty) Some(description) else None
 
@@ -301,8 +305,8 @@ object SftState {
     def publishMoneyAccount(name: String, startAmount: BigDecimal, currency: String, created: LocalDate): Callback = {
       import org.big.pete.sft.domain.Implicits._
 
-      $.state.flatMap { state =>
-        val account = state.activePage.flatMap(getAccountPermalink).getOrElse("")
+      $.props.flatMap { props =>
+        val account = getAccountPermalink(props.activePage).getOrElse("")
         ajaxUpdate[MoneyAccount](
           "PUT",
           "/" + account + "/money-accounts",
@@ -329,8 +333,8 @@ object SftState {
     ): Callback = {
       import org.big.pete.sft.domain.Implicits._
 
-      $.state.flatMap { state =>
-        val account = state.activePage.flatMap(getAccountPermalink).getOrElse("")
+      $.props.flatMap { props =>
+        val account = getAccountPermalink(props.activePage).getOrElse("")
         ajaxUpdate[Transaction](
           "PUT",
           "/" + account + "/transactions",
@@ -338,10 +342,11 @@ object SftState {
             TransactionTracking.None, destinationAmount, destinationMoneyAccountId, None
           )),
           transaction => $.modState { oldState =>
+            val newTransactions = oldState.transactions ++ List(transaction)
             oldState.copy(
               moneyAccounts = updateMoneyAccountsWithTransaction(transaction, oldState.from, oldState.to, oldState.moneyAccounts),
-              transactions = oldState.transactions ++ List(transaction),
-              displayTransactions = filterTransactions(oldState)
+              transactions = newTransactions,
+              displayTransactions = filterTransactions(oldState, Some(newTransactions))
             )
           }
         )
@@ -381,11 +386,12 @@ object SftState {
       } else moneyAccounts
     }
 
-    def render(state: State): Unmounted[Routing.Props, Unit, Routing.Backend] = {
-      Routing.component.apply(Routing.Props(
+    def render(props: Props, state: State): Unmounted[FullPage.Props, Unit, Unit] = {
+      FullPage.component.apply(FullPage.Props(
+        props.router,
         state.from,
         state.to,
-        state.activePage,
+        props.activePage,
         state.activeFilter,
         state.transactionTypeActiveFilters,
         state.trackingActiveFilters,
@@ -411,7 +417,8 @@ object SftState {
         onPageClick,
         publishAccount,
         publishCategory,
-        publishMoneyAccount
+        publishMoneyAccount,
+        publishTransaction
       ))
     }
 
@@ -455,9 +462,10 @@ object SftState {
   }
 
   val component: Component[Props, State, Backend, CtorType.Props] = ScalaComponent.builder[Props]
-    .initialStateFromProps(p => State(p.initialFrom, p.initialTo, None, None, Set.empty, Set.empty, "", Set.empty, Set.empty, Set.empty, List.empty, List.empty, Map.empty, Map.empty, List.empty, List.empty, List.empty))
+    .initialStateFromProps(p => State(p.initialFrom, p.initialTo, None, Set.empty, Set.empty, "", Set.empty, Set.empty, Set.empty, List.empty, List.empty, Map.empty, Map.empty, List.empty, List.empty, List.empty))
     .renderBackend[Backend]
-    .componentDidMount(_.backend.onPageClick(AccountsSelectionPage, None))
+//    .componentDidMount(component => component.backend.onPageClick(AccountsSelectionPage, None))
+    .componentDidMount(component => component.backend.onPageClick(component.props.activePage, None))
     .build
 }
 

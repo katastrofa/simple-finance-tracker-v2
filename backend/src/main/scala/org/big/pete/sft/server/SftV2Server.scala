@@ -2,6 +2,7 @@ package org.big.pete.sft.server
 
 import cats.data.Kleisli
 import cats.effect.{Async, Resource}
+import cats.implicits.catsSyntaxApplicativeError
 import cats.syntax.{FlatMapSyntax, FunctorSyntax, SemigroupKSyntax}
 import com.comcast.ip4s.{Ipv4Address, Port}
 import fs2.Stream
@@ -13,7 +14,7 @@ import org.big.pete.sft.server.api.{Categories, General, MoneyAccounts, Transact
 import org.big.pete.sft.server.auth.AuthHelper
 import org.big.pete.sft.server.auth.domain.AuthUser
 import org.big.pete.sft.server.security.AccessHelper
-import org.http4s.{AuthedRoutes, HttpRoutes, MediaType, QueryParamDecoder, Request, Response, StaticFile}
+import org.http4s.{AuthedRequest, AuthedRoutes, HttpRoutes, MediaType, QueryParamDecoder, Request, Response, StaticFile}
 import org.http4s.circe.CirceEntityDecoder._
 import org.http4s.circe.CirceEntityEncoder._
 import org.http4s.dsl.Http4sDsl
@@ -21,6 +22,7 @@ import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.headers.`Content-Type`
 import org.http4s.server.staticcontent.{FileService, fileService}
 import org.http4s.server.{AuthMiddleware, Router}
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -45,6 +47,7 @@ class SftV2Server[F[_]: Async](
   import SftV2Server.{CodeQueryParamMatcher, ErrorQueryParamMatcher, StartDateParamMatcher, EndDateParamMatcher}
 
 
+  private final val logger = Slf4jLogger.getLogger[F]
 
   val authMiddleware: AuthMiddleware[F, AuthUser] =
     AuthMiddleware(authHelper.authSftUser, authHelper.loginRedirectHandler)
@@ -56,7 +59,14 @@ class SftV2Server[F[_]: Async](
       authHelper.processLoginError(errorCode)
   }
 
-  val apiRoutes: AuthedRoutes[AuthUser, F] = AuthedRoutes.of {
+  def recovery(pf: PartialFunction[AuthedRequest[F, AuthUser], F[Response[F]]]): PartialFunction[AuthedRequest[F, AuthUser], F[Response[F]]] = {
+    pf.andThen(_.handleErrorWith { throwable =>
+      logger.error(throwable)(throwable.getMessage)
+        .flatMap(_ => InternalServerError(throwable.getMessage))
+    })
+  }
+
+  val apiRoutes: AuthedRoutes[AuthUser, F] = AuthedRoutes.of(recovery {
     case request @ GET -> Root as _ =>
       StaticFile.fromPath(fs2.io.file.Path("./frontend/src/main/assets/index-main.html"), Some(request.req))
         .map(_.withContentType(`Content-Type`(MediaType.text.html)))
@@ -164,7 +174,7 @@ class SftV2Server[F[_]: Async](
           transactionsApi.addTransaction(trans)
         )
       } yield response
-  }
+  })
 
   def stream(tlsOpt: Option[TLSContext[F]]): Stream[F, Nothing] = {
     val httpApp: Kleisli[F, Request[F], Response[F]] = Router(

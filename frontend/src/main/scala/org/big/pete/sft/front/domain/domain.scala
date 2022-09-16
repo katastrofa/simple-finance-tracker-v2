@@ -1,7 +1,7 @@
 package org.big.pete.sft.front.domain
 
 import japgolly.scalajs.react.Reusability
-import org.big.pete.sft.domain.{Category, Currency, EnhancedMoneyAccount, Transaction, TransactionTracking, TransactionType}
+import org.big.pete.sft.domain.{Category, Currency, EnhancedMoneyAccount, PeriodAmountStatus, Transaction, TransactionTracking, TransactionType}
 
 import java.time.LocalDate
 import scala.annotation.tailrec
@@ -36,6 +36,10 @@ object CategoryTree {
 
     groupedData.getOrElse(None, List.empty[Category])
       .map(cat => catToTree(cat, 0))
+  }
+
+  def makeLinearCats(cats: List[CategoryTree]): List[CategoryTree] = {
+    cats.flatMap(cat => cat :: makeLinearCats(cat.children))
   }
 
   def name(cat: CategoryTree): String =
@@ -100,8 +104,13 @@ object EnhancedTransaction {
 }
 
 object Implicits {
+  import org.big.pete.react.Implicits._
+
+  implicit val transactionTypeReuse: Reusability[TransactionType] = Reusability.by_==[TransactionType]
+  implicit val transactionTrackingReuse: Reusability[TransactionTracking] = Reusability.by_==[TransactionTracking]
   implicit val currencyReuse: Reusability[Currency] = Reusability.derive[Currency]
   implicit val categoryTreeReuse: Reusability[CategoryTree] = Reusability.by_==[CategoryTree]
+  implicit val periodAmountStatusReuse: Reusability[PeriodAmountStatus] = Reusability.derive[PeriodAmountStatus]
   implicit val enhancedMoneyAccountReuse: Reusability[EnhancedMoneyAccount] = Reusability.derive[EnhancedMoneyAccount]
 
 }
