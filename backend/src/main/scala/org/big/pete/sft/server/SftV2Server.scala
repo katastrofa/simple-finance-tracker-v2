@@ -174,6 +174,14 @@ class SftV2Server[F[_]: Async](
           transactionsApi.addTransaction(trans)
         )
       } yield response
+    /// TODO: Verify the MA and cat are from this account
+    case request @ POST -> Root / "api" / permalink / "transactions" as user =>
+      for {
+        trans <- request.req.as[Transaction]
+        response <- accessHelper.verifyAccess(permalink, ApiAction.ModifyOwnTransactions, user)(
+          transactionsApi.editTransaction(trans)
+        )
+      } yield response
   })
 
   def stream(tlsOpt: Option[TLSContext[F]]): Stream[F, Nothing] = {

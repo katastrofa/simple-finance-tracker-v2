@@ -4,15 +4,16 @@ import japgolly.scalajs.react.callback.CallbackTo
 import japgolly.scalajs.react.component.Scala
 import japgolly.scalajs.react.component.Scala.BackendScope
 import japgolly.scalajs.react.component.ScalaFn.Component
-import japgolly.scalajs.react.{Callback, CtorType, Reusability, ScalaComponent, ScalaFnComponent}
+import japgolly.scalajs.react.vdom.html_<^
+import japgolly.scalajs.react.{Callback, CtorType, ReactFormEventFromInput, Reusability, ScalaComponent, ScalaFnComponent}
 import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.datepicker.ReactDatePicker
 import org.big.pete.react.{MICheckbox, MaterialIcon, TextInput}
 import org.big.pete.sft.domain.{EnhancedMoneyAccount, TransactionTracking, TransactionType}
-import org.big.pete.sft.front.SftMain.{dropDownCategoryTree, dropDownMoneyAccount}
+import org.big.pete.sft.front.SftMain.{dropDownCategoryTree, dropDownMoneyAccount, dropDownTT}
 import org.big.pete.sft.front.domain.{CategoryTree, EnhancedTransaction}
 import org.big.pete.sft.front.helpers.{AddModal, ModalButtons}
-import org.scalajs.dom.html.Form
+import org.scalajs.dom.html.Element
 
 import java.time.LocalDate
 
@@ -33,23 +34,11 @@ object Transactions {
       moneyAccounts: Map[Int, EnhancedMoneyAccount],
       checkTransaction: (MICheckbox.Status, String) => Callback,
       trackingChanged: (Int, TransactionTracking) => Callback,
-      publish: (LocalDate, TransactionType, BigDecimal, String, Int, Int, Option[BigDecimal], Option[Int]) => Callback
+      save: (Option[Int], LocalDate, TransactionType, BigDecimal, String, Int, Int, Option[BigDecimal], Option[Int]) => Callback
   )
-  case class HeaderProps(checkTransaction: (MICheckbox.Status, String) => Callback)
-  case class TransactionProps(
-      transaction: EnhancedTransaction,
-      checkTransaction: (MICheckbox.Status, String) => Callback,
-      trackingChanged: (Int, TransactionTracking) => Callback
-  )
-
-  case class FormProps(
-      initialDate: LocalDate,
-      linearCats: List[CategoryTree],
-      moneyAccounts: Map[Int, EnhancedMoneyAccount],
-      publish: (LocalDate, TransactionType, BigDecimal, String, Int, Int, Option[BigDecimal], Option[Int]) => Callback,
-      close: Callback
-  )
-  case class FormState(
+  case class State(
+      isOpen: Boolean,
+      id: Option[Int],
       date: LocalDate,
       transactionType: TransactionType,
       amount: BigDecimal,
@@ -57,36 +46,156 @@ object Transactions {
       description: String,
       categoryId: Option[Int],
       moneyAccountId: Option[Int],
-      destinationMoneyAccountId: Option[Int]
+      destMAId: Option[Int]
+  )
+  case class HeaderProps(checkTransaction: (MICheckbox.Status, String) => Callback)
+  case class TransactionProps(
+      transaction: EnhancedTransaction,
+      checkTransaction: (MICheckbox.Status, String) => Callback,
+      trackingChanged: (Int, TransactionTracking) => Callback,
+      openEditModal: EnhancedTransaction => Callback
+  )
+
+  case class FormProps(
+      linearCats: List[CategoryTree],
+      moneyAccounts: Map[Int, EnhancedMoneyAccount],
+      id: Option[Int],
+      date: LocalDate,
+      transactionType: TransactionType,
+      amount: BigDecimal,
+      destAmount: Option[BigDecimal],
+      description: String,
+      categoryId: Option[Int],
+      moneyAccountId: Option[Int],
+      destMAId: Option[Int],
+      dateChange: LocalDate => CallbackTo[LocalDate],
+      ttChange: TransactionType => Callback,
+      amountChange: ReactFormEventFromInput => Callback,
+      descriptionChange: ReactFormEventFromInput => Callback,
+      categoryChange: CategoryTree => Callback,
+      maChange: EnhancedMoneyAccount => Callback,
+      destinationMAChange: EnhancedMoneyAccount => Callback,
+      destinationAmountChange: ReactFormEventFromInput => Callback,
+      save: Callback,
+      close: Callback
   )
 
   implicit val moneyAccountMapReuse: Reusability[Map[Int, EnhancedMoneyAccount]] = Reusability.map[Int, EnhancedMoneyAccount]
-  implicit val formPropsReuse: Reusability[FormProps] = Reusability.caseClassExcept[FormProps]("publish", "close")
-  implicit val formStateReuse: Reusability[FormState] = Reusability.derive[FormState]
+  implicit val formPropsReuse: Reusability[FormProps] = Reusability.caseClassExcept[FormProps](
+    "dateChange", "ttChange", "amountChange", "descriptionChange", "categoryChange", "maChange",
+    "destinationMAChange", "destinationAmountChange", "save", "close"
+  )
 
 
-  val component: Scala.Component[Props, Boolean, Unit, CtorType.Props] = ScalaComponent.builder[Props]
-    .initialState[Boolean](false)
-    .renderPS { ($, props, isOpen) =>
+  class Backend($: BackendScope[Props, State]) {
+
+    def dateChange(date: LocalDate): CallbackTo[LocalDate] = $.modState { state =>
+      state.copy(date = date)
+    } >> CallbackTo.pure(date)
+
+    def ttChange(tt: TransactionType): Callback =
+      $.modState(_.copy(transactionType = tt))
+
+    def amountChange(event: ReactFormEventFromInput): Callback = $.modState { state =>
+      state.copy(amount = parseAmount(event.target.value, state.amount))
+    }
+
+    def descriptionChange(event: ReactFormEventFromInput): Callback =
+      $.modState(_.copy(description = event.target.value))
+
+    def categoryChange(cat: CategoryTree): Callback =
+      $.modState(_.copy(categoryId = Some(cat.id)))
+
+    def maChange(ma: EnhancedMoneyAccount): Callback =
+      $.modState(_.copy(moneyAccountId = Some(ma.id)))
+
+    def destinationMAChange(ma: EnhancedMoneyAccount): Callback =
+      $.modState(_.copy(destMAId = Some(ma.id)))
+
+    def destinationAmountChange(event: ReactFormEventFromInput): Callback = $.modState { state =>
+      state.copy(destAmount = Some(parseAmount(event.target.value, state.destAmount.getOrElse(BigDecimal(0)))))
+    }
+
+    def save: Callback = for {
+      props <- $.props
+      state <- $.state
+      destAmount = if (state.transactionType == TransactionType.Transfer) state.destAmount else None
+      destMA = if (state.transactionType == TransactionType.Transfer) state.destMAId else None
+      _ <- props.save(state.id, state.date, state.transactionType, state.amount, state.description, state.categoryId.get, state.moneyAccountId.get, destAmount, destMA)
+      _ <- close
+    } yield ()
+
+    def close: Callback =
+      $.modState(_.copy(isOpen = false))
+
+    def openModalAddNew: Callback = $.modState { state =>
+      state.copy(isOpen = true, id = None, amount = BigDecimal(0), destAmount = Some(BigDecimal(0)), description = "")
+    }
+
+    def openEditModal(trans: EnhancedTransaction): Callback = $.modState { state =>
+      state.copy(
+        isOpen = true,
+        Some(trans.id),
+        trans.date,
+        trans.transactionType,
+        trans.amount,
+        trans.destinationAmount,
+        trans.description,
+        Some(trans.categoryId),
+        Some(trans.moneyAccountId),
+        trans.destinationMoneyAccountId
+      )
+    }
+
+    def render(props: Props, state: State): html_<^.VdomTagOf[Element] = {
       val reactTransactions = props.transactions.map { transaction =>
         transactionComponent.withKey(s"t-${transaction.id}")
-          .apply(TransactionProps(transaction, props.checkTransaction, props.trackingChanged))
+          .apply(TransactionProps(transaction, props.checkTransaction, props.trackingChanged, openEditModal))
       }.toVdomArray
 
       tableWrap(
-        AddModal.component(AddModal.Props("add-transaction-modal", isOpen))(
-          transactionForm(FormProps(LocalDate.now(), props.linearCats, props.moneyAccounts, props.publish, $.modState(_ => false)))
+        AddModal.component(AddModal.Props("add-transaction-modal", state.isOpen))(
+          transactionForm(FormProps(
+            props.linearCats,
+            props.moneyAccounts,
+            state.id,
+            state.date,
+            state.transactionType,
+            state.amount,
+            state.destAmount,
+            state.description,
+            state.categoryId,
+            state.moneyAccountId,
+            state.destMAId,
+            dateChange,
+            ttChange,
+            amountChange,
+            descriptionChange,
+            categoryChange,
+            maChange,
+            destinationMAChange,
+            destinationAmountChange,
+            save,
+            close
+          ))
         ),
         headerComponent(HeaderProps(props.checkTransaction)),
         reactTransactions,
         headerComponent(HeaderProps(props.checkTransaction)),
-        <.a(^.cls := "waves-effect waves-light btn nice",
-          ^.onClick --> $.modState(_ => true),
+        <.a(
+          ^.cls := "waves-effect waves-light btn nice",
+          ^.onClick --> openModalAddNew,
           MaterialIcon("add"),
           "Add"
         )
       )
-    }.build
+    }
+  }
+
+  val component: Scala.Component[Props, State, Backend, CtorType.Props] = ScalaComponent.builder[Props]
+    .initialState[State](State(isOpen = false, None, LocalDate.now(), TransactionType.Expense, BigDecimal(0), None, "", None, None, None))
+    .renderBackend[Backend]
+    .build
 
   val headerComponent: Component[HeaderProps, CtorType.Props] = ScalaFnComponent.apply[HeaderProps] { props =>
     <.tr(
@@ -120,7 +229,11 @@ object Transactions {
         props.checkTransaction
       )),
       <.td(^.cls := "date", props.transaction.date.format(DateFormat)),
-      <.td(^.cls := "description", props.transaction.description),
+      <.td(
+        ^.cls := "description",
+        ^.onClick --> props.openEditModal(props.transaction),
+        props.transaction.description
+      ),
       <.td(^.cls := "right-align amount", formatAmount(props.transaction.currencySymbol, props.transaction.amount)),
       <.td(^.cls := "category",
         <.span(^.cls := "show-on-large", props.transaction.categoryFullName),
@@ -138,117 +251,113 @@ object Transactions {
     )
   }
 
-  class FormBackend($: BackendScope[FormProps, FormState]) {
 
-    def clean: Callback =
-      $.modState(_.copy(amount = BigDecimal(0), destAmount = None, description = ""))
-
-    def publish: Callback = for {
-      props <- $.props
-      s <- $.state
-      _ <- props.close
-      _ <- props.publish(s.date, s.transactionType, s.amount, s.description, s.categoryId.get, s.moneyAccountId.get, s.destAmount, s.destinationMoneyAccountId)
-      _ <- clean
-    } yield ()
-
-    def render(props: FormProps, state: FormState): VdomTagOf[Form] = {
-      def expandTransactionType(tt: TransactionType) =
-        <.option(^.value := tt.toString, ^.key := s"add-tt-${tt.toString}", ^.selected := (state.transactionType == tt), tt.toString)
-
-      <.form(
-        <.div(^.cls := "row",
-          ReactDatePicker.DatePicker(ReactDatePicker.Props(
+  val transactionForm: Component[FormProps, CtorType.Props] = ScalaFnComponent.withReuse[FormProps] { props =>
+    <.form(
+      <.div(
+        ^.cls := "row",
+        ReactDatePicker.DatePicker(
+          ReactDatePicker.Props(
             "add-tr-date",
             "col s12",
-            ld => $.modState(_.copy(date = ld)) >> CallbackTo.pure(ld),
-            Some(state.date),
+            props.dateChange,
+            Some(props.date),
             isOpened = false,
             Some(401),
             ReactDatePicker.ExtendedKeyBindings
-          ))
-        ),
-        <.div(^.cls := "row",
-          <.select(^.cls := "browser-default", ^.tabIndex := 402, TransactionType.values.toVdomArray(expandTransactionType)),
-          <.label("Transaction Type")
-        ),
-        <.div(^.cls := "row",
-          TextInput(
-            "add-tr-amount",
-            "Amount",
-            state.amount.toString(),
-            na => $.modState(ns => ns.copy(amount = parseAmount(na.target.value, ns.amount))),
-            403,
-            List("col", "s12")
           )
-        ),
-        <.div(^.cls := "row",
-          TextInput(
-            "add-tr-description",
-            "Description",
-            state.description,
-            e => $.modState(_.copy(description = e.target.value)),
-            404,
-            List("col", "s12")
-          )
-        ),
-        <.div(^.cls := "row",
-          dropDownCategoryTree.component(dropDownCategoryTree.Props(
+        )
+      ),
+      <.div(
+        ^.cls := "row",
+        dropDownTT.component(dropDownTT.Props(
+          "add-tr-tt",
+          "Transaction Type",
+          TransactionType.values.toList,
+          _.toString,
+          _.toString,
+          props.ttChange,
+          Some(props.transactionType),
+          402,
+          List("col", "s12")
+        ))
+      ),
+      <.div(
+        ^.cls := "row",
+        TextInput(
+          "add-tr-amount",
+          "Amount",
+          props.amount.toString(),
+          props.amountChange,
+          403,
+          List("col", "s12")
+        )
+      ),
+      <.div(
+        ^.cls := "row",
+        TextInput("add-tr-description", "Description", props.description, props.descriptionChange, 404, List("col", "s12"))
+      ),
+      <.div(
+        ^.cls := "row",
+        dropDownCategoryTree.component(
+          dropDownCategoryTree.Props(
             "add-tr-category",
             "Category",
             props.linearCats,
             CategoryTree.name,
             cat => s"k-cat-${cat.id}",
-            cat => $.modState(_.copy(categoryId = Some(cat.id))),
-            state.categoryId.flatMap(id => props.linearCats.find(_.id == id)),
+            props.categoryChange,
+            props.categoryId.flatMap(id => props.linearCats.find(_.id == id)),
             405,
             List("col", "s12")
-          ))
-        ),
-        <.div(^.cls := "row",
-          dropDownMoneyAccount.component(dropDownMoneyAccount.Props(
+          )
+        )
+      ),
+      <.div(
+        ^.cls := "row",
+        dropDownMoneyAccount.component(
+          dropDownMoneyAccount.Props(
             "add-tr-ma",
             "Money Account",
             props.moneyAccounts.values.toList,
             _.name,
             ma => s"k-ma-${ma.id}",
-            ma => $.modState(_.copy(moneyAccountId = Some(ma.id))),
-            state.moneyAccountId.flatMap(id => props.moneyAccounts.get(id)),
+            props.maChange,
+            props.moneyAccountId.flatMap(id => props.moneyAccounts.get(id)),
             406,
             List("col", "s12")
-          ))
-        ),
-        <.div(^.cls := "row",
-          dropDownMoneyAccount.component(dropDownMoneyAccount.Props(
+          )
+        )
+      ),
+      <.div(
+        ^.cls := "row",
+        dropDownMoneyAccount.component(
+          dropDownMoneyAccount.Props(
             "add-tr-ma-dest",
             "Destination Money Account",
             props.moneyAccounts.values.toList,
             _.name,
             ma => s"k-ma-${ma.id}",
-            ma => $.modState(_.copy(destinationMoneyAccountId = Some(ma.id))),
-            state.destinationMoneyAccountId.flatMap(id => props.moneyAccounts.get(id)),
+            props.destinationMAChange,
+            props.destMAId.flatMap(id => props.moneyAccounts.get(id)),
             407,
             List("col", "s12")
-          ))
-        ).when(state.transactionType == TransactionType.Transfer),
-        <.div(^.cls := "row",
-          TextInput(
-            "add-tr-amount-dest",
-            "Destination Amount",
-            state.destAmount.map(_.toString()).getOrElse(""),
-            na => $.modState(ns => ns.copy(destAmount = Some(parseAmount(na.target.value, ns.amount)))),
-            408,
-            List("col", "s12")
           )
-        ).when(state.transactionType == TransactionType.Transfer),
-        ModalButtons.add(410, publish, props.close >> clean)
-      )
-    }
+        )
+      ).when(props.transactionType == TransactionType.Transfer),
+      <.div(
+        ^.cls := "row",
+        TextInput(
+          "add-tr-amount-dest",
+          "Destination Amount",
+          props.destAmount.map(_.toString()).getOrElse(""),
+          props.destinationAmountChange,
+          408,
+          List("col", "s12")
+        )
+      ).when(props.transactionType == TransactionType.Transfer),
+      ModalButtons(props.id.map(_ => "Save").getOrElse("Add"), 410, props.save, props.close)
+    )
   }
-
-  val transactionForm: Scala.Component[FormProps, FormState, FormBackend, CtorType.Props] = ScalaComponent.builder[FormProps]
-    .initialStateFromProps(props => FormState(props.initialDate, TransactionType.Expense, BigDecimal(0), None, "", None, None, None))
-    .renderBackend[FormBackend]
-    .configure(Reusability.shouldComponentUpdate)
-    .build
 
 }

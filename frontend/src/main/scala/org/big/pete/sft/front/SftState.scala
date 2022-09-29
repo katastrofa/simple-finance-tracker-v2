@@ -10,7 +10,7 @@ import japgolly.scalajs.react.extra.router.RouterCtl
 import org.big.pete.BPJson
 import org.big.pete.datepicker.ReactDatePicker
 import org.big.pete.react.MICheckbox
-import org.big.pete.sft.domain.{Account, Category, Currency, EnhancedMoneyAccount, MoneyAccount, PeriodAmountStatus, Transaction, TransactionTracking, TransactionType}
+import org.big.pete.sft.domain.{Account, AccountEdit, Category, Currency, EnhancedMoneyAccount, MoneyAccount, PeriodAmountStatus, Transaction, TransactionTracking, TransactionType}
 import org.big.pete.sft.front.SftMain.{AccountsSelectionPage, SftPages}
 import org.big.pete.sft.front.components.header.SidenavFilters.FiltersOpen
 import org.big.pete.sft.front.domain.{CategoryTree, EnhancedTransaction}
@@ -245,7 +245,8 @@ object SftState {
         case _ =>
           AsyncCallback.pure(999)
       }
-      Callback.log(s"State.onPageClick: ${oldPage.toString} -> ${newPage.toString}") >> aCall.toCallback
+
+      aCall.toCallback
     }
 
     /// TODO: Do this
@@ -272,28 +273,39 @@ object SftState {
       }
     }
 
-    def publishAccount(name: String, permalink: String): Callback = {
+    def saveAccount(oldPermalink: Option[String], id: Option[Int], name: String, permalink: String): Callback = {
       import org.big.pete.sft.domain.Implicits._
+
+      val method = if (id.isDefined) "POST" else "PUT"
+      val payload = if (id.isDefined)
+        BPJson.write(AccountEdit(oldPermalink.get, id.get, name, permalink, None))
+      else
+        BPJson.write(Account(-1, name, permalink, None))
+
       ajaxUpdate[Account](
-        "PUT",
+        method,
         "/accounts",
-        BPJson.write(Account(-1, name, permalink, None)),
-        account => $.modState(state => state.copy(accounts = state.accounts ++ List(account)))
+        payload,
+        account => $.modState { state =>
+          val newAccounts = state.accounts.filter(_.id != account.id) ++ List(account)
+          state.copy(accounts = newAccounts.sortBy(_.name))
+        }
       )
     }
 
-    def publishCategory(name: String, description: String, parent: Option[Int]): Callback = {
+    def saveCategory(id: Option[Int], name: String, description: String, parent: Option[Int]): Callback = {
       import org.big.pete.sft.domain.Implicits._
 
       $.props.flatMap { props =>
         val account = getAccountPermalink(props.activePage).getOrElse("")
         val realParent = parent.flatMap(p => if (p == -42) None else Some(p))
         val realDescription = if (description.nonEmpty) Some(description) else None
+        val method = if (id.isDefined) "POST" else "PUT"
 
         ajaxUpdate[Category](
-          "PUT",
+          method,
           "/" + account + "/categories",
-          BPJson.write(Category(-1, name, realDescription, realParent, -1, None)),
+          BPJson.write(Category(id.getOrElse(-1), name, realDescription, realParent, -1, None)),
           cat => $.modState { state =>
             val newCats = state.categories + (cat.id -> cat)
             state.copy(categories = newCats, categoryTree = CategoryTree.generateTree(newCats.values.toList))
@@ -302,15 +314,18 @@ object SftState {
       }
     }
 
-    def publishMoneyAccount(name: String, startAmount: BigDecimal, currency: String, created: LocalDate): Callback = {
+    def saveMoneyAccount(id: Option[Int], name: String, startAmount: BigDecimal, currency: String, created: LocalDate): Callback = {
       import org.big.pete.sft.domain.Implicits._
 
       $.props.flatMap { props =>
         val account = getAccountPermalink(props.activePage).getOrElse("")
+        val method = if (id.isDefined) "POST" else "PUT"
+        val maId = id.getOrElse(-1)
+
         ajaxUpdate[MoneyAccount](
-          "PUT",
+          method,
           "/" + account + "/money-accounts",
-          BPJson.write(MoneyAccount(-1, name, startAmount, currency, created, -1, None)),
+          BPJson.write(MoneyAccount(maId, name, startAmount, currency, created, -1, None)),
           ma => $.modState { oldState =>
             val currencyObj = oldState.currencies.find(_.id == ma.currencyId).get
             val period = PeriodAmountStatus(ma.startAmount, ma.startAmount)
@@ -321,7 +336,8 @@ object SftState {
       }
     }
 
-    def publishTransaction(
+    def saveTransaction(
+        id: Option[Int],
         date: LocalDate,
         transactionType: TransactionType,
         amount: BigDecimal,
@@ -335,10 +351,12 @@ object SftState {
 
       $.props.flatMap { props =>
         val account = getAccountPermalink(props.activePage).getOrElse("")
+        val method = if (id.isDefined) "POST" else "PUT"
+
         ajaxUpdate[Transaction](
-          "PUT",
+          method,
           "/" + account + "/transactions",
-          BPJson.write(Transaction(-1, date, transactionType, amount, description, category, moneyAccount,
+          BPJson.write(Transaction(id.getOrElse(-1), date, transactionType, amount, description, category, moneyAccount,
             TransactionTracking.None, destinationAmount, destinationMoneyAccountId, None
           )),
           transaction => $.modState { oldState =>
@@ -415,10 +433,10 @@ object SftState {
         checkTransaction,
         transactionTrackingClick,
         onPageClick,
-        publishAccount,
-        publishCategory,
-        publishMoneyAccount,
-        publishTransaction
+        saveAccount,
+        saveCategory,
+        saveMoneyAccount,
+        saveTransaction
       ))
     }
 
@@ -464,7 +482,6 @@ object SftState {
   val component: Component[Props, State, Backend, CtorType.Props] = ScalaComponent.builder[Props]
     .initialStateFromProps(p => State(p.initialFrom, p.initialTo, None, Set.empty, Set.empty, "", Set.empty, Set.empty, Set.empty, List.empty, List.empty, Map.empty, Map.empty, List.empty, List.empty, List.empty))
     .renderBackend[Backend]
-//    .componentDidMount(component => component.backend.onPageClick(AccountsSelectionPage, None))
     .componentDidMount(component => component.backend.onPageClick(component.props.activePage, None))
     .build
 }

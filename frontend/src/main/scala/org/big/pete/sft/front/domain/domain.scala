@@ -1,7 +1,8 @@
 package org.big.pete.sft.front.domain
 
 import japgolly.scalajs.react.Reusability
-import org.big.pete.sft.domain.{Category, Currency, EnhancedMoneyAccount, PeriodAmountStatus, Transaction, TransactionTracking, TransactionType}
+import org.big.pete.sft.domain.{Account, Category, Currency, EnhancedMoneyAccount, PeriodAmountStatus, Transaction, TransactionTracking, TransactionType}
+import org.big.pete.sft.front.SftMain.SftPages
 
 import java.time.LocalDate
 import scala.annotation.tailrec
@@ -106,6 +107,8 @@ object EnhancedTransaction {
 object Implicits {
   import org.big.pete.react.Implicits._
 
+  implicit val accountReuse: Reusability[Account] = Reusability.derive[Account]
+  implicit val sftPagesReuse: Reusability[SftPages] = Reusability.byRefOr_==[SftPages]
   implicit val transactionTypeReuse: Reusability[TransactionType] = Reusability.by_==[TransactionType]
   implicit val transactionTrackingReuse: Reusability[TransactionTracking] = Reusability.by_==[TransactionTracking]
   implicit val currencyReuse: Reusability[Currency] = Reusability.derive[Currency]

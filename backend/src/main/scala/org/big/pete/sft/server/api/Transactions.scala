@@ -35,4 +35,12 @@ class Transactions[F[_]: MonadCancelThrow](
       response <- Ok(newTransaction.get.asJson)
     } yield response
   }
+
+  def editTransaction(trans: Transaction): F[Response[F]] = {
+    for {
+      _ <- DBT.editTransaction(trans).transact(transactor)
+      newTransaction <- DBT.getTransaction(trans.id).transact(transactor)
+      response <- Ok(newTransaction.get.asJson)
+    } yield response
+  }
 }

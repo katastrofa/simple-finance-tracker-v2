@@ -5,7 +5,6 @@ import japgolly.scalajs.react.component.Scala.Component
 import japgolly.scalajs.react.extra.router.{BaseUrl, RouterCtl, RouterWithProps, RouterWithPropsConfig, RouterWithPropsConfigDsl, SetRouteVia}
 import japgolly.scalajs.react.vdom.VdomElement
 import org.big.pete.sft.front.SftMain.{AccountsSelectionPage, CategoriesPage, MoneyAccountsPage, SftPages, TransactionsPage}
-import org.scalajs.dom.console
 
 import java.time.LocalDate
 
@@ -16,7 +15,6 @@ object Routing {
   class Backend() {
 
     def genPage(router: RouterCtl[SftPages], activePage: SftPages, props: Props): VdomElement = {
-      console.log(s"genPage: ${activePage.toString}")
       SftState.component.apply(SftState.Props(
         router,
         activePage,

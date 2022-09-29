@@ -3,6 +3,7 @@ package org.big.pete.sft.front.components.main
 import japgolly.scalajs.react.component.Scala
 import japgolly.scalajs.react.component.Scala.BackendScope
 import japgolly.scalajs.react.component.ScalaFn.Component
+import japgolly.scalajs.react.vdom.html_<^
 import japgolly.scalajs.react.{Callback, CallbackTo, CtorType, ReactFormEventFromInput, Reusability, ScalaComponent, ScalaFnComponent}
 import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.datepicker.ReactDatePicker
@@ -10,7 +11,8 @@ import org.big.pete.react.{MaterialIcon, TextInput}
 import org.big.pete.sft.domain.{Currency, EnhancedMoneyAccount}
 import org.big.pete.sft.front.SftMain
 import org.big.pete.sft.front.helpers.{AddModal, ModalButtons}
-import org.scalajs.dom.html.Form
+import org.scalajs.dom.console
+import org.scalajs.dom.html.Element
 
 import java.time.LocalDate
 import scala.util.{Failure, Success, Try}
@@ -23,42 +25,123 @@ object MoneyAccounts {
   case class Props(
       accounts: List[EnhancedMoneyAccount],
       currencies: List[Currency],
-      publish: (String, BigDecimal, String, LocalDate) => Callback
+      save: (Option[Int], String, BigDecimal, String, LocalDate) => Callback
   )
-  case class MoneyAccountProps(account: EnhancedMoneyAccount)
+  case class MoneyAccountProps(
+      account: EnhancedMoneyAccount,
+      openEditModal: EnhancedMoneyAccount => Callback
+  )
+  case class State(
+      isOpen: Boolean,
+      id: Option[Int],
+      name: String,
+      startAmount: BigDecimal,
+      currency: Option[String],
+      created: LocalDate
+  )
 
   case class FormProps(
       currencies: List[Currency],
-      publish: (String, BigDecimal, String, LocalDate) => Callback,
+      id: Option[Int],
+      name: String,
+      startAmount: BigDecimal,
+      currency: Option[String],
+      created: LocalDate,
+      changeName: ReactFormEventFromInput => Callback,
+      changeAmount: ReactFormEventFromInput => Callback,
+      changeCurrency: Currency => Callback,
+      changeCreated: LocalDate => CallbackTo[LocalDate],
+      save: Callback,
       close: Callback
   )
-  case class FormState(name: String, startAmount: BigDecimal, currency: String, created: LocalDate)
 
-  implicit val formPropsReuse: Reusability[FormProps] = Reusability.caseClassExcept[FormProps]("publish", "close")
-  implicit val formStateReuse: Reusability[FormState] = Reusability.derive[FormState]
+  implicit val formPropsReuse: Reusability[FormProps] = Reusability.caseClassExcept[FormProps](
+    "changeName",
+    "changeAmount",
+    "changeCurrency",
+    "changeCreated",
+    "save",
+    "close"
+  )
 
 
-  val component: Scala.Component[Props, Boolean, Unit, CtorType.Props] = ScalaComponent.builder[Props]
-    .initialState[Boolean](false)
-    .renderPS { ($, props, isOpen) =>
+  class Backend($: BackendScope[Props, State]) {
+    def changeName(e: ReactFormEventFromInput): Callback =
+      $.modState(_.copy(name = e.target.value))
+
+    def changeAmount(e: ReactFormEventFromInput): Callback = $.modState { state =>
+      val newAmount = Try(BigDecimal(e.target.value.trim)) match {
+        case Failure(_) => state.startAmount
+        case Success(value) => value
+      }
+      console.log(s"newAmount: $newAmount")
+      state.copy(startAmount = newAmount)
+    }
+
+    def changeCurrency(cur: Currency): Callback =
+      $.modState(_.copy(currency = Some(cur.id)))
+
+    def changeCreated(date: LocalDate): CallbackTo[LocalDate] =
+      $.modState(_.copy(created = date)) >> CallbackTo.pure(date)
+
+    def closeModal: Callback =
+      $.modState(_.copy(isOpen = false))
+
+    def saveModal: Callback = {
+      for {
+        props <- $.props
+        state <- $.state
+        _ <- props.save(state.id, state.name, state.startAmount, state.currency.get, state.created)
+        _ <- closeModal
+      } yield ()
+    }
+
+    def openAddNew: Callback = $.modState { state =>
+      state.copy(isOpen = true, None, "", BigDecimal(0))
+    }
+
+    def openEditModal(account: EnhancedMoneyAccount): Callback = $.modState { state =>
+      state.copy(isOpen = true, Some(account.id), account.name, account.startAmount, Some(account.currency.id), account.created)
+    }
+
+
+    def render(props: Props, state: State): html_<^.VdomTagOf[Element] = {
       val moneyAccounts = props.accounts
-        .map(ema => moneyAccountComponent.withKey(s"ma-${ema.id}").apply(MoneyAccountProps(ema)))
+        .map(ema => moneyAccountComponent.withKey(s"ma-${ema.id}").apply(MoneyAccountProps(ema, openEditModal)))
         .toVdomArray
 
       tableWrap(
-        AddModal.component(AddModal.Props("add-money-account-modal", isOpen))(
-          moneyAccountForm(FormProps(props.currencies, props.publish, $.modState(_ => false)))
-        ),
+        AddModal.component(AddModal.Props("add-money-account-modal", state.isOpen))(moneyAccountForm(FormProps(
+          props.currencies,
+          state.id,
+          state.name,
+          state.startAmount,
+          state.currency,
+          state.created,
+          changeName,
+          changeAmount,
+          changeCurrency,
+          changeCreated,
+          saveModal,
+          closeModal
+        ))),
         headerComponent(),
         moneyAccounts,
         headerComponent(),
-        <.a(^.cls := "waves-effect waves-light btn nice",
-          ^.onClick --> $.modState(_ => true),
+        <.a(
+          ^.cls := "waves-effect waves-light btn nice",
+          ^.onClick --> openAddNew,
           MaterialIcon("add"),
           "Add"
         )
       )
-    }.build
+    }
+  }
+
+  val component: Scala.Component[Props, State, Backend, CtorType.Props] = ScalaComponent.builder[Props]
+    .initialState(State(isOpen = false, None, "", BigDecimal(0), None, LocalDate.now()))
+    .renderBackend[Backend]
+    .build
 
   val headerComponent: Component[Unit, CtorType.Nullary] = ScalaFnComponent.apply[Unit] { _ =>
     <.tr(
@@ -74,7 +157,11 @@ object MoneyAccounts {
   val moneyAccountComponent: Component[MoneyAccountProps, CtorType.Props] = ScalaFnComponent.apply[MoneyAccountProps] { props =>
     <.tr(
       <.td(^.cls := "id hide-on-small-only right-align", props.account.id.toString),
-      <.td(^.cls := "name", props.account.name),
+      <.td(
+        ^.cls := "name",
+        ^.onClick --> props.openEditModal(props.account),
+        props.account.name
+      ),
       <.td(^.cls := "currency hide-on-small-only", s"${props.account.currency.name} (${props.account.currency.symbol})"),
       <.td(^.cls := "date hide-on-small-only", props.account.created.format(DateFormat)),
       <.td(^.cls := "amount", formatAmount(props.account.currency.symbol, props.account.periodStatus.start)),
@@ -82,69 +169,55 @@ object MoneyAccounts {
     )
   }
 
-  class FormBackend($: BackendScope[FormProps, FormState]) {
-    def changeName(e: ReactFormEventFromInput): Callback =
-      $.modState(_.copy(name = e.target.value))
-
-    def changeStartAmount(e: ReactFormEventFromInput): Callback = $.modState { state =>
-      val newAmount = Try(BigDecimal(e.target.value.trim)) match {
-        case Failure(_) => state.startAmount
-        case Success(value) => value
-      }
-      state.copy(startAmount = newAmount)
-    }
-
-    def clean: Callback =
-      $.modState(_.copy(name = "", startAmount = BigDecimal(0), created = LocalDate.now))
-
-    def publish: Callback = for {
-      props <- $.props
-      state <- $.state
-      _ <- props.close
-      _ <- props.publish(state.name, state.startAmount, state.currency, state.created)
-      _ <- clean
-    } yield ()
-
-    def render(props: FormProps, state: FormState): VdomTagOf[Form] = {
+  val moneyAccountForm: Scala.Component[FormProps, Unit, Unit, CtorType.Props] = ScalaComponent.builder[FormProps]
+    .stateless
+    .render_P { props =>
       <.form(
-        <.div(^.cls := "row",
-          TextInput.component(TextInput.Props("add-ma-name", "Name", state.name, changeName, 301, List("col", "s12")))
+        <.div(
+          ^.cls := "row",
+          TextInput.component(TextInput.Props("add-ma-name", "Name", props.name, props.changeName, 301, List("col", "s12")))
         ),
-        <.div(^.cls := "row",
-          TextInput.component(TextInput.Props("add-ma-amount", "Start Amount", state.startAmount.toString(), changeStartAmount, 302, List("col", "s12")))
+        <.div(
+          ^.cls := "row",
+          TextInput.component(
+            TextInput.Props(
+              "add-ma-amount", "Start Amount", props.startAmount.toString(), props.changeAmount, 302, List("col", "s12")
+            )
+          )
         ),
-        <.div(^.cls := "row",
-          SftMain.dropDownCurrency.component(SftMain.dropDownCurrency.Props(
-            "add-ma-currency",
-            "Currency",
-            props.currencies,
-            displayCurrency,
-            cur => "ck-" + cur.id,
-            cur => $.modState(_.copy(currency = cur.id)),
-            props.currencies.find(c => c.id == state.currency),
-            303,
-            List("col", "s12")
-          ))
+        <.div(
+          ^.cls := "row",
+          SftMain.dropDownCurrency.component(
+            SftMain.dropDownCurrency.Props(
+              "add-ma-currency",
+              "Currency",
+              props.currencies,
+              displayCurrency,
+              cur => "ck-" + cur.id,
+              props.changeCurrency,
+              props.currencies.find(c => props.currency.contains(c.id)),
+              303,
+              List("col", "s12")
+            )
+          )
         ),
-        <.div(^.cls := "row",
-          ReactDatePicker.DatePicker(ReactDatePicker.Props(
-            "add-ma-started",
-            "col s12",
-            ld => $.modState(_.copy(created = ld)) >> CallbackTo.pure(ld),
-            Some(state.created),
-            isOpened = false,
-            Some(304),
-            ReactDatePicker.ExtendedKeyBindings
-          ))
+        <.div(
+          ^.cls := "row",
+          ReactDatePicker.DatePicker(
+            ReactDatePicker.Props(
+              "add-ma-started",
+              "col s12",
+              props.changeCreated,
+              Some(props.created),
+              isOpened = false,
+              Some(304),
+              ReactDatePicker.ExtendedKeyBindings
+            )
+          )
         ),
-        ModalButtons.add(305, publish, props.close >> clean)
+        ModalButtons(props.id.map(_ => "Save").getOrElse("Add"), 305, props.save, props.close)
       )
     }
-  }
-
-  val moneyAccountForm: Scala.Component[FormProps, FormState, FormBackend, CtorType.Props] = ScalaComponent.builder[FormProps]
-    .initialStateFromProps(props => FormState("", BigDecimal(0), props.currencies.head.id, LocalDate.now()))
-    .renderBackend[FormBackend]
     .configure(Reusability.shouldComponentUpdate)
     .build
 }

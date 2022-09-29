@@ -35,6 +35,6 @@ object ModalButtons {
   def add(tabIndex: Int, publish: Callback, closeAndClean: Callback): Unmounted[Props] =
     component(Props("Add", tabIndex, publish, closeAndClean))
 
-  def edit(tabIndex: Int, publish: Callback, closeAndClean: Callback): Unmounted[Props] =
-    component(Props("Edit", tabIndex, publish, closeAndClean))
+  def apply(text: String, tabIndex: Int, publish: Callback, closeAndClean: Callback): Unmounted[Props] =
+    component(Props(text, tabIndex, publish, closeAndClean))
 }

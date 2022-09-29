@@ -14,7 +14,6 @@ import org.big.pete.sft.front.components.header.SidenavFilters.FiltersOpen
 import org.big.pete.sft.front.components.header.{Sidenav, SidenavFilters, TopHeader}
 import org.big.pete.sft.front.components.main.{Accounts, Categories, MoneyAccounts, Transactions}
 import org.big.pete.sft.front.domain.{CategoryTree, EnhancedTransaction}
-import org.scalajs.dom.console
 
 import java.time.LocalDate
 
@@ -53,22 +52,23 @@ object FullPage extends EffectSyntax {
       transactionTrackingClick: (Int, TransactionTracking) => Callback,
       onPageChange: (SftPages, Option[SftPages]) => Callback,
 
-      publishAccount: (String, String) => Callback,
-      publishCategory: (String, String, Option[Int]) => Callback,
-      publishMoneyAccount: (String, BigDecimal, String, LocalDate) => Callback,
-      publishTransaction: (LocalDate, TransactionType, BigDecimal, String, Int, Int, Option[BigDecimal], Option[Int]) => Callback
+      saveAccount: (Option[String], Option[Int], String, String) => Callback,
+      saveCategory: (Option[Int], String, String, Option[Int]) => Callback,
+      saveMoneyAccount: (Option[Int], String, BigDecimal, String, LocalDate) => Callback,
+      saveTransaction: (Option[Int], LocalDate, TransactionType, BigDecimal, String, Int, Int, Option[BigDecimal], Option[Int]) => Callback
   )
 
   val component: Component[Props, Unit, Unit, CtorType.Props] = ScalaComponent.builder[Props]
     .stateless
     .render_P { props =>
-      console.log(s"FullPage: ${props.activePage}")
       val mainPage = props.activePage match {
         case SftMain.AccountsSelectionPage =>
           Accounts.component.apply(Accounts.Props(
             props.accounts,
-            Accounts.AccountProps(props.router, props.activePage, props.onPageChange),
-            props.publishAccount
+            props.activePage,
+            props.router,
+            props.onPageChange,
+            props.saveAccount
           ))
         case SftMain.TransactionsPage(_) =>
           Transactions.component.apply(Transactions.Props(
@@ -77,15 +77,15 @@ object FullPage extends EffectSyntax {
             props.moneyAccounts,
             props.checkTransaction,
             props.transactionTrackingClick,
-            props.publishTransaction
+            props.saveTransaction
           ))
         case SftMain.CategoriesPage(_) =>
-          Categories.component.apply(Categories.Props(props.categoryTree, props.publishCategory))
+          Categories.component.apply(Categories.Props(props.categoryTree, props.saveCategory))
         case SftMain.MoneyAccountsPage(_) =>
           MoneyAccounts.component.apply(MoneyAccounts.Props(
             props.moneyAccounts.values.toList,
             props.currencies,
-            props.publishMoneyAccount
+            props.saveMoneyAccount
           ))
       }
 

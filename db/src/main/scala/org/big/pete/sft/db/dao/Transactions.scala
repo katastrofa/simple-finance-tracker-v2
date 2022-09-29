@@ -34,21 +34,6 @@ object Transactions {
       fr") AND date <= $until ORDER BY date"
     ).query[Balance].to[List]
 
-  /*
-  case class Transaction(
-    id: Int,
-    date: LocalDate,
-    transactionType: TransactionType,
-    amount: BigDecimal,
-    description: String,
-    categoryId: Int,
-    moneyAccount: Int,
-    tracking: TransactionTracking,
-    destinationAmount: Option[BigDecimal],
-    destinationMoneyAccountId: Option[Int],
-    owner: Option[Int]
-)
-  * */
 
   def getTransaction(id: Int): ConnectionIO[Option[Transaction]] =
     sql"SELECT * FROM transactions WHERE id = $id".query[Transaction].option
@@ -69,4 +54,14 @@ object Transactions {
                 ${trans.moneyAccount}, ${trans.tracking}, ${trans.destinationAmount}, ${trans.destinationMoneyAccountId},
                 ${trans.owner}
             )""".update.withUniqueGeneratedKeys[Int]("id")
+
+  def editTransaction(trans: Transaction): ConnectionIO[Int] =
+    sql"""UPDATE transactions
+            SET date = ${trans.date}, type = ${trans.transactionType}, amount = ${trans.amount},
+                description = ${trans.description}, category = ${trans.categoryId}, money_account = ${trans.moneyAccount},
+                tracking = ${trans.tracking}, dest_amount = ${trans.destinationAmount},
+                dest_money_account = ${trans.destinationMoneyAccountId}
+            WHERE id = ${trans.id}
+            LIMIT 1
+    """.update.run
 }
