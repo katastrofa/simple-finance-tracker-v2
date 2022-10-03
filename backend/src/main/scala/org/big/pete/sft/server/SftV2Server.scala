@@ -182,6 +182,11 @@ class SftV2Server[F[_]: Async](
           transactionsApi.editTransaction(trans)
         )
       } yield response
+    /// TODO: Verify the ID belongs to this account
+    case _ @ DELETE -> Root / "api" / permalink / "transactions" / IntVar(idTrans) as user =>
+      accessHelper.verifyAccess(permalink, ApiAction.DeleteTransactions, user)(
+        transactionsApi.deleteTransaction(idTrans)
+      )
   })
 
   def stream(tlsOpt: Option[TLSContext[F]]): Stream[F, Nothing] = {

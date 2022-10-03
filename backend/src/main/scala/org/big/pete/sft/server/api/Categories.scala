@@ -48,7 +48,12 @@ class Categories[F[_]: MonadCancelThrow](
   def deleteCategory(id: Int, accountId: Int, catsShiftStrategy: ShiftStrategy, transactionsShiftStrategy: ShiftStrategy): F[Response[F]] = {
     for {
       _ <- CategoriesDao.updateCatParent(id, catsShiftStrategy.newId, accountId).transact(transactor)
-      _ <- TransactionsDao.changeCategory(id, transactionsShiftStrategy.newId.get, accountId).transact(transactor)
+      _ <-
+        if (transactionsShiftStrategy.newId.isDefined)
+          TransactionsDao.changeCategory(id, transactionsShiftStrategy.newId.get, accountId).transact(transactor)
+        else
+          TransactionsDao.deleteForCategory(id).transact(transactor)
+
       _ <- CategoriesDao.deleteCategory(id, accountId).transact(transactor)
       response <- Ok("")
     } yield response

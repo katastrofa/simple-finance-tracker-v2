@@ -18,6 +18,9 @@ object Transactions {
     sql"""UPDATE transactions AS t JOIN categories AS c ON t.category = c.id
          SET t.category = $newCat WHERE t.category = $oldCat AND c.account = $accountId""".update.run
 
+  def deleteForCategory(cat: Int): ConnectionIO[Int] =
+    sql"""DELETE FROM transactions WHERE category = $cat""".update.run
+
   def changeMoneyAccount(oldMA: Int, newMA: Int, accountId: Int): List[ConnectionIO[Int]] = {
     List(
       sql"""UPDATE transactions AS t JOIN money_accounts AS m ON t.money_account = m.id
@@ -64,4 +67,7 @@ object Transactions {
             WHERE id = ${trans.id}
             LIMIT 1
     """.update.run
+
+  def deleteTransaction(id: Int): ConnectionIO[Int] =
+    sql"""DELETE FROM transactions WHERE id = $id""".update.run
 }

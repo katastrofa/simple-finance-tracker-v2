@@ -34,10 +34,12 @@ object Transactions {
       moneyAccounts: Map[Int, EnhancedMoneyAccount],
       checkTransaction: (MICheckbox.Status, String) => Callback,
       trackingChanged: (Int, TransactionTracking) => Callback,
-      save: (Option[Int], LocalDate, TransactionType, BigDecimal, String, Int, Int, Option[BigDecimal], Option[Int]) => Callback
+      save: (Option[Int], LocalDate, TransactionType, BigDecimal, String, Int, Int, Option[BigDecimal], Option[Int]) => Callback,
+      deleteTransaction: Int => Callback
   )
   case class State(
       isOpen: Boolean,
+      deleteIsOpen: Boolean,
       id: Option[Int],
       date: LocalDate,
       transactionType: TransactionType,
@@ -46,14 +48,16 @@ object Transactions {
       description: String,
       categoryId: Option[Int],
       moneyAccountId: Option[Int],
-      destMAId: Option[Int]
+      destMAId: Option[Int],
+      toDelete: Option[Int] = None
   )
   case class HeaderProps(checkTransaction: (MICheckbox.Status, String) => Callback)
   case class TransactionProps(
       transaction: EnhancedTransaction,
       checkTransaction: (MICheckbox.Status, String) => Callback,
       trackingChanged: (Int, TransactionTracking) => Callback,
-      openEditModal: EnhancedTransaction => Callback
+      openEditModal: EnhancedTransaction => Callback,
+      openDeleteModal: Int => Callback
   )
 
   case class FormProps(
@@ -79,12 +83,16 @@ object Transactions {
       save: Callback,
       close: Callback
   )
+  case class ConfirmProps(id: Int, deleteTransaction: Callback, close: Callback)
+
 
   implicit val moneyAccountMapReuse: Reusability[Map[Int, EnhancedMoneyAccount]] = Reusability.map[Int, EnhancedMoneyAccount]
   implicit val formPropsReuse: Reusability[FormProps] = Reusability.caseClassExcept[FormProps](
     "dateChange", "ttChange", "amountChange", "descriptionChange", "categoryChange", "maChange",
     "destinationMAChange", "destinationAmountChange", "save", "close"
   )
+  implicit val confirmPropsReuse: Reusability[ConfirmProps] =
+    Reusability.caseClassExcept[ConfirmProps]("deleteTransaction", "close")
 
 
   class Backend($: BackendScope[Props, State]) {
@@ -128,6 +136,9 @@ object Transactions {
     def close: Callback =
       $.modState(_.copy(isOpen = false))
 
+    def closeDelete: Callback =
+      $.modState(_.copy(deleteIsOpen = false))
+
     def openModalAddNew: Callback = $.modState { state =>
       state.copy(isOpen = true, id = None, amount = BigDecimal(0), destAmount = Some(BigDecimal(0)), description = "")
     }
@@ -135,6 +146,7 @@ object Transactions {
     def openEditModal(trans: EnhancedTransaction): Callback = $.modState { state =>
       state.copy(
         isOpen = true,
+        deleteIsOpen = false,
         Some(trans.id),
         trans.date,
         trans.transactionType,
@@ -147,38 +159,54 @@ object Transactions {
       )
     }
 
+    def openDeleteModal(id: Int): Callback = $.modState { state =>
+      state.copy(deleteIsOpen = true, toDelete = Some(id))
+    }
+
+    def deleteTransaction(): Callback = for {
+      props <- $.props
+      state <- $.state
+      _ <- props.deleteTransaction(state.toDelete.get)
+      _ <- closeDelete
+    } yield ()
+
     def render(props: Props, state: State): html_<^.VdomTagOf[Element] = {
       val reactTransactions = props.transactions.map { transaction =>
         transactionComponent.withKey(s"t-${transaction.id}")
-          .apply(TransactionProps(transaction, props.checkTransaction, props.trackingChanged, openEditModal))
+          .apply(TransactionProps(transaction, props.checkTransaction, props.trackingChanged, openEditModal, openDeleteModal))
       }.toVdomArray
 
       tableWrap(
-        AddModal.component(AddModal.Props("add-transaction-modal", state.isOpen))(
-          transactionForm(FormProps(
-            props.linearCats,
-            props.moneyAccounts,
-            state.id,
-            state.date,
-            state.transactionType,
-            state.amount,
-            state.destAmount,
-            state.description,
-            state.categoryId,
-            state.moneyAccountId,
-            state.destMAId,
-            dateChange,
-            ttChange,
-            amountChange,
-            descriptionChange,
-            categoryChange,
-            maChange,
-            destinationMAChange,
-            destinationAmountChange,
-            save,
-            close
-          ))
-        ),
+        List(
+          AddModal.component(AddModal.Props("add-transaction-modal", state.isOpen))(
+            transactionForm(FormProps(
+              props.linearCats,
+              props.moneyAccounts,
+              state.id,
+              state.date,
+              state.transactionType,
+              state.amount,
+              state.destAmount,
+              state.description,
+              state.categoryId,
+              state.moneyAccountId,
+              state.destMAId,
+              dateChange,
+              ttChange,
+              amountChange,
+              descriptionChange,
+              categoryChange,
+              maChange,
+              destinationMAChange,
+              destinationAmountChange,
+              save,
+              close
+            ))
+          ),
+          AddModal.component(AddModal.Props("delete-transaction-modal", state.deleteIsOpen)) {
+            ModalButtons("Delete", 450, deleteTransaction(), closeDelete)
+          }
+        ).toTagMod,
         headerComponent(HeaderProps(props.checkTransaction)),
         reactTransactions,
         headerComponent(HeaderProps(props.checkTransaction)),
@@ -193,7 +221,7 @@ object Transactions {
   }
 
   val component: Scala.Component[Props, State, Backend, CtorType.Props] = ScalaComponent.builder[Props]
-    .initialState[State](State(isOpen = false, None, LocalDate.now(), TransactionType.Expense, BigDecimal(0), None, "", None, None, None))
+    .initialState[State](State(isOpen = false, deleteIsOpen = false, None, LocalDate.now(), TransactionType.Expense, BigDecimal(0), None, "", None, None, None))
     .renderBackend[Backend]
     .build
 
@@ -213,6 +241,7 @@ object Transactions {
       <.th(^.cls := "amount", "Amount"),
       <.th(^.cls := "category", "Category"),
       <.th(^.cls := "money-account", "Account"),
+      <.th(^.cls := "delete", ""),
       <.th(^.cls := "status center-align hide-on-med-and-down", "")
     )
   }
@@ -240,6 +269,9 @@ object Transactions {
         <.span(^.cls := "show-on-medium-and-down", props.transaction.categoryName)
       ),
       <.td(^.cls := "money-account", props.transaction.moneyAccountName),
+      <.td(^.cls := "delete",
+        MaterialIcon(MaterialIcon.i, MaterialIcon.small, "delete", props.openDeleteModal(props.transaction.id))
+      ),
       <.td(^.cls := "status center-align hide-on-med-and-down",
         MaterialIcon(
           MaterialIcon.`i`,
@@ -250,7 +282,6 @@ object Transactions {
       )
     )
   }
-
 
   val transactionForm: Component[FormProps, CtorType.Props] = ScalaFnComponent.withReuse[FormProps] { props =>
     <.form(

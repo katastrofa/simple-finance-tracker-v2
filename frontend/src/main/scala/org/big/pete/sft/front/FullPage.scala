@@ -55,7 +55,10 @@ object FullPage extends EffectSyntax {
       saveAccount: (Option[String], Option[Int], String, String) => Callback,
       saveCategory: (Option[Int], String, String, Option[Int]) => Callback,
       saveMoneyAccount: (Option[Int], String, BigDecimal, String, LocalDate) => Callback,
-      saveTransaction: (Option[Int], LocalDate, TransactionType, BigDecimal, String, Int, Int, Option[BigDecimal], Option[Int]) => Callback
+      saveTransaction: (Option[Int], LocalDate, TransactionType, BigDecimal, String, Int, Int, Option[BigDecimal], Option[Int]) => Callback,
+      deleteCategory: (Int, Option[Int], Option[Int]) => Callback,
+      deleteMoneyAccount: (Int, Option[Int]) => Callback,
+      deleteTransaction: Int => Callback
   )
 
   val component: Component[Props, Unit, Unit, CtorType.Props] = ScalaComponent.builder[Props]
@@ -77,15 +80,17 @@ object FullPage extends EffectSyntax {
             props.moneyAccounts,
             props.checkTransaction,
             props.transactionTrackingClick,
-            props.saveTransaction
+            props.saveTransaction,
+            props.deleteTransaction
           ))
         case SftMain.CategoriesPage(_) =>
-          Categories.component.apply(Categories.Props(props.categoryTree, props.saveCategory))
+          Categories.component.apply(Categories.Props(props.categoryTree, props.saveCategory, props.deleteCategory))
         case SftMain.MoneyAccountsPage(_) =>
           MoneyAccounts.component.apply(MoneyAccounts.Props(
             props.moneyAccounts.values.toList,
             props.currencies,
-            props.saveMoneyAccount
+            props.saveMoneyAccount,
+            props.deleteMoneyAccount
           ))
       }
 

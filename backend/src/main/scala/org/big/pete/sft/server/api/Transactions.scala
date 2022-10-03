@@ -43,4 +43,11 @@ class Transactions[F[_]: MonadCancelThrow](
       response <- Ok(newTransaction.get.asJson)
     } yield response
   }
+
+  def deleteTransaction(id: Int): F[Response[F]] = {
+    for {
+      _ <- DBT.deleteTransaction(id).transact(transactor)
+      response <- Ok("")
+    } yield response
+  }
 }

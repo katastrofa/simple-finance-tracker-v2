@@ -10,7 +10,7 @@ import japgolly.scalajs.react.extra.router.RouterCtl
 import org.big.pete.BPJson
 import org.big.pete.datepicker.ReactDatePicker
 import org.big.pete.react.MICheckbox
-import org.big.pete.sft.domain.{Account, AccountEdit, Category, Currency, EnhancedMoneyAccount, MoneyAccount, PeriodAmountStatus, Transaction, TransactionTracking, TransactionType}
+import org.big.pete.sft.domain.{Account, AccountEdit, Category, CategoryDeleteStrategies, Currency, EnhancedMoneyAccount, MoneyAccount, MoneyAccountDeleteStrategy, PeriodAmountStatus, ShiftStrategy, Transaction, TransactionTracking, TransactionType}
 import org.big.pete.sft.front.SftMain.{AccountsSelectionPage, SftPages}
 import org.big.pete.sft.front.components.header.SidenavFilters.FiltersOpen
 import org.big.pete.sft.front.domain.{CategoryTree, EnhancedTransaction}
@@ -52,27 +52,33 @@ object SftState {
   )
 
   class Backend($: BackendScope[Props, State]) {
+    import org.big.pete.sft.domain.Implicits._
 
-    /// TODO: Load valid data
     def setFromDate(newFrom: LocalDate): CallbackTo[LocalDate] = {
-      $.state.map(state => state.from -> state.to)
-        .flatMap { case (from, to) =>
-          if (newFrom.isBefore(to))
-            $.modState(_.copy(from = newFrom)) >> CallbackTo.pure(newFrom)
-          else
-            CallbackTo.pure(from)
-        }
+      def updateFrom(state: State): CallbackTo[LocalDate] = {
+        if (newFrom.isBefore(state.to))
+          $.setState(state.copy(from = newFrom)) >> CallbackTo.pure(newFrom)
+        else
+          CallbackTo.pure(state.from)
+      }
+
+      for {
+        state <- $.state
+        props <- $.props
+        from <- updateFrom(state)
+        account = getAccountPermalink(props.activePage)
+        _ <- if (account.isDefined) refreshAccount(account.get).toCallback else Callback.empty
+      } yield from
     }
 
-    /// TODO: Load valid data
     def setToDate(newTo: LocalDate): CallbackTo[LocalDate] = {
-      $.state.map(state => state.from -> state.to)
-        .flatMap { case (from, to) =>
-          if (newTo.isAfter(from))
-            $.modState(_.copy(to = newTo)) >> CallbackTo.pure(newTo)
-          else
-            CallbackTo.pure(to)
-        }
+      for {
+        state <- $.state
+        props <- $.props
+        to <- if (newTo.isAfter(state.from)) $.setState(state.copy(to = newTo)) >> CallbackTo.pure(newTo) else CallbackTo.pure(state.to)
+        account = getAccountPermalink(props.activePage)
+        _ <- if (account.isDefined) refreshAccount(account.get).toCallback else Callback.empty
+      } yield to
     }
 
     def setActiveFilter(opened: FiltersOpen): Callback = $.modState { state =>
@@ -151,18 +157,14 @@ object SftState {
     }
 
     def loadAccounts: AsyncCallback[List[Account]] = {
-      import org.big.pete.sft.domain.Implicits._
       ajaxCall[List[Account]]("GET", "/accounts", None, List.empty)
     }
 
     def loadCurrencies: AsyncCallback[List[Currency]] = {
-      import org.big.pete.sft.domain.Implicits._
       ajaxCall[List[Currency]]("GET", "/currencies", None, List.empty)
     }
 
     def loadTransactions(accountPermalink: String, start: LocalDate, end: LocalDate): AsyncCallback[List[Transaction]] = {
-      import org.big.pete.sft.domain.Implicits._
-
       val apiPath = "/" + accountPermalink + "/transactions?" +
         "start=" + start.format(ReactDatePicker.DateFormat) +
         "&end=" + end.format(ReactDatePicker.DateFormat)
@@ -170,8 +172,6 @@ object SftState {
     }
 
     def loadMoneyAccounts(accountPermalink: String, start: LocalDate, end: LocalDate): AsyncCallback[Map[Int, EnhancedMoneyAccount]] = {
-      import org.big.pete.sft.domain.Implicits._
-
       val apiPath = "/" + accountPermalink + "/money-accounts?" +
         "start=" + start.format(ReactDatePicker.DateFormat) +
         "&end=" + end.format(ReactDatePicker.DateFormat)
@@ -180,8 +180,6 @@ object SftState {
     }
 
     def loadCategories(accountPermalink: String): AsyncCallback[Map[Int, Category]] = {
-      import org.big.pete.sft.domain.Implicits._
-
       ajaxCall[List[Category]]("GET", "/" + accountPermalink + "/categories", None, List.empty)
         .map(_.map(cat => cat.id -> cat).toMap)
     }
@@ -274,8 +272,6 @@ object SftState {
     }
 
     def saveAccount(oldPermalink: Option[String], id: Option[Int], name: String, permalink: String): Callback = {
-      import org.big.pete.sft.domain.Implicits._
-
       val method = if (id.isDefined) "POST" else "PUT"
       val payload = if (id.isDefined)
         BPJson.write(AccountEdit(oldPermalink.get, id.get, name, permalink, None))
@@ -294,8 +290,6 @@ object SftState {
     }
 
     def saveCategory(id: Option[Int], name: String, description: String, parent: Option[Int]): Callback = {
-      import org.big.pete.sft.domain.Implicits._
-
       $.props.flatMap { props =>
         val account = getAccountPermalink(props.activePage).getOrElse("")
         val realParent = parent.flatMap(p => if (p == -42) None else Some(p))
@@ -314,9 +308,19 @@ object SftState {
       }
     }
 
-    def saveMoneyAccount(id: Option[Int], name: String, startAmount: BigDecimal, currency: String, created: LocalDate): Callback = {
-      import org.big.pete.sft.domain.Implicits._
+    def deleteCategory(id: Int, moveSubCats: Option[Int], moveTransactions: Option[Int]): Callback = {
+      $.props.flatMap { props =>
+        val account = getAccountPermalink(props.activePage).getOrElse("")
+        ajaxUpdate[String](
+          "DELETE",
+          "/" + account + "/categories/" + id.toString,
+          BPJson.write(CategoryDeleteStrategies(ShiftStrategy(moveSubCats), ShiftStrategy(moveTransactions))),
+          _ => refreshAccount(account).toCallback
+        )
+      }
+    }
 
+    def saveMoneyAccount(id: Option[Int], name: String, startAmount: BigDecimal, currency: String, created: LocalDate): Callback = {
       $.props.flatMap { props =>
         val account = getAccountPermalink(props.activePage).getOrElse("")
         val method = if (id.isDefined) "POST" else "PUT"
@@ -336,6 +340,18 @@ object SftState {
       }
     }
 
+    def deleteMoneyAccount(id: Int, moveTo: Option[Int]): Callback = {
+      $.props.flatMap { props =>
+        val account = getAccountPermalink(props.activePage).getOrElse("")
+        ajaxUpdate[String](
+          "DELETE",
+          "/" + account + "/money-accounts/" + id.toString,
+          BPJson.write(MoneyAccountDeleteStrategy(ShiftStrategy(moveTo))),
+          _ => refreshAccount(account).toCallback
+        )
+      }
+    }
+
     def saveTransaction(
         id: Option[Int],
         date: LocalDate,
@@ -347,8 +363,6 @@ object SftState {
         destinationAmount: Option[BigDecimal],
         destinationMoneyAccountId: Option[Int]
     ): Callback = {
-      import org.big.pete.sft.domain.Implicits._
-
       $.props.flatMap { props =>
         val account = getAccountPermalink(props.activePage).getOrElse("")
         val method = if (id.isDefined) "POST" else "PUT"
@@ -360,15 +374,32 @@ object SftState {
             TransactionTracking.None, destinationAmount, destinationMoneyAccountId, None
           )),
           transaction => $.modState { oldState =>
-            val newTransactions = oldState.transactions ++ List(transaction)
-            oldState.copy(
-              moneyAccounts = updateMoneyAccountsWithTransaction(transaction, oldState.from, oldState.to, oldState.moneyAccounts),
-              transactions = newTransactions,
-              displayTransactions = filterTransactions(oldState, Some(newTransactions))
-            )
+            updateStateWithTransaction(oldState, transaction, oldState.transactions ++ List(transaction))
           }
         )
       }
+    }
+
+    def deleteTransaction(id: Int): Callback = {
+      $.props.flatMap { props =>
+        val account = getAccountPermalink(props.activePage).getOrElse("")
+        ajaxUpdate[String](
+          "DELETE",
+          "/" + account + "/transactions/" + id.toString,
+          "",
+          _ => $.modState { oldState =>
+            updateStateWithTransaction(oldState, oldState.transactions.find(_.id == id).get, oldState.transactions.filter(_.id != id))
+          }
+        )
+      }
+    }
+
+    private def updateStateWithTransaction(state: State, transaction: Transaction, newTransactions: List[Transaction]): State = {
+      state.copy(
+        moneyAccounts = updateMoneyAccountsWithTransaction(transaction, state.from, state.to, state.moneyAccounts),
+        transactions = newTransactions,
+        displayTransactions = filterTransactions(state, Some(newTransactions))
+      )
     }
 
     def updateMoneyAccountsWithTransaction(
@@ -436,7 +467,10 @@ object SftState {
         saveAccount,
         saveCategory,
         saveMoneyAccount,
-        saveTransaction
+        saveTransaction,
+        deleteCategory,
+        deleteMoneyAccount,
+        deleteTransaction
       ))
     }
 

@@ -8,8 +8,9 @@ import japgolly.scalajs.react.{Callback, CallbackTo, CtorType, ReactFormEventFro
 import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.datepicker.ReactDatePicker
 import org.big.pete.react.{MaterialIcon, TextInput}
-import org.big.pete.sft.domain.{Currency, EnhancedMoneyAccount}
+import org.big.pete.sft.domain.{Currency, EnhancedMoneyAccount, PeriodAmountStatus}
 import org.big.pete.sft.front.SftMain
+import org.big.pete.sft.front.SftMain.dropDownMoneyAccount
 import org.big.pete.sft.front.helpers.{AddModal, ModalButtons}
 import org.scalajs.dom.console
 import org.scalajs.dom.html.Element
@@ -25,19 +26,24 @@ object MoneyAccounts {
   case class Props(
       accounts: List[EnhancedMoneyAccount],
       currencies: List[Currency],
-      save: (Option[Int], String, BigDecimal, String, LocalDate) => Callback
+      save: (Option[Int], String, BigDecimal, String, LocalDate) => Callback,
+      delete: (Int, Option[Int]) => Callback
   )
   case class MoneyAccountProps(
       account: EnhancedMoneyAccount,
-      openEditModal: EnhancedMoneyAccount => Callback
+      openEditModal: EnhancedMoneyAccount => Callback,
+      openDeleteModal: EnhancedMoneyAccount => Callback
   )
   case class State(
       isOpen: Boolean,
+      deleteIsOpen: Boolean,
       id: Option[Int],
       name: String,
       startAmount: BigDecimal,
       currency: Option[String],
-      created: LocalDate
+      created: LocalDate,
+      shiftTransactionsTo: Int,
+      toDelete: Option[Int]
   )
 
   case class FormProps(
@@ -64,6 +70,11 @@ object MoneyAccounts {
     "close"
   )
 
+  final val NoShiftMoneyAccount = EnhancedMoneyAccount(
+    -42, "Do not shift - delete", BigDecimal(0), Currency("BGS", "Bogus", "B"), LocalDate.now(),
+    PeriodAmountStatus(BigDecimal(0), BigDecimal(0)), None
+  )
+
 
   class Backend($: BackendScope[Props, State]) {
     def changeName(e: ReactFormEventFromInput): Callback =
@@ -84,8 +95,14 @@ object MoneyAccounts {
     def changeCreated(date: LocalDate): CallbackTo[LocalDate] =
       $.modState(_.copy(created = date)) >> CallbackTo.pure(date)
 
+    def changeShiftTransactions(ema: EnhancedMoneyAccount): Callback =
+      $.modState(_.copy(shiftTransactionsTo = ema.id))
+
     def closeModal: Callback =
       $.modState(_.copy(isOpen = false))
+
+    def closeDeleteModal: Callback =
+      $.modState(_.copy(deleteIsOpen = false))
 
     def saveModal: Callback = {
       for {
@@ -97,34 +114,59 @@ object MoneyAccounts {
     }
 
     def openAddNew: Callback = $.modState { state =>
-      state.copy(isOpen = true, None, "", BigDecimal(0))
+      state.copy(isOpen = true, deleteIsOpen = false, None, "", BigDecimal(0))
     }
 
     def openEditModal(account: EnhancedMoneyAccount): Callback = $.modState { state =>
-      state.copy(isOpen = true, Some(account.id), account.name, account.startAmount, Some(account.currency.id), account.created)
+      state.copy(isOpen = true, deleteIsOpen = false, Some(account.id), account.name, account.startAmount, Some(account.currency.id), account.created)
     }
+
+    def openDeleteModal(account: EnhancedMoneyAccount): Callback = $.modState { state =>
+      state.copy(deleteIsOpen = true, shiftTransactionsTo = NoShiftMoneyAccount.id, toDelete = Some(account.id))
+    }
+
+    def deleteMoneyAccount(): Callback = for {
+      props <- $.props
+      state <- $.state
+      shifting = if (state.shiftTransactionsTo == -42) None else Some(state.shiftTransactionsTo)
+      _ <- props.delete(state.toDelete.get, shifting)
+      _ <- closeDeleteModal
+    } yield ()
 
 
     def render(props: Props, state: State): html_<^.VdomTagOf[Element] = {
       val moneyAccounts = props.accounts
-        .map(ema => moneyAccountComponent.withKey(s"ma-${ema.id}").apply(MoneyAccountProps(ema, openEditModal)))
+        .map(ema => moneyAccountComponent.withKey(s"ma-${ema.id}").apply(MoneyAccountProps(ema, openEditModal, openDeleteModal)))
         .toVdomArray
 
       tableWrap(
-        AddModal.component(AddModal.Props("add-money-account-modal", state.isOpen))(moneyAccountForm(FormProps(
-          props.currencies,
-          state.id,
-          state.name,
-          state.startAmount,
-          state.currency,
-          state.created,
-          changeName,
-          changeAmount,
-          changeCurrency,
-          changeCreated,
-          saveModal,
-          closeModal
-        ))),
+        List(
+          AddModal.component(AddModal.Props("add-money-account-modal", state.isOpen)) {
+            moneyAccountForm(FormProps(
+              props.currencies, state.id, state.name, state.startAmount, state.currency, state.created, changeName,
+              changeAmount, changeCurrency, changeCreated, saveModal, closeModal
+            ))
+          },
+          AddModal.component(AddModal.Props("delete-money-account-modal", state.deleteIsOpen)) {
+            val toShiftMA = NoShiftMoneyAccount :: props.accounts.filter(ema => !state.toDelete.contains(ema.id))
+            <.form(
+              <.div(^.cls := "row",
+                dropDownMoneyAccount.component(dropDownMoneyAccount.Props(
+                  "delete-ma-ma",
+                  "Shift Transactions to:",
+                  toShiftMA,
+                  _.name,
+                  ema => s"d-ma-${ema.id}",
+                  changeShiftTransactions,
+                  toShiftMA.find(_.id == state.shiftTransactionsTo),
+                  350,
+                  List("col", "s12")
+                ))
+              ),
+              ModalButtons("Delete", 351, deleteMoneyAccount(), closeDeleteModal)
+            )
+          }
+        ).toTagMod,
         headerComponent(),
         moneyAccounts,
         headerComponent(),
@@ -139,7 +181,7 @@ object MoneyAccounts {
   }
 
   val component: Scala.Component[Props, State, Backend, CtorType.Props] = ScalaComponent.builder[Props]
-    .initialState(State(isOpen = false, None, "", BigDecimal(0), None, LocalDate.now()))
+    .initialState(State(isOpen = false, deleteIsOpen = false, None, "", BigDecimal(0), None, LocalDate.now(), NoShiftMoneyAccount.id, None))
     .renderBackend[Backend]
     .build
 
@@ -150,7 +192,8 @@ object MoneyAccounts {
       <.th(^.cls := "currency hide-on-small-only", "Currency"),
       <.th(^.cls := "date hide-on-small-only", "Created"),
       <.th(^.cls := "amount", "Start Amount", <.span("by period")),
-      <.th(^.cls := "amount", "End Amount", <.span("by period"))
+      <.th(^.cls := "amount", "End Amount", <.span("by period")),
+      <.th(^.cls := "delete", "")
     )
   }
 
@@ -165,7 +208,10 @@ object MoneyAccounts {
       <.td(^.cls := "currency hide-on-small-only", s"${props.account.currency.name} (${props.account.currency.symbol})"),
       <.td(^.cls := "date hide-on-small-only", props.account.created.format(DateFormat)),
       <.td(^.cls := "amount", formatAmount(props.account.currency.symbol, props.account.periodStatus.start)),
-      <.td(^.cls := "amount", formatAmount(props.account.currency.symbol, props.account.periodStatus.end))
+      <.td(^.cls := "amount", formatAmount(props.account.currency.symbol, props.account.periodStatus.end)),
+      <.td(^.cls := "delete",
+        MaterialIcon(MaterialIcon.i, MaterialIcon.small, "delete", props.openDeleteModal(props.account))
+      ),
     )
   }
 
