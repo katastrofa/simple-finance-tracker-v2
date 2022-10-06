@@ -8,7 +8,7 @@ import com.comcast.ip4s.{Ipv4Address, Port}
 import fs2.Stream
 import fs2.io.net.tls.TLSContext
 import org.big.pete.cache.BpCache
-import org.big.pete.sft.domain.{Account, AccountEdit, ApiAction, Category, CategoryDeleteStrategies, MoneyAccount, MoneyAccountDeleteStrategy, Transaction}
+import org.big.pete.sft.domain.{Account, AccountEdit, ApiAction, Category, CategoryDeleteStrategies, MoneyAccount, MoneyAccountDeleteStrategy, TrackingEdit, Transaction}
 import org.big.pete.sft.domain.Implicits._
 import org.big.pete.sft.server.api.{Categories, General, MoneyAccounts, Transactions}
 import org.big.pete.sft.server.auth.AuthHelper
@@ -187,6 +187,14 @@ class SftV2Server[F[_]: Async](
       accessHelper.verifyAccess(permalink, ApiAction.DeleteTransactions, user)(
         transactionsApi.deleteTransaction(idTrans)
       )
+    /// TODO: Verify the ID belongs to this account
+    case request @ POST -> Root / "api" / permalink / "transactions" / "tracking" as user =>
+      for {
+        data <- request.req.as[TrackingEdit]
+        response <- accessHelper.verifyAccess(permalink, ApiAction.ModifyOwnTransactions, user)(
+          transactionsApi.editTracking(data)
+        )
+      } yield response
   })
 
   def stream(tlsOpt: Option[TLSContext[F]]): Stream[F, Nothing] = {

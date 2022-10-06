@@ -6,7 +6,7 @@ import doobie.syntax.ToConnectionIOOps
 import doobie.util.transactor.Transactor
 import io.circe.syntax.EncoderOps
 import org.big.pete.sft.db.dao.{Transactions => DBT}
-import org.big.pete.sft.domain.Transaction
+import org.big.pete.sft.domain.{TrackingEdit, Transaction}
 import org.big.pete.sft.domain.Implicits._
 import org.http4s.Response
 import org.http4s.dsl.Http4sDsl
@@ -40,6 +40,14 @@ class Transactions[F[_]: MonadCancelThrow](
     for {
       _ <- DBT.editTransaction(trans).transact(transactor)
       newTransaction <- DBT.getTransaction(trans.id).transact(transactor)
+      response <- Ok(newTransaction.get.asJson)
+    } yield response
+  }
+
+  def editTracking(tracking: TrackingEdit): F[Response[F]] = {
+    for {
+      _ <- DBT.editTracking(tracking.id, tracking.tracking).transact(transactor)
+      newTransaction <- DBT.getTransaction(tracking.id).transact(transactor)
       response <- Ok(newTransaction.get.asJson)
     } yield response
   }

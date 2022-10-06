@@ -6,7 +6,7 @@ import doobie.implicits._
 import doobie.implicits.javatimedrivernative._
 import doobie.Fragments.in
 import org.big.pete.sft.db.domain.Balance
-import org.big.pete.sft.domain.Transaction
+import org.big.pete.sft.domain.{Transaction, TransactionTracking}
 
 import java.time.LocalDate
 
@@ -67,6 +67,9 @@ object Transactions {
             WHERE id = ${trans.id}
             LIMIT 1
     """.update.run
+
+  def editTracking(id: Int, tracking: TransactionTracking): ConnectionIO[Int] =
+    sql"""UPDATE transactions SET tracking = $tracking WHERE id = $id""".update.run
 
   def deleteTransaction(id: Int): ConnectionIO[Int] =
     sql"""DELETE FROM transactions WHERE id = $id""".update.run

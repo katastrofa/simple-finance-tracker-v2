@@ -86,6 +86,7 @@ case class CategoryDeleteStrategies(shiftSubCats: ShiftStrategy, shiftTransactio
 case class MoneyAccountDeleteStrategy(shiftTransactions: ShiftStrategy)
 case class AccountEdit(oldPermalink: String, id: Int, name: String, permalink: String, owner: Option[Int])
 case class NotAllowedResponse(message: String)
+case class TrackingEdit(id: Int, tracking: TransactionTracking)
 
 
 object Implicits {
@@ -97,6 +98,7 @@ object Implicits {
   implicit val periodAmountStatusEncoder: Encoder[PeriodAmountStatus] = deriveEncoder[PeriodAmountStatus]
   implicit val enhancedMoneyAccountEncoder: Encoder[EnhancedMoneyAccount] = deriveEncoder[EnhancedMoneyAccount]
   implicit val accountEditEncoder: Encoder[AccountEdit] = deriveEncoder[AccountEdit]
+  implicit val trackingEditEncoder: Encoder[TrackingEdit] = deriveEncoder[TrackingEdit]
 
   implicit val accountDecoder: Decoder[Account] = deriveDecoder[Account]
   implicit val currencyDecoder: Decoder[Currency] = deriveDecoder[Currency]
@@ -106,6 +108,7 @@ object Implicits {
   implicit val periodAmountStatusDecoder: Decoder[PeriodAmountStatus] = deriveDecoder[PeriodAmountStatus]
   implicit val enhancedMoneyAccountDecoder: Decoder[EnhancedMoneyAccount] = deriveDecoder[EnhancedMoneyAccount]
   implicit val accountEditDecoder: Decoder[AccountEdit] = deriveDecoder[AccountEdit]
+  implicit val trackingEditDecoder: Decoder[TrackingEdit] = deriveDecoder[TrackingEdit]
 
   implicit val userPermissionsEncoder: Encoder[UserPermissions] = deriveEncoder[UserPermissions]
   implicit val userPermissionsDecoder: Decoder[UserPermissions] = deriveDecoder[UserPermissions]

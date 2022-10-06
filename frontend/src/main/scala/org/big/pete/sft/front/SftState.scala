@@ -10,15 +10,14 @@ import japgolly.scalajs.react.extra.router.RouterCtl
 import org.big.pete.BPJson
 import org.big.pete.datepicker.ReactDatePicker
 import org.big.pete.react.MICheckbox
-import org.big.pete.sft.domain.{Account, AccountEdit, Category, CategoryDeleteStrategies, Currency, EnhancedMoneyAccount, MoneyAccount, MoneyAccountDeleteStrategy, PeriodAmountStatus, ShiftStrategy, Transaction, TransactionTracking, TransactionType}
+import org.big.pete.sft.domain.{Account, AccountEdit, Category, CategoryDeleteStrategies, Currency, EnhancedMoneyAccount, MoneyAccount, MoneyAccountDeleteStrategy, PeriodAmountStatus, ShiftStrategy, TrackingEdit, Transaction, TransactionTracking, TransactionType}
 import org.big.pete.sft.front.SftMain.{AccountsSelectionPage, SftPages}
 import org.big.pete.sft.front.components.header.SidenavFilters.FiltersOpen
-import org.big.pete.sft.front.domain.{CategoryTree, EnhancedTransaction}
+import org.big.pete.sft.front.domain.{CategoryTree, EnhancedTransaction, MAUpdateAction, MAUpdateOperation}
 import org.big.pete.sft.front.utilz.getAccountPermalink
 
 import java.time.LocalDate
 import java.time.chrono.ChronoLocalDate
-import scala.annotation.nowarn
 
 
 object SftState {
@@ -134,10 +133,6 @@ object SftState {
     def checkTransaction(status: MICheckbox.Status, id: String): Callback = $.modState { state =>
       state.copy(checkedTransactions = modStateForSet(status, state, _.checkedTransactions, id.toInt))
     }
-
-    /// TODO: Do this
-    @nowarn
-    def transactionTrackingClick(id: Int, tracking: TransactionTracking): Callback = Callback.empty
 
     def ajaxCall[T: Decoder](method: String, apiPath: String, payload: Option[String], empty: => T): AsyncCallback[T] = {
       Callback.log(s"AJAX - $method $apiPath with payload $payload").async >>
@@ -373,8 +368,36 @@ object SftState {
           BPJson.write(Transaction(id.getOrElse(-1), date, transactionType, amount, description, category, moneyAccount,
             TransactionTracking.None, destinationAmount, destinationMoneyAccountId, None
           )),
-          transaction => $.modState { oldState =>
-            updateStateWithTransaction(oldState, transaction, oldState.transactions ++ List(transaction))
+          transaction => $.modState { state =>
+            val updatedMA = {
+              if (id.isDefined) {
+                val oldTransaction = state.transactions.find(_.id == id.get).get
+                val removedTransactionMAs = updateMoneyAccountsWithTransaction(oldTransaction, state.from, state.to, state.moneyAccounts, MAUpdateAction.Reverse)
+                updateMoneyAccountsWithTransaction(transaction, state.from, state.to, removedTransactionMAs, MAUpdateAction.Attach)
+              } else
+                updateMoneyAccountsWithTransaction(transaction, state.from, state.to, state.moneyAccounts, MAUpdateAction.Attach)
+            }
+            updateStateWithTransaction(state, state.transactions.filter(_.id != transaction.id) ++ List(transaction), updatedMA)
+          }
+        )
+      }
+    }
+
+    def transactionTrackingClick(id: Int, tracking: TransactionTracking): Callback = {
+      val newTracking = tracking match {
+        case TransactionTracking.None => TransactionTracking.Verified
+        case TransactionTracking.Auto => TransactionTracking.Verified
+        case TransactionTracking.Verified => TransactionTracking.None
+      }
+
+      $.props.flatMap { props =>
+        val account = getAccountPermalink(props.activePage).getOrElse("")
+        ajaxUpdate[Transaction](
+          "POST",
+          "/" + account + "/transactions/tracking",
+          BPJson.write(TrackingEdit(id, newTracking)),
+          transaction => $.modState { state =>
+            updateStateWithTransaction(state, state.transactions.filter(_.id != id) ++ List(transaction), state.moneyAccounts)
           }
         )
       }
@@ -387,52 +410,79 @@ object SftState {
           "DELETE",
           "/" + account + "/transactions/" + id.toString,
           "",
-          _ => $.modState { oldState =>
-            updateStateWithTransaction(oldState, oldState.transactions.find(_.id == id).get, oldState.transactions.filter(_.id != id))
+          _ => $.modState { state =>
+            val removedTransaction = state.transactions.find(_.id == id).get
+            val updatedMA = updateMoneyAccountsWithTransaction(removedTransaction, state.from, state.to, state.moneyAccounts, MAUpdateAction.Reverse)
+            updateStateWithTransaction(state, state.transactions.filter(_.id != id), updatedMA)
           }
         )
       }
     }
 
-    private def updateStateWithTransaction(state: State, transaction: Transaction, newTransactions: List[Transaction]): State = {
+    private def updateStateWithTransaction(
+        state: State,
+        newTransactions: List[Transaction],
+        updatedMoneyAccounts: Map[Int, EnhancedMoneyAccount]
+    ): State = {
       state.copy(
-        moneyAccounts = updateMoneyAccountsWithTransaction(transaction, state.from, state.to, state.moneyAccounts),
+        moneyAccounts = updatedMoneyAccounts,
         transactions = newTransactions,
         displayTransactions = filterTransactions(state, Some(newTransactions))
       )
     }
 
+    final val AddBigDecimals: (BigDecimal, BigDecimal) => BigDecimal = _ + _
+    final val SubtractBigDecimals: (BigDecimal, BigDecimal) => BigDecimal = _ - _
+    final val MAOperations: Map[MAUpdateAction, Map[MAUpdateOperation, (BigDecimal, BigDecimal) => BigDecimal]] = Map(
+      MAUpdateAction.Attach -> Map(
+        MAUpdateOperation.Add -> AddBigDecimals,
+        MAUpdateOperation.Remove -> SubtractBigDecimals
+      ),
+      MAUpdateAction.Reverse -> Map(
+        MAUpdateOperation.Add -> SubtractBigDecimals,
+        MAUpdateOperation.Remove -> AddBigDecimals
+      ),
+    )
+
+    private def updateMoneyAccount(
+        ma: EnhancedMoneyAccount,
+        action: MAUpdateAction,
+        op: MAUpdateOperation,
+        trans: Transaction,
+        from: LocalDate
+    ): EnhancedMoneyAccount = {
+      val realOp = MAOperations(action)(op)
+      if (trans.date.isAfter(from.asInstanceOf[ChronoLocalDate]))
+        ma.copy(periodStatus = ma.periodStatus.copy(end = realOp(ma.periodStatus.end, trans.amount)))
+      else
+        ma.copy(periodStatus = ma.periodStatus.copy(realOp(ma.periodStatus.start, trans.amount), realOp(ma.periodStatus.end, trans.amount)))
+    }
+
     def updateMoneyAccountsWithTransaction(
-        transaction: Transaction,
+        trans: Transaction,
         from: LocalDate,
         to: LocalDate,
-        moneyAccounts: Map[Int, EnhancedMoneyAccount]
+        mas: Map[Int, EnhancedMoneyAccount],
+        action: MAUpdateAction
     ): Map[Int, EnhancedMoneyAccount] = {
-      if (transaction.date.isBefore(to.asInstanceOf[ChronoLocalDate])) {
-        val updater = {
-          if (transaction.date.isAfter(from.asInstanceOf[ChronoLocalDate]))
-            (period: PeriodAmountStatus, operation: (BigDecimal, BigDecimal) => BigDecimal, value: BigDecimal) =>
-              PeriodAmountStatus(period.start, operation(period.end, value))
-          else
-            (period: PeriodAmountStatus, operation: (BigDecimal, BigDecimal) => BigDecimal, value: BigDecimal) =>
-              PeriodAmountStatus(operation(period.start, value), operation(period.end, value))
+      if (trans.date.isBefore(to.asInstanceOf[ChronoLocalDate])) {
+        trans.transactionType match {
+          case TransactionType.Income =>
+            mas + (trans.moneyAccount -> updateMoneyAccount(mas(trans.moneyAccount), action, MAUpdateOperation.Add, trans, from))
+          case TransactionType.Expense =>
+            mas + (trans.moneyAccount -> updateMoneyAccount(
+              mas(trans.moneyAccount), action, MAUpdateOperation.Remove, trans, from
+            ))
+          case TransactionType.Transfer =>
+            val updated = mas + (trans.moneyAccount -> updateMoneyAccount(
+              mas(trans.moneyAccount), action, MAUpdateOperation.Remove, trans, from
+            ))
+            updated + (trans.destinationMoneyAccountId.get -> updateMoneyAccount(
+              mas(trans.destinationMoneyAccountId.get), action, MAUpdateOperation.Add, trans, from
+            ))
         }
-
-        moneyAccounts.map { case (id, ma) =>
-          transaction.transactionType match {
-            case TransactionType.Income if id == transaction.moneyAccount =>
-              id -> ma.copy(periodStatus = updater(ma.periodStatus, _ + _, transaction.amount))
-            case TransactionType.Expense if id == transaction.moneyAccount =>
-              id -> ma.copy(periodStatus = updater(ma.periodStatus, _ - _, transaction.amount))
-            case TransactionType.Transfer if id == transaction.moneyAccount =>
-              id -> ma.copy(periodStatus = updater(ma.periodStatus, _ - _, transaction.amount))
-            case TransactionType.Transfer if transaction.destinationMoneyAccountId.contains(id) =>
-              id -> ma.copy(periodStatus = updater(ma.periodStatus, _ + _, transaction.destinationAmount.get))
-            case _ =>
-              id -> ma
-          }
-        }
-      } else moneyAccounts
+      } else
+        mas
     }
 
     def render(props: Props, state: State): Unmounted[FullPage.Props, Unit, Unit] = {

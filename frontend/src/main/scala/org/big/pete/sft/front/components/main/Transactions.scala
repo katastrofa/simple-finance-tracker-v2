@@ -265,8 +265,8 @@ object Transactions {
       ),
       <.td(^.cls := "right-align amount", formatAmount(props.transaction.currencySymbol, props.transaction.amount)),
       <.td(^.cls := "category",
-        <.span(^.cls := "show-on-large", props.transaction.categoryFullName),
-        <.span(^.cls := "show-on-medium-and-down", props.transaction.categoryName)
+        <.span(^.cls := "show-on-large hide-on-med-and-down", props.transaction.categoryFullName),
+        <.span(^.cls := "show-on-medium-and-down hide-on-large-only", props.transaction.categoryName)
       ),
       <.td(^.cls := "money-account", props.transaction.moneyAccountName),
       <.td(^.cls := "delete",

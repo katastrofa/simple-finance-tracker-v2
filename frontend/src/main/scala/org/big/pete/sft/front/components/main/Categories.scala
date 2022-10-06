@@ -50,6 +50,7 @@ object Categories {
   )
   case class DeleteFormProps(
       categories: List[CategoryTree],
+      deleteId: Int,
       shiftSubCatsTo: Int,
       shiftTransactionsTo: Int,
       changeShiftSubCats: CategoryTree => Callback,
@@ -138,7 +139,7 @@ object Categories {
           },
           AddModal.component(AddModal.Props("delete-category-modal", state.deleteIsOpen)) {
             deleteCategoryModal.apply(DeleteFormProps(
-              props.categories, state.shiftSubCatsTo, state.shiftTransactionsTo,
+              props.categories, state.deleteId.getOrElse(-1), state.shiftSubCatsTo, state.shiftTransactionsTo,
               changeShiftSubCats, changeShiftTransactions, deleteCategory(), closeDeleteModal
             ))
           }
@@ -221,14 +222,14 @@ object Categories {
 
   val deleteCategoryModal: Component[DeleteFormProps, CtorType.Props] = ScalaFnComponent.withReuse[DeleteFormProps] { props =>
     def shiftSubCatsExpand(cat: CategoryTree): List[CategoryTree] = {
-      if (cat.id != props.shiftSubCatsTo)
+      if (cat.id != props.deleteId)
         cat :: cat.children.flatMap(shiftSubCatsExpand)
       else
         List.empty
     }
 
     def shiftTransactionsExpand(cat: CategoryTree): List[CategoryTree] = {
-      if (cat.id != props.shiftTransactionsTo)
+      if (cat.id != props.deleteId)
         cat :: cat.children.flatMap(shiftTransactionsExpand)
       else
         cat.children.flatMap(shiftTransactionsExpand)

@@ -1,5 +1,6 @@
 package org.big.pete.sft.front.domain
 
+import enumeratum.{Enum, EnumEntry}
 import japgolly.scalajs.react.Reusability
 import org.big.pete.sft.domain.{Account, Category, Currency, EnhancedMoneyAccount, PeriodAmountStatus, Transaction, TransactionTracking, TransactionType}
 import org.big.pete.sft.front.SftMain.SftPages
@@ -102,6 +103,22 @@ object EnhancedTransaction {
       destinationMoneyAccount.map(_.name)
     )
   }
+}
+
+sealed trait MAUpdateAction extends EnumEntry
+case object MAUpdateAction extends Enum[MAUpdateAction] {
+  final case object Attach extends MAUpdateAction
+  final case object Reverse extends MAUpdateAction
+
+  val values: IndexedSeq[MAUpdateAction] = findValues
+}
+
+sealed trait MAUpdateOperation extends EnumEntry
+case object MAUpdateOperation extends Enum[MAUpdateOperation] {
+  final case object Add extends MAUpdateOperation
+  final case object Remove extends MAUpdateOperation
+
+  val values: IndexedSeq[MAUpdateOperation] = findValues
 }
 
 object Implicits {
