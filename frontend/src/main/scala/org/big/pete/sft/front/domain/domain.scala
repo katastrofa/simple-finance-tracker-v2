@@ -121,6 +121,24 @@ case object MAUpdateOperation extends Enum[MAUpdateOperation] {
   val values: IndexedSeq[MAUpdateOperation] = findValues
 }
 
+sealed trait SortingColumn extends EnumEntry
+case object SortingColumn extends Enum[SortingColumn] {
+  final case object Date extends SortingColumn
+  final case object Description extends SortingColumn
+  final case object Amount extends SortingColumn
+
+  val values: IndexedSeq[SortingColumn] = findValues
+}
+
+sealed trait Order extends EnumEntry
+case object Order extends Enum[Order] {
+  final case object Asc extends Order
+  final case object Desc extends Order
+  val values: IndexedSeq[Order] = findValues
+}
+
+
+
 object Implicits {
   import org.big.pete.react.Implicits._
 
@@ -135,6 +153,4 @@ object Implicits {
 
 }
 
-object domain {
-
-}
+object domain {}

@@ -11,7 +11,7 @@ import org.big.pete.datepicker.ReactDatePicker
 import org.big.pete.react.{MICheckbox, MaterialIcon, TextInput}
 import org.big.pete.sft.domain.{EnhancedMoneyAccount, TransactionTracking, TransactionType}
 import org.big.pete.sft.front.SftMain.{dropDownCategoryTree, dropDownMoneyAccount, dropDownTT}
-import org.big.pete.sft.front.domain.{CategoryTree, EnhancedTransaction}
+import org.big.pete.sft.front.domain.{CategoryTree, EnhancedTransaction, Order, SortingColumn}
 import org.big.pete.sft.front.helpers.{AddModal, ModalButtons}
 import org.scalajs.dom.html.Element
 
@@ -32,6 +32,8 @@ object Transactions {
       transactions: List[EnhancedTransaction],
       linearCats: List[CategoryTree],
       moneyAccounts: Map[Int, EnhancedMoneyAccount],
+      ordering: List[(SortingColumn, Order)],
+      clickOrdering: SortingColumn => Callback,
       checkTransaction: (MICheckbox.Status, String) => Callback,
       trackingChanged: (Int, TransactionTracking) => Callback,
       save: (Option[Int], LocalDate, TransactionType, BigDecimal, String, Int, Int, Option[BigDecimal], Option[Int]) => Callback,
@@ -51,7 +53,11 @@ object Transactions {
       destMAId: Option[Int],
       toDelete: Option[Int] = None
   )
-  case class HeaderProps(checkTransaction: (MICheckbox.Status, String) => Callback)
+  case class HeaderProps(
+      ordering: List[(SortingColumn, Order)],
+      checkTransaction: (MICheckbox.Status, String) => Callback,
+      clickOrdering: SortingColumn => Callback
+  )
   case class TransactionProps(
       transaction: EnhancedTransaction,
       checkTransaction: (MICheckbox.Status, String) => Callback,
@@ -207,9 +213,9 @@ object Transactions {
             ModalButtons("Delete", 450, deleteTransaction(), closeDelete)
           }
         ).toTagMod,
-        headerComponent(HeaderProps(props.checkTransaction)),
+        headerComponent(HeaderProps(props.ordering, props.checkTransaction, props.clickOrdering)),
         reactTransactions,
-        headerComponent(HeaderProps(props.checkTransaction)),
+        headerComponent(HeaderProps(props.ordering, props.checkTransaction, props.clickOrdering)),
         <.a(
           ^.cls := "waves-effect waves-light btn nice",
           ^.onClick --> openModalAddNew,
@@ -226,6 +232,14 @@ object Transactions {
     .build
 
   val headerComponent: Component[HeaderProps, CtorType.Props] = ScalaFnComponent.apply[HeaderProps] { props =>
+    def orderingIcon(column: SortingColumn): String = {
+      props.ordering.find(_._1 == column) match {
+        case Some((_, Order.Asc)) => "arrow_drop_up"
+        case Some((_, Order.Desc)) => "arrow_drop_down"
+        case None => "sort"
+      }
+    }
+
     <.tr(
       /// TODO: Checked status
       MICheckbox.component(MICheckbox.Props(
@@ -236,9 +250,15 @@ object Transactions {
         MICheckbox.Status.none,
         props.checkTransaction
       )),
-      <.th(^.cls := "date", "Date"),
-      <.th(^.cls := "description", "Description"),
-      <.th(^.cls := "amount", "Amount"),
+      <.th(^.cls := "date", "Date",
+        MaterialIcon(MaterialIcon.i, MaterialIcon.small, orderingIcon(SortingColumn.Date), props.clickOrdering(SortingColumn.Date))
+      ),
+      <.th(^.cls := "description", "Description",
+        MaterialIcon(MaterialIcon.i, MaterialIcon.small, orderingIcon(SortingColumn.Description), props.clickOrdering(SortingColumn.Description))
+      ),
+      <.th(^.cls := "amount", "Amount",
+        MaterialIcon(MaterialIcon.i, MaterialIcon.small, orderingIcon(SortingColumn.Amount), props.clickOrdering(SortingColumn.Amount))
+      ),
       <.th(^.cls := "category", "Category"),
       <.th(^.cls := "money-account", "Account"),
       <.th(^.cls := "delete", ""),

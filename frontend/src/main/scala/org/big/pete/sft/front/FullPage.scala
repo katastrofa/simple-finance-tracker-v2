@@ -13,7 +13,7 @@ import org.big.pete.sft.front.SftMain.SftPages
 import org.big.pete.sft.front.components.header.SidenavFilters.FiltersOpen
 import org.big.pete.sft.front.components.header.{Sidenav, SidenavFilters, TopHeader}
 import org.big.pete.sft.front.components.main.{Accounts, Categories, MoneyAccounts, Transactions}
-import org.big.pete.sft.front.domain.{CategoryTree, EnhancedTransaction}
+import org.big.pete.sft.front.domain.{CategoryTree, EnhancedTransaction, Order, SortingColumn}
 
 import java.time.LocalDate
 
@@ -32,6 +32,7 @@ object FullPage extends EffectSyntax {
       categoriesActiveFilters: Set[Int],
       moneyAccountsActiveFilters: Set[Int],
       checkedTransactions: Set[Int],
+      ordering: List[(SortingColumn, Order)],
 
       accounts: List[Account],
       currencies: List[Currency],
@@ -51,6 +52,7 @@ object FullPage extends EffectSyntax {
       checkTransaction: (MICheckbox.Status, String) => Callback,
       transactionTrackingClick: (Int, TransactionTracking) => Callback,
       onPageChange: (SftPages, Option[SftPages]) => Callback,
+      clickOrdering: SortingColumn => Callback,
 
       saveAccount: (Option[String], Option[Int], String, String) => Callback,
       saveCategory: (Option[Int], String, String, Option[Int]) => Callback,
@@ -78,6 +80,8 @@ object FullPage extends EffectSyntax {
             props.displayTransactions,
             CategoryTree.makeLinearCats(props.categoryTree),
             props.moneyAccounts,
+            props.ordering,
+            props.clickOrdering,
             props.checkTransaction,
             props.transactionTrackingClick,
             props.saveTransaction,
