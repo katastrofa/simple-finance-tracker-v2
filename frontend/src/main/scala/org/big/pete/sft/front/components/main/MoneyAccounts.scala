@@ -254,7 +254,7 @@ object MoneyAccounts {
               "add-ma-started",
               "col s12",
               props.changeCreated,
-              Some(props.created),
+              props.created,
               isOpened = false,
               Some(304),
               ReactDatePicker.ExtendedKeyBindings

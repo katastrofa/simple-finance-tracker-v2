@@ -2,13 +2,13 @@ package org.big.pete.datepicker
 
 import japgolly.scalajs.react.callback.CallbackTo
 import japgolly.scalajs.react.component.Scala.{Component, Unmounted}
+import japgolly.scalajs.react.extra.{EventListener, OnUnmount}
 import japgolly.scalajs.react.{BackendScope, Callback, CtorType, ReactFormEventFromInput, ReactKeyboardEventFromInput, ReactMouseEventFromHtml, Ref, ScalaComponent}
 import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.datepicker.parts.CalendarTable.{DayAttr, MonthAttr, YearAttr}
 import org.big.pete.datepicker.parts.CalendarTable
-import org.big.pete.react.MaterialIcon
-import org.big.pete.react.Modal.{ModalState, ModalSupport, isOpenPath}
-import org.scalajs.dom.html
+import org.big.pete.react.{HasFocus, MaterialIcon, Modal}
+import org.scalajs.dom.{FocusEvent, document, html}
 import org.scalajs.dom.html.Div
 
 import java.time.LocalDate
@@ -43,12 +43,17 @@ object ReactDatePicker {
       id: String,
       cls: String,
       onSelect: LocalDate => CallbackTo[LocalDate],
-      initialDate: Option[LocalDate],
+      initialDate: LocalDate,
       isOpened: Boolean,
       tabIndex: Option[Int],
       keyBindings: KeyBindings
   )
-  case class State(isOpen: Boolean, editing: Option[String], selected: LocalDate) extends ModalState
+  case class State(
+      isOpen: Boolean,
+      editing: Option[String],
+      selected: LocalDate,
+      insideFlag: Boolean
+  )
 
   case class KeyBindings(
       prevDay: KeyBinding,
@@ -61,25 +66,53 @@ object ReactDatePicker {
       nextYear: Option[KeyBinding] = None
   )
 
-  class Backend(override val $: BackendScope[Props, State])(implicit val isOpenL: isOpenPath.Lens[State, Boolean])
-    extends ModalSupport[Props, State]
-  {
+  class Backend($: BackendScope[Props, State]) extends HasFocus with OnUnmount {
     private val inputRef = Ref[html.Input]
 
-    def finishSelection(validatedDate: LocalDate): Callback = $.modState { state =>
-      if (state.selected != validatedDate)
-        state.copy(selected = validatedDate)
-      else
-        state
+    override def focus: Callback =
+      inputRef.foreach(_.select())
+
+    def closeModal: Callback =
+      $.modState(_.copy(isOpen = false))
+
+    def openModal: Callback = {
+      $.modState(_.copy(isOpen = true, insideFlag = true)) >> inputRef.foreach(_.select()) >>
+        $.modStateAsync(_.copy(insideFlag = false)).delayMs(400).toCallback
     }
 
-    def onSelectDate(onSelect: LocalDate => CallbackTo[LocalDate])(e: ReactMouseEventFromHtml): Callback = {
+    def stopPropagation(evt: FocusEvent): Callback =
+      Callback(evt.stopPropagation())
+
+    def evtCancel: Callback = {
+      $.state.flatMap { state =>
+        if (state.insideFlag) $.modState(_.copy(insideFlag = false)) else cancel
+      }.async.delayMs(100).toCallback
+    }
+
+    def cancel: Callback = for {
+      props <- $.props
+      _ <- $.modState(_.copy(editing = None, selected = props.initialDate))
+      _ <- closeModal
+    } yield ()
+
+    def confirm(date: LocalDate): Callback = for {
+      _ <- closeModal
+      props <- $.props
+      validated <- props.onSelect(date)
+      _ <- finishSelection(validated)
+    } yield ()
+
+    def finishSelection(validatedDate: LocalDate): Callback = $.modState { state =>
+      if (state.selected != validatedDate) state.copy(selected = validatedDate) else state
+    }
+
+    def onSelectDate(e: ReactMouseEventFromHtml): Callback = {
       val newSelected = LocalDate.of(
         e.target.getAttribute(YearAttr.attrName).toInt,
         e.target.getAttribute(MonthAttr.attrName).toInt,
         e.target.getAttribute(DayAttr.attrName).toInt
       )
-      $.modState(_.copy(editing = None, selected = newSelected)) >> closeModal >> onSelect(newSelected).flatMap(finishSelection)
+      confirm(newSelected)
     }
 
     def parseInputChange(e: ReactFormEventFromInput): Callback = {
@@ -138,35 +171,39 @@ object ReactDatePicker {
       modifiers.forall(e.getModifierState) && unusedModifiers.forall(str => !e.getModifierState(str))
     }
 
-    def onInputKey(selected: LocalDate, initial: LocalDate, keys: KeyBindings, onSelect: LocalDate => CallbackTo[LocalDate])(e: ReactKeyboardEventFromInput): Callback = {
-      if (e.key == "Enter")
-        e.preventDefaultCB >> $.modState(_.copy(editing = None)) >> closeModal >> onSelect(selected).flatMap(finishSelection)
-      else if (e.key == "Escape")
-        e.preventDefaultCB >> $.modState(_.copy(editing = None, selected = initial)) >> closeModal
-      else if (e.key == keys.prevDay.key && validateModifiers(e, keys.prevDay.modifiers))
-        e.stopPropagationCB >> moveSelected(0, -1)
-      else if (e.key == keys.nextDay.key && validateModifiers(e, keys.nextDay.modifiers))
-        e.stopPropagationCB >> moveSelected(0, 1)
-      else if (e.key == keys.prevMonth.key && validateModifiers(e, keys.prevMonth.modifiers))
-        e.stopPropagationCB >> moveSelected(-1, 0)
-      else if (e.key == keys.nextMonth.key && validateModifiers(e, keys.nextMonth.modifiers))
-        e.stopPropagationCB >> moveSelected(1, 0)
-      else if (keys.prevWeek.exists(key => e.key == key.key && validateModifiers(e, key.modifiers)))
-        e.stopPropagationCB >> moveSelected(0, -7)
-      else if (keys.nextWeek.exists(key => e.key == key.key && validateModifiers(e, key.modifiers)))
-        e.stopPropagationCB >> moveSelected(0, 7)
-      else if (keys.prevYear.exists(key => e.key == key.key && validateModifiers(e, key.modifiers)))
-        e.stopPropagationCB >> moveSelected(-12, 0)
-      else if (keys.nextYear.exists(key => e.key == key.key && validateModifiers(e, key.modifiers)))
-        e.stopPropagationCB >> moveSelected(12, 0)
-      else
-        Callback.empty
-    }
+    def onInputKey(e: ReactKeyboardEventFromInput): Callback = for {
+      props <- $.props
+      state <- $.state
+      _ <- {
+        if (e.key == "Enter")
+          e.preventDefaultCB >> confirm(state.selected)
+        else if (e.key == "Escape")
+          e.preventDefaultCB >> cancel
+        else if (e.key == props.keyBindings.prevDay.key && validateModifiers(e, props.keyBindings.prevDay.modifiers))
+          e.stopPropagationCB >> moveSelected(0, -1)
+        else if (e.key == props.keyBindings.nextDay.key && validateModifiers(e, props.keyBindings.nextDay.modifiers))
+          e.stopPropagationCB >> moveSelected(0, 1)
+        else if (e.key == props.keyBindings.prevMonth.key && validateModifiers(e, props.keyBindings.prevMonth.modifiers))
+          e.stopPropagationCB >> moveSelected(-1, 0)
+        else if (e.key == props.keyBindings.nextMonth.key && validateModifiers(e, props.keyBindings.nextMonth.modifiers))
+          e.stopPropagationCB >> moveSelected(1, 0)
+        else if (props.keyBindings.prevWeek.exists(key => e.key == key.key && validateModifiers(e, key.modifiers)))
+          e.stopPropagationCB >> moveSelected(0, -7)
+        else if (props.keyBindings.nextWeek.exists(key => e.key == key.key && validateModifiers(e, key.modifiers)))
+          e.stopPropagationCB >> moveSelected(0, 7)
+        else if (props.keyBindings.prevYear.exists(key => e.key == key.key && validateModifiers(e, key.modifiers)))
+          e.stopPropagationCB >> moveSelected(-12, 0)
+        else if (props.keyBindings.nextYear.exists(key => e.key == key.key && validateModifiers(e, key.modifiers)))
+          e.stopPropagationCB >> moveSelected(12, 0)
+        else
+          Callback.empty
+      }
+    } yield ()
 
     def render(prop: Props, state: State): VdomTagOf[Div] = {
       <.div(^.cls := s"input-field ${prop.cls}",
-        wrapContent(state, prop.id, Array("datepicker-modal"), Array("datepicker-container")) {
-          <.div(^.cls := "datepicker-calendar-container",
+        Modal.modalDiv(state.isOpen, prop.id, Array("datepicker-modal"), Array("datepicker-container")) {
+          <.div(^.cls := "datepicker-calendar-container", ^.id := s"date-picker-container-div-${prop.id}",
             <.div(^.cls := "datepicker-calendar",
               <.div(^.id := s"datepicker-title-${prop.id}", ^.cls := "datepicker-controls", ^.role.heading, ^.aria.live.assertive,
                 <.button(^.cls := "year-prev month-prev", ^.`type` := "button", ^.onClick --> moveSelected(-12, 0), MaterialIcon("keyboard_double_arrow_left")),
@@ -175,34 +212,39 @@ object ReactDatePicker {
                 <.button(^.cls := "month-next", ^.`type` := "button", ^.onClick --> moveSelected(1, 0), MaterialIcon("keyboard_arrow_right")),
                 <.button(^.cls := "year-next month-next", ^.`type` := "button", ^.onClick --> moveSelected(12, 0), MaterialIcon("keyboard_double_arrow_right"))
               ),
-              CalendarTable.CalendarTable(CalendarTable.Props(prop.id, state.selected, onSelectDate(prop.onSelect)))
+              CalendarTable.CalendarTable(CalendarTable.Props(prop.id, state.selected, onSelectDate))
             )
           )
         },
         <.input(^.id := prop.id, ^.`type` := "text", ^.cls := "datepicker", ^.tabIndex := prop.tabIndex.getOrElse(1),
           ^.value := fillInput(state),
-          ^.onFocus --> openModal,
           ^.onChange ==> parseInputChange,
           ^.onKeyDown ==> backspaceHandling,
-          ^.onKeyUp ==> onInputKey(state.selected, prop.initialDate.getOrElse(LocalDate.now()), prop.keyBindings, prop.onSelect)
+          ^.onKeyUp ==> onInputKey
         ).withRef(inputRef)
       )
     }
   }
 
   val DatePicker: Component[Props, State, Backend, CtorType.Props] = ScalaComponent.builder[Props]
-    .initialStateFromProps(p => State(p.isOpened, None, p.initialDate.getOrElse(LocalDate.now())))
+    .initialStateFromProps(p => State(p.isOpened, None, p.initialDate, insideFlag = false))
     .backend(new Backend(_))
     .renderBackend
+    .configure(EventListener.install("focusin", _.backend.openModal))
+    .configure(EventListener[FocusEvent].install(
+      "focusout",
+      _.backend.stopPropagation,
+      comp => document.getElementById(s"date-picker-container-div-${comp.props.id}"))
+    ).configure(EventListener.install("focusout", _.backend.evtCancel))
     .build
 
 
   def apply(id: String, cls: String, onSelect: LocalDate => CallbackTo[LocalDate]): Unmounted[Props, State, Backend] =
-    apply(id, cls, onSelect, None, isOpened = false, DefaultKeyBindings)
+    apply(id, cls, onSelect, LocalDate.now(), isOpened = false, DefaultKeyBindings)
   def apply(id: String, cls: String, tabIndex: Int, onSelect: LocalDate => CallbackTo[LocalDate]): Unmounted[Props, State, Backend] =
-    apply(id, cls, onSelect, None, isOpened = false, Some(tabIndex), DefaultKeyBindings)
-  def apply(id: String, cls: String, onSelect: LocalDate => CallbackTo[LocalDate], initialDate: Option[LocalDate], isOpened: Boolean, keyBindings: KeyBindings): Unmounted[Props, State, Backend] =
+    apply(id, cls, onSelect, LocalDate.now(), isOpened = false, Some(tabIndex), DefaultKeyBindings)
+  def apply(id: String, cls: String, onSelect: LocalDate => CallbackTo[LocalDate], initialDate: LocalDate, isOpened: Boolean, keyBindings: KeyBindings): Unmounted[Props, State, Backend] =
     apply(id, cls, onSelect, initialDate, isOpened, None, keyBindings)
-  def apply(id: String, cls: String, onSelect: LocalDate => CallbackTo[LocalDate], initialDate: Option[LocalDate], isOpened: Boolean, tabIndex: Option[Int], keyBindings: KeyBindings): Unmounted[Props, State, Backend] =
+  def apply(id: String, cls: String, onSelect: LocalDate => CallbackTo[LocalDate], initialDate: LocalDate, isOpened: Boolean, tabIndex: Option[Int], keyBindings: KeyBindings): Unmounted[Props, State, Backend] =
     DatePicker.apply(Props(id, cls, onSelect, initialDate, isOpened, tabIndex, keyBindings))
 }

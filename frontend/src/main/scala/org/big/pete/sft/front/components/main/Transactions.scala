@@ -5,15 +5,16 @@ import japgolly.scalajs.react.component.Scala
 import japgolly.scalajs.react.component.Scala.BackendScope
 import japgolly.scalajs.react.component.ScalaFn.Component
 import japgolly.scalajs.react.vdom.html_<^
-import japgolly.scalajs.react.{Callback, CtorType, ReactFormEventFromInput, Reusability, ScalaComponent, ScalaFnComponent}
+import japgolly.scalajs.react.{Callback, CtorType, ReactFormEventFromInput, Ref, Reusability, ScalaComponent, ScalaFnComponent}
 import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.datepicker.ReactDatePicker
-import org.big.pete.react.{MICheckbox, MaterialIcon, TextInput}
+import org.big.pete.react.{MICheckbox, MaterialIcon, TextInput, WithFocus}
 import org.big.pete.sft.domain.{EnhancedMoneyAccount, TransactionTracking, TransactionType}
 import org.big.pete.sft.front.SftMain.{dropDownCategoryTree, dropDownMoneyAccount, dropDownTT}
 import org.big.pete.sft.front.domain.{CategoryTree, EnhancedTransaction, Order, SortingColumn}
 import org.big.pete.sft.front.helpers.{AddModal, ModalButtons}
-import org.scalajs.dom.html.Element
+import org.big.pete.sft.front.state.CheckAllId
+import org.scalajs.dom.html.{Element, Form}
 
 import java.time.LocalDate
 
@@ -103,6 +104,8 @@ object Transactions {
 
   class Backend($: BackendScope[Props, State]) {
 
+    private val formRef = Ref.toScalaComponent(formComponent)
+
     def dateChange(date: LocalDate): CallbackTo[LocalDate] = $.modState { state =>
       state.copy(date = date)
     } >> CallbackTo.pure(date)
@@ -147,7 +150,7 @@ object Transactions {
 
     def openModalAddNew: Callback = $.modState { state =>
       state.copy(isOpen = true, id = None, amount = BigDecimal(0), destAmount = Some(BigDecimal(0)), description = "")
-    }
+    } >> formRef.foreachCB(_.backend.focus)
 
     def openEditModal(trans: EnhancedTransaction): Callback = $.modState { state =>
       state.copy(
@@ -163,7 +166,7 @@ object Transactions {
         Some(trans.moneyAccountId),
         trans.destinationMoneyAccountId
       )
-    }
+    } >> formRef.foreachCB(_.backend.focus)
 
     def openDeleteModal(id: Int): Callback = $.modState { state =>
       state.copy(deleteIsOpen = true, toDelete = Some(id))
@@ -185,7 +188,7 @@ object Transactions {
       tableWrap(
         List(
           AddModal.component(AddModal.Props("add-transaction-modal", state.isOpen))(
-            transactionForm(FormProps(
+            formComponent.withRef(formRef)(FormProps(
               props.linearCats,
               props.moneyAccounts,
               state.id,
@@ -245,7 +248,7 @@ object Transactions {
       MICheckbox.component(MICheckbox.Props(
         <.th(_: _*),
         Map("check" -> true, "hide-on-med-and-down" -> true, "center-align" -> true),
-        "sft-all",
+        CheckAllId,
         "",
         MICheckbox.Status.none,
         props.checkTransaction
@@ -272,7 +275,7 @@ object Transactions {
       MICheckbox.component(MICheckbox.Props(
         <.td(_: _*),
         Map("check" -> true, "hide-on-med-and-down" -> true, "center-align" -> true),
-        props.transaction.toString,
+        props.transaction.id.toString,
         "",
         MICheckbox.Status.none,
         props.checkTransaction
@@ -303,112 +306,124 @@ object Transactions {
     )
   }
 
-  val transactionForm: Component[FormProps, CtorType.Props] = ScalaFnComponent.withReuse[FormProps] { props =>
-    <.form(
-      <.div(
-        ^.cls := "row",
-        ReactDatePicker.DatePicker(
-          ReactDatePicker.Props(
-            "add-tr-date",
-            "col s12",
-            props.dateChange,
-            Some(props.date),
-            isOpened = false,
-            Some(401),
-            ReactDatePicker.ExtendedKeyBindings
+  class FormBackend
+    extends WithFocus[ReactDatePicker.Props, ReactDatePicker.State, ReactDatePicker.Backend]
+  {
+    def render(props: FormProps): VdomTagOf[Form] = {
+      <.form(
+        <.div(
+          ^.cls := "row",
+          ReactDatePicker.DatePicker.withRef(focusRef)(
+            ReactDatePicker.Props(
+              "add-tr-date",
+              "col s12",
+              props.dateChange,
+              props.date,
+              isOpened = false,
+              Some(401),
+              ReactDatePicker.ExtendedKeyBindings
+            )
           )
-        )
-      ),
-      <.div(
-        ^.cls := "row",
-        dropDownTT.component(dropDownTT.Props(
-          "add-tr-tt",
-          "Transaction Type",
-          TransactionType.values.toList,
-          _.toString,
-          _.toString,
-          props.ttChange,
-          Some(props.transactionType),
-          402,
-          List("col", "s12")
-        ))
-      ),
-      <.div(
-        ^.cls := "row",
-        TextInput(
-          "add-tr-amount",
-          "Amount",
-          props.amount.toString(),
-          props.amountChange,
-          403,
-          List("col", "s12")
-        )
-      ),
-      <.div(
-        ^.cls := "row",
-        TextInput("add-tr-description", "Description", props.description, props.descriptionChange, 404, List("col", "s12"))
-      ),
-      <.div(
-        ^.cls := "row",
-        dropDownCategoryTree.component(
-          dropDownCategoryTree.Props(
-            "add-tr-category",
-            "Category",
-            props.linearCats,
-            CategoryTree.name,
-            cat => s"k-cat-${cat.id}",
-            props.categoryChange,
-            props.categoryId.flatMap(id => props.linearCats.find(_.id == id)),
-            405,
+        ),
+        <.div(
+          ^.cls := "row",
+          dropDownTT.component(
+            dropDownTT.Props(
+              "add-tr-tt",
+              "Transaction Type",
+              TransactionType.values.toList,
+              _.toString,
+              _.toString,
+              props.ttChange,
+              Some(props.transactionType),
+              402,
+              List("col", "s12")
+            )
+          )
+        ),
+        <.div(
+          ^.cls := "row",
+          TextInput(
+            "add-tr-amount",
+            "Amount",
+            props.amount.toString(),
+            props.amountChange,
+            403,
             List("col", "s12")
           )
-        )
-      ),
-      <.div(
-        ^.cls := "row",
-        dropDownMoneyAccount.component(
-          dropDownMoneyAccount.Props(
-            "add-tr-ma",
-            "Money Account",
-            props.moneyAccounts.values.toList,
-            _.name,
-            ma => s"k-ma-${ma.id}",
-            props.maChange,
-            props.moneyAccountId.flatMap(id => props.moneyAccounts.get(id)),
-            406,
+        ),
+        <.div(
+          ^.cls := "row",
+          TextInput("add-tr-description", "Description", props.description, props.descriptionChange, 404, List("col", "s12"))
+        ),
+        <.div(
+          ^.cls := "row",
+          dropDownCategoryTree.component(
+            dropDownCategoryTree.Props(
+              "add-tr-category",
+              "Category",
+              props.linearCats,
+              CategoryTree.name,
+              cat => s"k-cat-${cat.id}",
+              props.categoryChange,
+              props.categoryId.flatMap(id => props.linearCats.find(_.id == id)),
+              405,
+              List("col", "s12")
+            )
+          )
+        ),
+        <.div(
+          ^.cls := "row",
+          dropDownMoneyAccount.component(
+            dropDownMoneyAccount.Props(
+              "add-tr-ma",
+              "Money Account",
+              props.moneyAccounts.values.toList,
+              _.name,
+              ma => s"k-ma-${ma.id}",
+              props.maChange,
+              props.moneyAccountId.flatMap(id => props.moneyAccounts.get(id)),
+              406,
+              List("col", "s12")
+            )
+          )
+        ),
+        <.div(
+          ^.cls := "row",
+          dropDownMoneyAccount.component(
+            dropDownMoneyAccount.Props(
+              "add-tr-ma-dest",
+              "Destination Money Account",
+              props.moneyAccounts.values.toList,
+              _.name,
+              ma => s"k-ma-${ma.id}",
+              props.destinationMAChange,
+              props.destMAId.flatMap(id => props.moneyAccounts.get(id)),
+              407,
+              List("col", "s12")
+            )
+          )
+        ).when(props.transactionType == TransactionType.Transfer),
+        <.div(
+          ^.cls := "row",
+          TextInput(
+            "add-tr-amount-dest",
+            "Destination Amount",
+            props.destAmount.map(_.toString()).getOrElse(""),
+            props.destinationAmountChange,
+            408,
             List("col", "s12")
           )
-        )
-      ),
-      <.div(
-        ^.cls := "row",
-        dropDownMoneyAccount.component(
-          dropDownMoneyAccount.Props(
-            "add-tr-ma-dest",
-            "Destination Money Account",
-            props.moneyAccounts.values.toList,
-            _.name,
-            ma => s"k-ma-${ma.id}",
-            props.destinationMAChange,
-            props.destMAId.flatMap(id => props.moneyAccounts.get(id)),
-            407,
-            List("col", "s12")
-          )
-        )
-      ).when(props.transactionType == TransactionType.Transfer),
-      <.div(
-        ^.cls := "row",
-        TextInput(
-          "add-tr-amount-dest",
-          "Destination Amount",
-          props.destAmount.map(_.toString()).getOrElse(""),
-          props.destinationAmountChange,
-          408,
-          List("col", "s12")
-        )
-      ).when(props.transactionType == TransactionType.Transfer),
-      ModalButtons(props.id.map(_ => "Save").getOrElse("Add"), 410, props.save, props.close)
-    )
+        ).when(props.transactionType == TransactionType.Transfer),
+        ModalButtons(props.id.map(_ => "Save").getOrElse("Add"), 410, props.save, props.close)
+      )
+    }
   }
+
+  val formComponent: Scala.Component[FormProps, Unit, FormBackend, CtorType.Props] = ScalaComponent.builder[FormProps]
+    .stateless
+    .renderBackend[FormBackend]
+    .configure(Reusability.shouldComponentUpdate)
+    .build
 
 }

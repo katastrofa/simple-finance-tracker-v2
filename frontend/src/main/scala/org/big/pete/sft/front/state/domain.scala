@@ -1,5 +1,7 @@
 package org.big.pete.sft.front.state
 
+import io.circe.{Decoder, Encoder}
+import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 import japgolly.scalajs.react.extra.router.RouterCtl
 import org.big.pete.sft.domain.{Account, Category, Currency, EnhancedMoneyAccount, Transaction, TransactionTracking, TransactionType}
 import org.big.pete.sft.front.SftMain.SftPages
@@ -12,8 +14,6 @@ import java.time.LocalDate
 case class Props(
     router: RouterCtl[SftPages],
     activePage: SftPages,
-    initialFrom: LocalDate,
-    initialTo: LocalDate,
     apiBase: String
 )
 
@@ -40,6 +40,14 @@ case class State(
     displayTransactions: List[EnhancedTransaction]
 )
 
-object domain {
+case class BrowserSettings(
+    from: LocalDate,
+    to: LocalDate
+)
 
+object Implicits {
+  implicit val browserSettingsEncoder: Encoder[BrowserSettings] = deriveEncoder[BrowserSettings]
+  implicit val browserSettingsDecoder: Decoder[BrowserSettings] = deriveDecoder[BrowserSettings]
 }
+
+object domain {}

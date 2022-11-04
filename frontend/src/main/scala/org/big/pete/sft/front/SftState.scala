@@ -5,7 +5,7 @@ import japgolly.scalajs.react.callback.{AsyncCallback, Callback, CallbackTo}
 import japgolly.scalajs.react.component.Scala.{BackendScope, Component, Unmounted}
 import org.big.pete.sft.domain.{Account, Currency}
 import org.big.pete.sft.front.SftMain.{AccountsSelectionPage, SftPages}
-import org.big.pete.sft.front.state.{DataUpdate, DefaultSorting, Filtering, Props, State, TransactionsProcessing}
+import org.big.pete.sft.front.state.{CookieStorage, DataUpdate, DefaultSorting, Filtering, Props, State, TransactionsProcessing}
 import org.big.pete.sft.front.domain.{Order, SortingColumn}
 import org.big.pete.sft.front.utilz.getAccountPermalink
 
@@ -28,6 +28,7 @@ object SftState {
         state <- $.state
         props <- $.props
         from <- updateFrom(state)
+        _ = CookieStorage.updateBrowserSettings(CookieStorage.getBrowserSettings.copy(from = from))
         account = getAccountPermalink(props.activePage)
         _ <- if (account.isDefined) refreshAccount(account.get).toCallback else Callback.empty
       } yield from
@@ -38,6 +39,7 @@ object SftState {
         state <- $.state
         props <- $.props
         to <- if (newTo.isAfter(state.from)) $.setState(state.copy(to = newTo)) >> CallbackTo.pure(newTo) else CallbackTo.pure(state.to)
+        _ = CookieStorage.updateBrowserSettings(CookieStorage.getBrowserSettings.copy(to = to))
         account = getAccountPermalink(props.activePage)
         _ <- if (account.isDefined) refreshAccount(account.get).toCallback else Callback.empty
       } yield to
@@ -128,7 +130,7 @@ object SftState {
   }
 
   val component: Component[Props, State, Backend, CtorType.Props] = ScalaComponent.builder[Props]
-    .initialStateFromProps(p => State(p.initialFrom, p.initialTo, None, Set.empty, Set.empty, "", Set.empty, Set.empty, Set.empty, DefaultSorting, List.empty, List.empty, Map.empty, Map.empty, List.empty, List.empty, List.empty))
+    .initialStateFromProps(_ => State(CookieStorage.getBrowserSettings.from, CookieStorage.getBrowserSettings.to, None, Set.empty, Set.empty, "", Set.empty, Set.empty, Set.empty, DefaultSorting, List.empty, List.empty, Map.empty, Map.empty, List.empty, List.empty, List.empty))
     .renderBackend[Backend]
     .componentDidMount(component => component.backend.onPageClick(component.props.activePage, None))
     .build

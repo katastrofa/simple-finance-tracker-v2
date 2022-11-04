@@ -5,13 +5,10 @@ import japgolly.scalajs.react.component.Scala.Component
 import japgolly.scalajs.react.extra.router.{BaseUrl, RouterCtl, RouterWithProps, RouterWithPropsConfig, RouterWithPropsConfigDsl, SetRouteVia}
 import japgolly.scalajs.react.vdom.VdomElement
 import org.big.pete.sft.front.SftMain.{AccountsSelectionPage, CategoriesPage, MoneyAccountsPage, SftPages, TransactionsPage}
-import org.big.pete.sft.front.state
-
-import java.time.LocalDate
 
 
 object Routing {
-  case class Props(initialFrom: LocalDate, initialTo: LocalDate, apiBase: String)
+  case class Props(apiBase: String)
 
   class Backend() {
 
@@ -19,8 +16,6 @@ object Routing {
       SftState.component.apply(state.Props(
         router,
         activePage,
-        props.initialFrom,
-        props.initialTo,
         props.apiBase
       ))
     }

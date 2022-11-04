@@ -1,11 +1,12 @@
 package org.big.pete.sft.server
 
+import cats.Monad
 import cats.data.Kleisli
 import cats.effect.{Async, Resource}
 import cats.implicits.catsSyntaxApplicativeError
 import cats.syntax.{FlatMapSyntax, FunctorSyntax, SemigroupKSyntax}
 import com.comcast.ip4s.{Ipv4Address, Port}
-import fs2.Stream
+import fs2.{Chunk, Stream}
 import fs2.io.net.tls.TLSContext
 import org.big.pete.cache.BpCache
 import org.big.pete.sft.domain.{Account, AccountEdit, ApiAction, Category, CategoryDeleteStrategies, MoneyAccount, MoneyAccountDeleteStrategy, TrackingEdit, Transaction}
@@ -14,12 +15,12 @@ import org.big.pete.sft.server.api.{Categories, General, MoneyAccounts, Transact
 import org.big.pete.sft.server.auth.AuthHelper
 import org.big.pete.sft.server.auth.domain.AuthUser
 import org.big.pete.sft.server.security.AccessHelper
-import org.http4s.{AuthedRequest, AuthedRoutes, HttpRoutes, MediaType, QueryParamDecoder, Request, Response, StaticFile}
+import org.http4s.{AuthedRequest, AuthedRoutes, CacheDirective, Headers, HttpDate, HttpRoutes, MediaType, QueryParamDecoder, Request, Response, headers}
+import org.http4s.Charset.`UTF-8`
+import org.http4s.EntityEncoder
 import org.http4s.circe.CirceEntityDecoder._
-import org.http4s.circe.CirceEntityEncoder._
 import org.http4s.dsl.Http4sDsl
 import org.http4s.ember.server.EmberServerBuilder
-import org.http4s.headers.`Content-Type`
 import org.http4s.server.staticcontent.{FileService, fileService}
 import org.http4s.server.{AuthMiddleware, Router}
 import org.typelevel.log4cats.slf4j.Slf4jLogger
@@ -67,10 +68,26 @@ class SftV2Server[F[_]: Async](
   }
 
   val apiRoutes: AuthedRoutes[AuthUser, F] = AuthedRoutes.of(recovery {
-    case request @ GET -> Root as _ =>
-      StaticFile.fromPath(fs2.io.file.Path("./frontend/src/main/assets/index-main.html"), Some(request.req))
-        .map(_.withContentType(`Content-Type`(MediaType.text.html)))
-        .getOrElseF(NotFound())
+    case _ @ GET -> Root as _ =>
+      val htmlDataF = fs2.io.file.Files[F].readAll(fs2.io.file.Path("./frontend/src/main/assets/index-main.html"))
+        .through(fs2.text.utf8.decode)
+        .map(_.replace("{current}", System.currentTimeMillis().toString))
+        .compile.string
+
+      //      StaticFile.fromPath(fs2.io.file.Path("./frontend/src/main/assets/index-main.html"), Some(request.req))
+      //        .map(_.withContentType(`Content-Type`(MediaType.text.html)))
+      //        .getOrElseF(NotFound())
+
+      Ok.apply(htmlDataF)(
+        implicitly[Monad[F]],
+        EntityEncoder.simple[String](headers.`Content-Type`(MediaType.text.html))(s => Chunk.array(s.getBytes(`UTF-8`.nioCharset)))
+      ).map {
+        _.withHeaders(Headers(
+          headers.Expires(HttpDate.MinValue),
+          headers.`Cache-Control`(CacheDirective.`no-cache`(), CacheDirective.`no-store`, CacheDirective.`must-revalidate`)
+        ))
+      }
+
     case GET -> Root / "api" as user =>
       Ok(s"api for ${user.db.displayName}")
 

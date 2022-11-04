@@ -3,6 +3,7 @@ package org.big.pete.sft.front.state
 import japgolly.scalajs.react.Callback
 import org.big.pete.BPJson
 import org.big.pete.react.MICheckbox
+import org.big.pete.react.MICheckbox.Status
 import org.big.pete.sft.domain.{EnhancedMoneyAccount, TrackingEdit, Transaction, TransactionTracking, TransactionType}
 import org.big.pete.sft.front.domain.MAUpdateAction
 import org.big.pete.sft.front.utilz.getAccountPermalink
@@ -14,7 +15,14 @@ trait TransactionsProcessing extends DataLoad {
   import org.big.pete.sft.domain.Implicits._
 
   def checkTransaction(status: MICheckbox.Status, id: String): Callback = $.modState { state =>
-    state.copy(checkedTransactions = modStateForSet(status, state, _.checkedTransactions, id.toInt))
+    if (id == CheckAllId) {
+      status match {
+        case Status.none => state.copy(checkedTransactions = Set.empty)
+        case Status.indeterminate => state
+        case Status.checkedStatus => state.copy(checkedTransactions = state.displayTransactions.map(_.id).toSet)
+      }
+    } else
+      state.copy(checkedTransactions = modStateForSet(status, state, _.checkedTransactions, id.toInt))
   }
 
   def saveTransaction(

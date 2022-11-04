@@ -21,4 +21,6 @@ package object state {
       MAUpdateOperation.Remove -> AddBigDecimals
     ),
   )
+
+  final val CheckAllId = "sft-all"
 }

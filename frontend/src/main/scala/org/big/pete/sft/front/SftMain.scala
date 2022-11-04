@@ -7,7 +7,6 @@ import org.big.pete.sft.front.domain.CategoryTree
 import org.big.pete.sft.front.domain.Implicits._
 import org.scalajs.dom.document
 
-import java.time.LocalDate
 import scala.scalajs.js.annotation.JSExport
 
 
@@ -25,11 +24,9 @@ object SftMain {
 
   @JSExport
   def main(args: Array[String]): Unit = {
-    val from = LocalDate.now().withDayOfMonth(1)
-    val to = LocalDate.now().plusMonths(1L).withDayOfMonth(1).minusDays(1L)
     val baseUrl = (BaseUrl.fromWindowOrigin + "/api").value
 
-    val route = Routing.component.apply(Routing.Props(from, to, baseUrl))
+    val route = Routing.component.apply(Routing.Props(baseUrl))
     route.renderIntoDOM(document.getElementById("sft-full"))
     ()
   }

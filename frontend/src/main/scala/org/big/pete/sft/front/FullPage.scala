@@ -101,7 +101,7 @@ object FullPage extends EffectSyntax {
       ReactFragment(
         <.header(
           /// TODO: save date change to cookie
-          TopHeader.component(TopHeader.Props(Some(props.from), Some(props.to), props.setFromDate, props.setToDate)),
+          TopHeader.component(TopHeader.Props(props.from, props.to, props.setFromDate, props.setToDate)),
           Sidenav.component(Sidenav.Props(
             Sidenav.TopProps(props.router, props.activePage, props.onPageChange),
             SidenavFilters.Props(

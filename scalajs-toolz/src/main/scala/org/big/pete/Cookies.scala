@@ -8,8 +8,8 @@ import scalajs.js.annotation.JSImport
 
 /// Facade for https://github.com/js-cookie/js-cookie/tree/latest
 @js.native
-@JSImport("js-cookie", "Cookies")
-class JsCookie extends js.Object {
+@JSImport("js-cookie", JSImport.Default)
+object Cookies extends js.Object {
 
   def get(): js.Dictionary[String] = js.native
   @nowarn
