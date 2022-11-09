@@ -44,7 +44,8 @@ object TestMain {
       (x: TestItem) => x.name,
       (x: TestItem) => s"id-${x.id}",
       (x: TestItem) => Callback.log(s"${x.id} - ${x.name} - ${x.unused}"),
-      None
+      None,
+      15
     )
     console.log(ddTestClass)
     ddTestClass.component.apply(props).renderIntoDOM(document.getElementById("me-dropdown"))

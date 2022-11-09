@@ -2,7 +2,7 @@ package org.big.pete.react
 
 import japgolly.scalajs.react.component.Scala.{BackendScope, Component, Unmounted}
 import japgolly.scalajs.react.extra.{EventListener, OnUnmount}
-import japgolly.scalajs.react.{Callback, CtorType, ReactFormEventFromInput, Reusability, ScalaComponent}
+import japgolly.scalajs.react.{Callback, CtorType, ReactFormEventFromInput, ReactKeyboardEventFromInput, Reusability, ScalaComponent}
 import japgolly.scalajs.react.vdom.html_<^._
 import org.scalajs.dom.html.Div
 
@@ -14,23 +14,34 @@ object TextInput {
       value: String,
       onChange: ReactFormEventFromInput => Callback,
       tabIndex: Int = -1,
-      classes: List[String] = List.empty
+      classes: List[String] = List.empty,
+      onEnterHit: Callback = Callback.empty
   )
   case class State(focus: Boolean)
 
-  implicit val propsReuse: Reusability[Props] = Reusability.caseClassExcept[Props]("onChange")
+  implicit val propsReuse: Reusability[Props] = Reusability.caseClassExcept[Props]("onChange", "onEnterHit")
   implicit val stateReuse: Reusability[State] = Reusability.derive[State]
 
-  class Backend($: BackendScope[Props, State]) extends OnUnmount {
+  class Backend($: BackendScope[Props, State]) extends OnUnmount with WithInputFocus {
     def isActive(props: Props, state: State): Boolean =
       props.value.nonEmpty || state.focus
 
-    def focusIn: Callback = $.modState(_.copy(true))
+    def focusIn: Callback = $.modState(_.copy(true)) >> inputRef.foreach(_.select())
     def focusOut: Callback = $.modState(_.copy(false))
+
+    def keyPress(onEnterHit: Callback)(evt: ReactKeyboardEventFromInput): Callback = {
+      if (evt.key == "Enter")
+        onEnterHit
+      else
+        Callback.empty
+    }
 
     def render(props: Props, state: State): VdomTagOf[Div] = {
       <.div(^.cls := (List("input-field") ++ props.classes).mkString(" "),
-        <.input(^.id := props.id, ^.`type` := "text", ^.value := props.value, ^.tabIndex := props.tabIndex, ^.onChange ==> props.onChange),
+        <.input(^.id := props.id, ^.`type` := "text", ^.value := props.value, ^.tabIndex := props.tabIndex,
+          ^.onChange ==> props.onChange,
+          ^.onKeyPress ==> keyPress(props.onEnterHit)
+        ).withRef(inputRef),
         <.label(^.`for` := props.id, ^.classSet("active" -> isActive(props, state)), props.label)
       )
     }

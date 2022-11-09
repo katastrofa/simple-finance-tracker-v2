@@ -80,6 +80,7 @@ object FullPage extends EffectSyntax {
             props.displayTransactions,
             CategoryTree.makeLinearCats(props.categoryTree),
             props.moneyAccounts,
+            props.checkedTransactions,
             props.ordering,
             props.clickOrdering,
             props.checkTransaction,

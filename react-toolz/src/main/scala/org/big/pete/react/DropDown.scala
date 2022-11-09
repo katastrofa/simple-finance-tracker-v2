@@ -1,10 +1,9 @@
 package org.big.pete.react
 
-import japgolly.scalajs.react.{Callback, CtorType, ReactFormEventFromInput, ReactKeyboardEventFromInput, ReactMouseEventFromHtml, Ref, Reusability, ScalaComponent}
+import japgolly.scalajs.react.{Callback, CtorType, ReactFormEventFromInput, ReactKeyboardEventFromInput, ReactMouseEventFromHtml, Reusability, ScalaComponent}
 import japgolly.scalajs.react.component.Scala.{BackendScope, Component}
 import japgolly.scalajs.react.extra.{EventListener, OnUnmount}
 import japgolly.scalajs.react.vdom.html_<^._
-import org.scalajs.dom.html
 import org.scalajs.dom.html.Div
 
 import scala.annotation.{nowarn, tailrec}
@@ -21,18 +20,17 @@ class DropDown[T: Reusability] {
       onSelect: T => Callback,
       selected: Option[T],
       tabIndex: Int = -1,
-      classes: List[String] = List.empty
+      classes: List[String] = List.empty,
+      onEnterHit: Callback = Callback.empty
   )
   case class State(text: String, focus: Boolean, filteredItems: List[T], traversing: Option[T])
 
-  implicit val propsReuse: Reusability[Props] = Reusability.caseClassExcept[Props]("onSelect", "display", "itemKey")
+  implicit val propsReuse: Reusability[Props] = Reusability.caseClassExcept[Props]("onSelect", "display", "itemKey", "onEnterHit")
   implicit val stateReuse: Reusability[State] = Reusability.derive[State]
 
 
   /// TODO: css
-  class Backend($: BackendScope[Props, State]) extends OnUnmount {
-
-    private val inputRef = Ref[html.Input]
+  class Backend($: BackendScope[Props, State]) extends OnUnmount with WithInputFocus {
 
     def isActive(state: State): Boolean =
       state.text.nonEmpty || state.focus
@@ -131,29 +129,23 @@ class DropDown[T: Reusability] {
     })
 
     def onInputKey(e: ReactKeyboardEventFromInput): Callback = {
-      val logKeyAndSelected = for {
-        s <- $.state
-        p <- $.props
-        _ <- Callback.log(s"${e.key} - ${s.traversing.map(i => p.display(i))}")
-      } yield ()
-
       if (e.key == "Enter") {
         for {
-          _ <- e.preventDefaultCB
-          _ <- logKeyAndSelected
+//          _ <- e.preventDefaultCB
           props <- $.props
           state <- $.state
           selected = getCurrentTraversal(state)
           _ <- if (selected.isDefined) onSelect(props, selected.get) else onCancel(props)
+          _ <- props.onEnterHit
         } yield ()
       } else if (e.key == "Escape")
-        e.preventDefaultCB >> logKeyAndSelected >> $.props >>= onCancel
+        e.preventDefaultCB >> $.props >>= onCancel
       else if (e.key == "ArrowUp")
-        e.preventDefaultCB >> logKeyAndSelected >> moveTraversal(-1)
+        e.preventDefaultCB >> moveTraversal(-1)
       else if (e.key == "ArrowDown")
-        e.preventDefaultCB >> logKeyAndSelected >> moveTraversal(1)
+        e.preventDefaultCB >> moveTraversal(1)
       else
-        logKeyAndSelected >> Callback.empty
+        Callback.empty
     }
 
     def render(props: Props, state: State): VdomTagOf[Div] = {

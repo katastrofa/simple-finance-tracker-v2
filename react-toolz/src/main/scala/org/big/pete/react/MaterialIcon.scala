@@ -1,8 +1,8 @@
 package org.big.pete.react
 
 import japgolly.scalajs.react.callback.Callback
-import japgolly.scalajs.react.{CtorType, ScalaComponent}
-import japgolly.scalajs.react.component.Scala.{Component, Unmounted}
+import japgolly.scalajs.react.{CtorType, Reusability, ScalaFnComponent}
+import japgolly.scalajs.react.component.ScalaFn
 import japgolly.scalajs.react.vdom.html_<^._
 
 
@@ -19,28 +19,32 @@ object MaterialIcon {
 
   case class Props(dom: DomType, size: Size, icon: String, onClick: Callback, additionalClasses: Set[String])
 
-  val Icon: Component[Props, Unit, Unit, CtorType.Props] = ScalaComponent.builder[Props].stateless.noBackend
-    .render_P { props =>
-      val sizeClass = props.size match {
-        case `small` => "small"
-        case `midMedium` => "mid-medium"
-        case `medium` => "medium"
-        case `large` => "large"
-      }
-      val classes = (Set("material-icons", sizeClass) ++ props.additionalClasses).mkString(" ")
+  implicit val domTypeReuse: Reusability[DomType] = Reusability.byRefOr_==[DomType]
+  implicit val sizeReuse: Reusability[Size] = Reusability.byRefOr_==[Size]
+  implicit val propsReuse: Reusability[Props] = Reusability.caseClassExcept[Props]("onClick")
 
-      props.dom match {
-        case `span` => <.span(^.cls := classes, ^.onClick --> props.onClick, props.icon)
-        case `i` => <.i(^.cls := classes, ^.onClick --> props.onClick, props.icon)
-      }
-    }.build
 
-  def apply(icon: String): Unmounted[Props, Unit, Unit] =
+  val Icon: ScalaFn.Component[Props, CtorType.Props] = ScalaFnComponent.withReuse[Props] { props =>
+    val sizeClass = props.size match {
+      case `small` => "small"
+      case `midMedium` => "mid-medium"
+      case `medium` => "medium"
+      case `large` => "large"
+    }
+    val classes = (Set("material-icons", sizeClass) ++ props.additionalClasses).mkString(" ")
+
+    props.dom match {
+      case `span` => <.span(^.cls := classes, ^.onClick --> props.onClick, props.icon)
+      case `i` => <.i(^.cls := classes, ^.onClick --> props.onClick, props.icon)
+    }
+  }
+
+  def apply(icon: String): ScalaFn.Unmounted[Props] =
     Icon(Props(i, small, icon, Callback.empty, Set.empty))
-  def apply(icon: String, additionalClasses: Set[String]) =
+  def apply(icon: String, additionalClasses: Set[String]): ScalaFn.Unmounted[Props] =
     Icon(Props(i, small, icon, Callback.empty, additionalClasses))
-  def apply(icon: String, onClick: Callback): Unmounted[Props, Unit, Unit] =
+  def apply(icon: String, onClick: Callback): ScalaFn.Unmounted[Props] =
     Icon(Props(i, small, icon, onClick, Set.empty))
-  def apply(dom: DomType, size: Size, icon: String, onClick: Callback): Unmounted[Props, Unit, Unit] =
+  def apply(dom: DomType, size: Size, icon: String, onClick: Callback): ScalaFn.Unmounted[Props] =
     Icon(Props(dom, size, icon, onClick, Set.empty))
 }

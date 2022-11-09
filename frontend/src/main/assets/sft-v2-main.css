@@ -8,6 +8,10 @@ body {
   max-width: 10rem;
 }
 
+.pointer {
+  cursor: pointer !important;
+}
+
 .sidenav .collapsible li, .sidenav.fixed .collapsible li {
   display: block;
 }
@@ -26,9 +30,22 @@ body {
   line-height: 32px;
 }
 
+.modal {
+  max-height: 90%;
+}
+
 .modal.open {
   display: block;
   z-index: 1000;
+}
+
+.modal input {
+  font-size: 14px;
+}
+
+.modal .input-field {
+  margin-top: 0.5rem;
+  margin-bottom: 0.3rem;
 }
 
 .modal button.btn {
@@ -38,6 +55,14 @@ body {
 
 .modal button.btn i {
   margin-right: 0.5rem;
+}
+
+.modal-content .container {
+  font-size: 12px;
+}
+
+.modal-content .container .row {
+  margin-bottom: 4px;
 }
 
 a.btn.nice {
@@ -125,16 +150,29 @@ table.sft td.date, table.sft th.date {
 }
 
 table.sft td.amount, table.sft th.amount {
-  width: 7rem;
+  width: 12rem;
 }
 
-table.sft td.status, table.sft th.status {
+table.sft td.category, table.sft th.category {
+  width: 15rem;
+}
+
+table.sft td.money-account, table.sft th.money-account {
+  width: 15rem;
+}
+
+table.sft td.status, table.sft th.status, table.sft td.delete, table.sft th.delete {
   width: 2.5rem;
 }
 
 table.sft td.currency, table.sft th.currency {
   width: 7rem;
 }
+
+i.small {
+  vertical-align: middle;
+}
+
 
 @media only screen and (min-width: 993px) {
   body.has-fixed-sidenav {

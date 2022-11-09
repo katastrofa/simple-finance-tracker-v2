@@ -120,13 +120,13 @@ object Accounts {
     <.tr(
       <.td(^.cls := "hide-on-small-only id right-align", account.id.toString),
       <.td(^.cls := "name",
+        MaterialIcon.Icon(MaterialIcon.Props(MaterialIcon.i, MaterialIcon.small, "edit", props.openEditModal(account), Set("right"))),
         <.a(
           ^.href := props.router.urlFor(TransactionsPage(account.permalink)).value,
           ^.onClick ==> (e => props.router.setEH(TransactionsPage(account.permalink))(e) >>
             props.onPageChange(TransactionsPage(account.permalink), Some(props.activePage))),
           account.name
-        ),
-        MaterialIcon("edit", props.openEditModal(account))
+        )
       ),
       <.td(^.cls := "permalink", account.permalink)
     )

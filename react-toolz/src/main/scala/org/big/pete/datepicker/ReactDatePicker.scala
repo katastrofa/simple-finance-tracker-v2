@@ -3,7 +3,7 @@ package org.big.pete.datepicker
 import japgolly.scalajs.react.callback.CallbackTo
 import japgolly.scalajs.react.component.Scala.{Component, Unmounted}
 import japgolly.scalajs.react.extra.{EventListener, OnUnmount}
-import japgolly.scalajs.react.{BackendScope, Callback, CtorType, ReactFormEventFromInput, ReactKeyboardEventFromInput, ReactMouseEventFromHtml, Ref, ScalaComponent}
+import japgolly.scalajs.react.{BackendScope, Callback, CtorType, ReactFormEventFromInput, ReactKeyboardEventFromInput, ReactMouseEventFromHtml, Ref, Reusability, ScalaComponent}
 import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.datepicker.parts.CalendarTable.{DayAttr, MonthAttr, YearAttr}
 import org.big.pete.datepicker.parts.CalendarTable
@@ -46,7 +46,8 @@ object ReactDatePicker {
       initialDate: LocalDate,
       isOpened: Boolean,
       tabIndex: Option[Int],
-      keyBindings: KeyBindings
+      keyBindings: KeyBindings,
+      onEnterHit: Callback
   )
   case class State(
       isOpen: Boolean,
@@ -65,6 +66,12 @@ object ReactDatePicker {
       prevYear: Option[KeyBinding] = None,
       nextYear: Option[KeyBinding] = None
   )
+
+  implicit val keyBindingReuse: Reusability[KeyBinding] = Reusability.derive[KeyBinding]
+  implicit val keyBindingsReuse: Reusability[KeyBindings] = Reusability.derive[KeyBindings]
+  implicit val propsReuse: Reusability[Props] = Reusability.caseClassExcept[Props]("onSelect", "onEnterHit")
+  implicit val stateReuse: Reusability[State] = Reusability.derive[State]
+
 
   class Backend($: BackendScope[Props, State]) extends HasFocus with OnUnmount {
     private val inputRef = Ref[html.Input]
@@ -176,7 +183,7 @@ object ReactDatePicker {
       state <- $.state
       _ <- {
         if (e.key == "Enter")
-          e.preventDefaultCB >> confirm(state.selected)
+          confirm(state.selected) >> props.onEnterHit
         else if (e.key == "Escape")
           e.preventDefaultCB >> cancel
         else if (e.key == props.keyBindings.prevDay.key && validateModifiers(e, props.keyBindings.prevDay.modifiers))
@@ -236,6 +243,7 @@ object ReactDatePicker {
       _.backend.stopPropagation,
       comp => document.getElementById(s"date-picker-container-div-${comp.props.id}"))
     ).configure(EventListener.install("focusout", _.backend.evtCancel))
+    .configure(Reusability.shouldComponentUpdate)
     .build
 
 
@@ -246,5 +254,5 @@ object ReactDatePicker {
   def apply(id: String, cls: String, onSelect: LocalDate => CallbackTo[LocalDate], initialDate: LocalDate, isOpened: Boolean, keyBindings: KeyBindings): Unmounted[Props, State, Backend] =
     apply(id, cls, onSelect, initialDate, isOpened, None, keyBindings)
   def apply(id: String, cls: String, onSelect: LocalDate => CallbackTo[LocalDate], initialDate: LocalDate, isOpened: Boolean, tabIndex: Option[Int], keyBindings: KeyBindings): Unmounted[Props, State, Backend] =
-    DatePicker.apply(Props(id, cls, onSelect, initialDate, isOpened, tabIndex, keyBindings))
+    DatePicker.apply(Props(id, cls, onSelect, initialDate, isOpened, tabIndex, keyBindings, Callback.empty))
 }

@@ -176,7 +176,7 @@ object Categories {
     <.tr(
       <.td(^.cls := "id hide-on-small-only right-align", props.category.id.toString),
       <.td(
-        ^.cls := "name",
+        ^.cls := "name pointer",
         ^.onClick --> props.openEditModal(props.category),
         CategoryTree.name(props.category)
       ),

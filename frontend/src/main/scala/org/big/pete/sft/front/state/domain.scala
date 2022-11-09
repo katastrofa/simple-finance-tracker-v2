@@ -45,9 +45,19 @@ case class BrowserSettings(
     to: LocalDate
 )
 
+case class AddTransactionSetup(
+    date: LocalDate,
+    transactionType: TransactionType,
+    categoryId: Option[Int],
+    moneyAccountId: Option[Int],
+    destMAId: Option[Int]
+)
+
 object Implicits {
   implicit val browserSettingsEncoder: Encoder[BrowserSettings] = deriveEncoder[BrowserSettings]
   implicit val browserSettingsDecoder: Decoder[BrowserSettings] = deriveDecoder[BrowserSettings]
+  implicit val addTransactionSetupEncoder: Encoder[AddTransactionSetup] = deriveEncoder[AddTransactionSetup]
+  implicit val addTransactionSetupDecoder: Decoder[AddTransactionSetup] = deriveDecoder[AddTransactionSetup]
 }
 
 object domain {}

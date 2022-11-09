@@ -201,7 +201,7 @@ object MoneyAccounts {
     <.tr(
       <.td(^.cls := "id hide-on-small-only right-align", props.account.id.toString),
       <.td(
-        ^.cls := "name",
+        ^.cls := "name pointer",
         ^.onClick --> props.openEditModal(props.account),
         props.account.name
       ),
@@ -257,7 +257,8 @@ object MoneyAccounts {
               props.created,
               isOpened = false,
               Some(304),
-              ReactDatePicker.ExtendedKeyBindings
+              ReactDatePicker.ExtendedKeyBindings,
+              Callback.empty
             )
           )
         ),

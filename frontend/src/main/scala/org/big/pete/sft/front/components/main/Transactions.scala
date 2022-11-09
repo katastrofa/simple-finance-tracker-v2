@@ -8,12 +8,13 @@ import japgolly.scalajs.react.vdom.html_<^
 import japgolly.scalajs.react.{Callback, CtorType, ReactFormEventFromInput, Ref, Reusability, ScalaComponent, ScalaFnComponent}
 import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.datepicker.ReactDatePicker
-import org.big.pete.react.{MICheckbox, MaterialIcon, TextInput, WithFocus}
+import org.big.pete.react.{HasFocus, MICheckbox, MaterialIcon, TextInput, WithFocus}
 import org.big.pete.sft.domain.{EnhancedMoneyAccount, TransactionTracking, TransactionType}
 import org.big.pete.sft.front.SftMain.{dropDownCategoryTree, dropDownMoneyAccount, dropDownTT}
 import org.big.pete.sft.front.domain.{CategoryTree, EnhancedTransaction, Order, SortingColumn}
-import org.big.pete.sft.front.helpers.{AddModal, ModalButtons}
-import org.big.pete.sft.front.state.CheckAllId
+import org.big.pete.sft.front.helpers.{AddModal, ModalButtons, SimpleCheckbox}
+import org.big.pete.sft.front.state.{AddTransactionSetup, CheckAllId, CookieStorage}
+import org.scalajs.dom.console
 import org.scalajs.dom.html.{Element, Form}
 
 import java.time.LocalDate
@@ -33,6 +34,7 @@ object Transactions {
       transactions: List[EnhancedTransaction],
       linearCats: List[CategoryTree],
       moneyAccounts: Map[Int, EnhancedMoneyAccount],
+      checkedTransactions: Set[Int],
       ordering: List[(SortingColumn, Order)],
       clickOrdering: SortingColumn => Callback,
       checkTransaction: (MICheckbox.Status, String) => Callback,
@@ -52,15 +54,19 @@ object Transactions {
       categoryId: Option[Int],
       moneyAccountId: Option[Int],
       destMAId: Option[Int],
+      addNext: Boolean,
       toDelete: Option[Int] = None
   )
   case class HeaderProps(
+      transactions: List[EnhancedTransaction],
+      checkedTransactions: Set[Int],
       ordering: List[(SortingColumn, Order)],
       checkTransaction: (MICheckbox.Status, String) => Callback,
       clickOrdering: SortingColumn => Callback
   )
   case class TransactionProps(
       transaction: EnhancedTransaction,
+      checkedTransactions: Set[Int],
       checkTransaction: (MICheckbox.Status, String) => Callback,
       trackingChanged: (Int, TransactionTracking) => Callback,
       openEditModal: EnhancedTransaction => Callback,
@@ -79,6 +85,7 @@ object Transactions {
       categoryId: Option[Int],
       moneyAccountId: Option[Int],
       destMAId: Option[Int],
+      addNext: Boolean,
       dateChange: LocalDate => CallbackTo[LocalDate],
       ttChange: TransactionType => Callback,
       amountChange: ReactFormEventFromInput => Callback,
@@ -87,6 +94,7 @@ object Transactions {
       maChange: EnhancedMoneyAccount => Callback,
       destinationMAChange: EnhancedMoneyAccount => Callback,
       destinationAmountChange: ReactFormEventFromInput => Callback,
+      addNextChange: ReactFormEventFromInput => Callback,
       save: Callback,
       close: Callback
   )
@@ -96,7 +104,7 @@ object Transactions {
   implicit val moneyAccountMapReuse: Reusability[Map[Int, EnhancedMoneyAccount]] = Reusability.map[Int, EnhancedMoneyAccount]
   implicit val formPropsReuse: Reusability[FormProps] = Reusability.caseClassExcept[FormProps](
     "dateChange", "ttChange", "amountChange", "descriptionChange", "categoryChange", "maChange",
-    "destinationMAChange", "destinationAmountChange", "save", "close"
+    "destinationMAChange", "destinationAmountChange", "addNextChange", "save", "close"
   )
   implicit val confirmPropsReuse: Reusability[ConfirmProps] =
     Reusability.caseClassExcept[ConfirmProps]("deleteTransaction", "close")
@@ -133,13 +141,20 @@ object Transactions {
       state.copy(destAmount = Some(parseAmount(event.target.value, state.destAmount.getOrElse(BigDecimal(0)))))
     }
 
+    def addNextChange(event: ReactFormEventFromInput): Callback = $.modState { state =>
+      state.copy(addNext = event.target.checked)
+    }
+
     def save: Callback = for {
       props <- $.props
       state <- $.state
       destAmount = if (state.transactionType == TransactionType.Transfer) state.destAmount else None
       destMA = if (state.transactionType == TransactionType.Transfer) state.destMAId else None
+      _ = CookieStorage.updateAddTransactionSetup(
+        AddTransactionSetup(state.date, state.transactionType, state.categoryId, state.moneyAccountId, state.destMAId)
+      )
       _ <- props.save(state.id, state.date, state.transactionType, state.amount, state.description, state.categoryId.get, state.moneyAccountId.get, destAmount, destMA)
-      _ <- close
+      _ <- if (state.addNext) openModalAddNew else close
     } yield ()
 
     def close: Callback =
@@ -149,7 +164,12 @@ object Transactions {
       $.modState(_.copy(deleteIsOpen = false))
 
     def openModalAddNew: Callback = $.modState { state =>
-      state.copy(isOpen = true, id = None, amount = BigDecimal(0), destAmount = Some(BigDecimal(0)), description = "")
+      val setup = CookieStorage.getAddTransactionSetup
+      state.copy(
+        isOpen = true, id = None, amount = BigDecimal(0), destAmount = Some(BigDecimal(0)), description = "",
+        date = setup.date, transactionType = setup.transactionType, categoryId = setup.categoryId,
+        moneyAccountId = setup.moneyAccountId, destMAId = setup.destMAId
+      )
     } >> formRef.foreachCB(_.backend.focus)
 
     def openEditModal(trans: EnhancedTransaction): Callback = $.modState { state =>
@@ -182,7 +202,7 @@ object Transactions {
     def render(props: Props, state: State): html_<^.VdomTagOf[Element] = {
       val reactTransactions = props.transactions.map { transaction =>
         transactionComponent.withKey(s"t-${transaction.id}")
-          .apply(TransactionProps(transaction, props.checkTransaction, props.trackingChanged, openEditModal, openDeleteModal))
+          .apply(TransactionProps(transaction, props.checkedTransactions, props.checkTransaction, props.trackingChanged, openEditModal, openDeleteModal))
       }.toVdomArray
 
       tableWrap(
@@ -200,6 +220,7 @@ object Transactions {
               state.categoryId,
               state.moneyAccountId,
               state.destMAId,
+              state.addNext,
               dateChange,
               ttChange,
               amountChange,
@@ -208,6 +229,7 @@ object Transactions {
               maChange,
               destinationMAChange,
               destinationAmountChange,
+              addNextChange,
               save,
               close
             ))
@@ -216,9 +238,9 @@ object Transactions {
             ModalButtons("Delete", 450, deleteTransaction(), closeDelete)
           }
         ).toTagMod,
-        headerComponent(HeaderProps(props.ordering, props.checkTransaction, props.clickOrdering)),
+        headerComponent(HeaderProps(props.transactions, props.checkedTransactions, props.ordering, props.checkTransaction, props.clickOrdering)),
         reactTransactions,
-        headerComponent(HeaderProps(props.ordering, props.checkTransaction, props.clickOrdering)),
+        headerComponent(HeaderProps(props.transactions, props.checkedTransactions, props.ordering, props.checkTransaction, props.clickOrdering)),
         <.a(
           ^.cls := "waves-effect waves-light btn nice",
           ^.onClick --> openModalAddNew,
@@ -230,7 +252,7 @@ object Transactions {
   }
 
   val component: Scala.Component[Props, State, Backend, CtorType.Props] = ScalaComponent.builder[Props]
-    .initialState[State](State(isOpen = false, deleteIsOpen = false, None, LocalDate.now(), TransactionType.Expense, BigDecimal(0), None, "", None, None, None))
+    .initialState[State](State(isOpen = false, deleteIsOpen = false, None, LocalDate.now(), TransactionType.Expense, BigDecimal(0), None, "", None, None, None, addNext = false))
     .renderBackend[Backend]
     .build
 
@@ -243,14 +265,21 @@ object Transactions {
       }
     }
 
+    val checkedStatus =
+      if (props.transactions.map(_.id).toSet == props.checkedTransactions)
+        MICheckbox.Status.checkedStatus
+      else if(props.checkedTransactions.isEmpty)
+        MICheckbox.Status.none
+      else
+        MICheckbox.Status.indeterminate
+
     <.tr(
-      /// TODO: Checked status
       MICheckbox.component(MICheckbox.Props(
         <.th(_: _*),
         Map("check" -> true, "hide-on-med-and-down" -> true, "center-align" -> true),
         CheckAllId,
         "",
-        MICheckbox.Status.none,
+        checkedStatus,
         props.checkTransaction
       )),
       <.th(^.cls := "date", "Date",
@@ -259,7 +288,7 @@ object Transactions {
       <.th(^.cls := "description", "Description",
         MaterialIcon(MaterialIcon.i, MaterialIcon.small, orderingIcon(SortingColumn.Description), props.clickOrdering(SortingColumn.Description))
       ),
-      <.th(^.cls := "amount", "Amount",
+      <.th(^.cls := "amount right-align", "Amount",
         MaterialIcon(MaterialIcon.i, MaterialIcon.small, orderingIcon(SortingColumn.Amount), props.clickOrdering(SortingColumn.Amount))
       ),
       <.th(^.cls := "category", "Category"),
@@ -270,23 +299,33 @@ object Transactions {
   }
 
   val transactionComponent: Component[TransactionProps, CtorType.Props] = ScalaFnComponent.apply[TransactionProps] { props =>
+    val amountClass = props.transaction.transactionType match {
+      case TransactionType.Income => "green-text text-darken-1"
+      case TransactionType.Expense => "red-text text-darken-1"
+      case TransactionType.Transfer => "amber-text text-darken-2"
+    }
+    val additionalAmountInfo = if (props.transaction.destinationAmount.isDefined)
+      " -> " + formatAmount(props.transaction.destinationCurrencySymbol.get, props.transaction.destinationAmount.get)
+    else ""
+
     <.tr(
-      /// TODO: Checked transaction
       MICheckbox.component(MICheckbox.Props(
         <.td(_: _*),
         Map("check" -> true, "hide-on-med-and-down" -> true, "center-align" -> true),
         props.transaction.id.toString,
         "",
-        MICheckbox.Status.none,
+        if (props.checkedTransactions.contains(props.transaction.id)) MICheckbox.Status.checkedStatus else MICheckbox.Status.none,
         props.checkTransaction
       )),
       <.td(^.cls := "date", props.transaction.date.format(DateFormat)),
       <.td(
-        ^.cls := "description",
+        ^.cls := "description pointer",
         ^.onClick --> props.openEditModal(props.transaction),
         props.transaction.description
       ),
-      <.td(^.cls := "right-align amount", formatAmount(props.transaction.currencySymbol, props.transaction.amount)),
+      <.td(^.cls := s"right-align amount $amountClass",
+        formatAmount(props.transaction.currencySymbol, props.transaction.amount) + additionalAmountInfo
+      ),
       <.td(^.cls := "category",
         <.span(^.cls := "show-on-large hide-on-med-and-down", props.transaction.categoryFullName),
         <.span(^.cls := "show-on-medium-and-down hide-on-large-only", props.transaction.categoryName)
@@ -309,10 +348,30 @@ object Transactions {
   class FormBackend
     extends WithFocus[ReactDatePicker.Props, ReactDatePicker.State, ReactDatePicker.Backend]
   {
+    private val ref1 = Ref.toScalaComponent(dropDownTT.component)
+    private val ref2 = Ref.toScalaComponent(TextInput.component)
+    private val ref3 = Ref.toScalaComponent(TextInput.component)
+    private val ref4 = Ref.toScalaComponent(dropDownCategoryTree.component)
+    private val ref5 = Ref.toScalaComponent(dropDownMoneyAccount.component)
+    private val ref6 = Ref.toScalaComponent(dropDownMoneyAccount.component)
+    private val ref7 = Ref.toScalaComponent(TextInput.component)
+    private val ref8 = Ref.toScalaComponent(SimpleCheckbox.component)
+    private val ref9 = Ref.toScalaComponent(ModalButtons.component)
+
+    def shiftFocus(ref: Ref.WithScalaComponent[_, _, _ <: HasFocus, CtorType.Props]): Callback =
+      Callback.log("shiftFocus") >> ref.foreachCB { comp =>
+        console.log("inside")
+        comp.backend.focus
+      }.async.delayMs(50).toCallback
+
     def render(props: FormProps): VdomTagOf[Form] = {
+      val refToLast = (if (props.id.isEmpty) ref8 else ref9)
+        .asInstanceOf[Ref.WithScalaComponent[Any, Any, _ <: HasFocus, CtorType.Props]]
+      val refToNext = (if (props.transactionType == TransactionType.Transfer) ref6 else refToLast)
+        .asInstanceOf[Ref.WithScalaComponent[Any, Any, _ <: HasFocus, CtorType.Props]]
+
       <.form(
-        <.div(
-          ^.cls := "row",
+        <.div(^.cls := "row",
           ReactDatePicker.DatePicker.withRef(focusRef)(
             ReactDatePicker.Props(
               "add-tr-date",
@@ -321,13 +380,13 @@ object Transactions {
               props.date,
               isOpened = false,
               Some(401),
-              ReactDatePicker.ExtendedKeyBindings
+              ReactDatePicker.ExtendedKeyBindings,
+              shiftFocus(ref1)
             )
           )
         ),
-        <.div(
-          ^.cls := "row",
-          dropDownTT.component(
+        <.div(^.cls := "row",
+          dropDownTT.component.withRef(ref1)(
             dropDownTT.Props(
               "add-tr-tt",
               "Transaction Type",
@@ -337,28 +396,23 @@ object Transactions {
               props.ttChange,
               Some(props.transactionType),
               402,
-              List("col", "s12")
+              List("col", "s12"),
+              shiftFocus(ref2)
             )
           )
         ),
-        <.div(
-          ^.cls := "row",
-          TextInput(
-            "add-tr-amount",
-            "Amount",
-            props.amount.toString(),
-            props.amountChange,
-            403,
-            List("col", "s12")
+        <.div(^.cls := "row",
+          TextInput.component.withRef(ref2)(
+            TextInput.Props("add-tr-amount", "Amount", props.amount.toString(), props.amountChange, 403, List("col", "s12"), shiftFocus(ref3))
           )
         ),
-        <.div(
-          ^.cls := "row",
-          TextInput("add-tr-description", "Description", props.description, props.descriptionChange, 404, List("col", "s12"))
+        <.div(^.cls := "row",
+          TextInput.component.withRef(ref3)(
+            TextInput.Props("add-tr-description", "Description", props.description, props.descriptionChange, 404, List("col", "s12"), shiftFocus(ref4))
+          )
         ),
-        <.div(
-          ^.cls := "row",
-          dropDownCategoryTree.component(
+        <.div(^.cls := "row",
+          dropDownCategoryTree.component.withRef(ref4)(
             dropDownCategoryTree.Props(
               "add-tr-category",
               "Category",
@@ -368,13 +422,13 @@ object Transactions {
               props.categoryChange,
               props.categoryId.flatMap(id => props.linearCats.find(_.id == id)),
               405,
-              List("col", "s12")
+              List("col", "s12"),
+              shiftFocus(ref5)
             )
           )
         ),
-        <.div(
-          ^.cls := "row",
-          dropDownMoneyAccount.component(
+        <.div(^.cls := "row",
+          dropDownMoneyAccount.component.withRef(ref5)(
             dropDownMoneyAccount.Props(
               "add-tr-ma",
               "Money Account",
@@ -384,13 +438,13 @@ object Transactions {
               props.maChange,
               props.moneyAccountId.flatMap(id => props.moneyAccounts.get(id)),
               406,
-              List("col", "s12")
+              List("col", "s12"),
+              shiftFocus(refToNext)
             )
           )
         ),
-        <.div(
-          ^.cls := "row",
-          dropDownMoneyAccount.component(
+        <.div(^.cls := "row",
+          dropDownMoneyAccount.component.withRef(ref6)(
             dropDownMoneyAccount.Props(
               "add-tr-ma-dest",
               "Destination Money Account",
@@ -400,22 +454,30 @@ object Transactions {
               props.destinationMAChange,
               props.destMAId.flatMap(id => props.moneyAccounts.get(id)),
               407,
-              List("col", "s12")
+              List("col", "s12"),
+              shiftFocus(ref7)
             )
           )
         ).when(props.transactionType == TransactionType.Transfer),
-        <.div(
-          ^.cls := "row",
-          TextInput(
-            "add-tr-amount-dest",
-            "Destination Amount",
-            props.destAmount.map(_.toString()).getOrElse(""),
-            props.destinationAmountChange,
-            408,
-            List("col", "s12")
+        <.div(^.cls := "row",
+          TextInput.component.withRef(ref7)(
+            TextInput.Props(
+              "add-tr-amount-dest",
+              "Destination Amount",
+              props.destAmount.map(_.toString()).getOrElse(""),
+              props.destinationAmountChange,
+              408,
+              List("col", "s12"),
+              shiftFocus(refToLast)
+            )
           )
         ).when(props.transactionType == TransactionType.Transfer),
-        ModalButtons(props.id.map(_ => "Save").getOrElse("Add"), 410, props.save, props.close)
+        <.div(^.cls := "row",
+          SimpleCheckbox.component.withRef(ref8)(SimpleCheckbox.Props("Add another", props.addNext, 409, props.addNextChange))
+        ).when(props.id.isEmpty),
+        ModalButtons.component.withRef(ref9)(
+          ModalButtons.Props(props.id.map(_ => "Save").getOrElse("Add"), 410, props.save, props.close)
+        )
       )
     }
   }

@@ -3,7 +3,7 @@ package org.big.pete.sft.front.components.header
 import japgolly.scalajs.react.callback.CallbackTo
 import japgolly.scalajs.react.component.Scala.Component
 import japgolly.scalajs.react.vdom.html_<^._
-import japgolly.scalajs.react.{CtorType, ScalaComponent}
+import japgolly.scalajs.react.{Callback, CtorType, ScalaComponent}
 import org.big.pete.datepicker.ReactDatePicker
 
 import java.time.LocalDate
@@ -30,13 +30,13 @@ object TopHeader {
               ReactDatePicker.DatePicker.withKey("key-date-select-from").apply(
                 ReactDatePicker.Props(
                   "date-select-from", "date-select date-select-from", props.onFromDateChange, props.from, isOpened = false, Some(42),
-                  ReactDatePicker.ExtendedKeyBindings
+                  ReactDatePicker.ExtendedKeyBindings, Callback.empty
                 )
               ),
               ReactDatePicker.DatePicker.withKey("key-date-select-to").apply(
                 ReactDatePicker.Props(
                   "date-select-to", "date-select date-select-to", props.onToDateChange, props.to, isOpened = false, Some(43),
-                  ReactDatePicker.ExtendedKeyBindings
+                  ReactDatePicker.ExtendedKeyBindings, Callback.empty
                 )
               )
             ).toVdomArray
