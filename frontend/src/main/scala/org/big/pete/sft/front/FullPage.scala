@@ -12,7 +12,8 @@ import org.big.pete.sft.domain.{Account, Currency, EnhancedMoneyAccount, Transac
 import org.big.pete.sft.front.SftMain.SftPages
 import org.big.pete.sft.front.components.header.SidenavFilters.FiltersOpen
 import org.big.pete.sft.front.components.header.{Sidenav, SidenavFilters, TopHeader}
-import org.big.pete.sft.front.components.main.{Accounts, Categories, MoneyAccounts, Transactions}
+import org.big.pete.sft.front.components.main.transactions.Page
+import org.big.pete.sft.front.components.main.{Accounts, Categories, MoneyAccounts}
 import org.big.pete.sft.front.domain.{CategoryTree, EnhancedTransaction, Order, SortingColumn}
 
 import java.time.LocalDate
@@ -60,7 +61,8 @@ object FullPage extends EffectSyntax {
       saveTransaction: (Option[Int], LocalDate, TransactionType, BigDecimal, String, Int, Int, Option[BigDecimal], Option[Int]) => Callback,
       deleteCategory: (Int, Option[Int], Option[Int]) => Callback,
       deleteMoneyAccount: (Int, Option[Int]) => Callback,
-      deleteTransaction: Int => Callback
+      deleteTransactions: Set[Int] => Callback,
+      massEditSave: (Set[Int], Option[Int], Option[Int]) => Callback
   )
 
   val component: Component[Props, Unit, Unit, CtorType.Props] = ScalaComponent.builder[Props]
@@ -76,7 +78,7 @@ object FullPage extends EffectSyntax {
             props.saveAccount
           ))
         case SftMain.TransactionsPage(_) =>
-          Transactions.component.apply(Transactions.Props(
+          Page.component.apply(Page.Props(
             props.displayTransactions,
             CategoryTree.makeLinearCats(props.categoryTree),
             props.moneyAccounts,
@@ -86,7 +88,8 @@ object FullPage extends EffectSyntax {
             props.checkTransaction,
             props.transactionTrackingClick,
             props.saveTransaction,
-            props.deleteTransaction
+            props.deleteTransactions,
+            props.massEditSave
           ))
         case SftMain.CategoriesPage(_) =>
           Categories.component.apply(Categories.Props(props.categoryTree, props.saveCategory, props.deleteCategory))

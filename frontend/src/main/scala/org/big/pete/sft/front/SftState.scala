@@ -123,7 +123,8 @@ object SftState {
         saveTransaction,
         deleteCategory,
         deleteMoneyAccount,
-        deleteTransaction
+        deleteTransactions,
+        massEditTransactions
       ))
     }
 

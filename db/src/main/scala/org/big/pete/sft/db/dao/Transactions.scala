@@ -1,6 +1,7 @@
 package org.big.pete.sft.db.dao
 
 import cats.data.NonEmptyList
+import cats.implicits.toFoldableOps
 import doobie.ConnectionIO
 import doobie.implicits._
 import doobie.implicits.javatimedrivernative._
@@ -71,6 +72,15 @@ object Transactions {
   def editTracking(id: Int, tracking: TransactionTracking): ConnectionIO[Int] =
     sql"""UPDATE transactions SET tracking = $tracking WHERE id = $id""".update.run
 
+  def massEditTransactions(ids: NonEmptyList[Int], newCat: Option[Int], newMoneyAccount: Option[Int]): ConnectionIO[Int] = {
+    val cat = newCat.map(catId => fr"category = $catId")
+    val ma = newMoneyAccount.map(maId => fr"money_account = $maId")
+    (fr"UPDATE transactions SET" ++ List(cat, ma).flatten.intercalate(fr",") ++ fr"WHERE" ++ in(fr"id", ids)).update.run
+  }
+
   def deleteTransaction(id: Int): ConnectionIO[Int] =
     sql"""DELETE FROM transactions WHERE id = $id""".update.run
+
+  def deleteTransactions(ids: NonEmptyList[Int]): ConnectionIO[Int] =
+    (fr"DELETE FROM transactions WHERE" ++ in(fr"id", ids)).update.run
 }

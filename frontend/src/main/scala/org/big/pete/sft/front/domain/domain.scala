@@ -144,13 +144,15 @@ object Implicits {
 
   implicit val accountReuse: Reusability[Account] = Reusability.derive[Account]
   implicit val sftPagesReuse: Reusability[SftPages] = Reusability.byRefOr_==[SftPages]
+  implicit val sortingColumnReuse: Reusability[SortingColumn] = Reusability.byRefOr_==[SortingColumn]
+  implicit val orderReuse: Reusability[Order] = Reusability.byRefOr_==[Order]
   implicit val transactionTypeReuse: Reusability[TransactionType] = Reusability.by_==[TransactionType]
   implicit val transactionTrackingReuse: Reusability[TransactionTracking] = Reusability.by_==[TransactionTracking]
   implicit val currencyReuse: Reusability[Currency] = Reusability.derive[Currency]
   implicit val categoryTreeReuse: Reusability[CategoryTree] = Reusability.by_==[CategoryTree]
   implicit val periodAmountStatusReuse: Reusability[PeriodAmountStatus] = Reusability.derive[PeriodAmountStatus]
   implicit val enhancedMoneyAccountReuse: Reusability[EnhancedMoneyAccount] = Reusability.derive[EnhancedMoneyAccount]
-
+  implicit val enhancedTransactionReuse: Reusability[EnhancedTransaction] = Reusability.derive[EnhancedTransaction]
 }
 
 object domain {}

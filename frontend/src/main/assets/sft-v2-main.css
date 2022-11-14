@@ -158,7 +158,7 @@ table.sft td.category, table.sft th.category {
 }
 
 table.sft td.money-account, table.sft th.money-account {
-  width: 15rem;
+  width: 17rem;
 }
 
 table.sft td.status, table.sft th.status, table.sft td.delete, table.sft th.delete {

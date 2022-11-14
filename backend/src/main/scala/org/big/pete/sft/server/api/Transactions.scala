@@ -1,12 +1,14 @@
 package org.big.pete.sft.server.api
 
+import cats.Monad
+import cats.data.NonEmptyList
 import cats.effect.kernel.MonadCancelThrow
 import cats.syntax.{FlatMapSyntax, FunctorSyntax}
 import doobie.syntax.ToConnectionIOOps
 import doobie.util.transactor.Transactor
 import io.circe.syntax.EncoderOps
 import org.big.pete.sft.db.dao.{Transactions => DBT}
-import org.big.pete.sft.domain.{TrackingEdit, Transaction}
+import org.big.pete.sft.domain.{ShiftStrategy, TrackingEdit, Transaction}
 import org.big.pete.sft.domain.Implicits._
 import org.http4s.Response
 import org.http4s.dsl.Http4sDsl
@@ -52,10 +54,28 @@ class Transactions[F[_]: MonadCancelThrow](
     } yield response
   }
 
+  def massEditTransactions(ids: List[Int], shiftCat: ShiftStrategy, shiftMoneyAccount: ShiftStrategy): F[Response[F]] = {
+    for {
+      edited <- if (shiftCat.newId.nonEmpty || shiftMoneyAccount.newId.nonEmpty)
+        DBT.massEditTransactions(NonEmptyList(ids.head, ids.tail), shiftCat.newId, shiftMoneyAccount.newId).transact(transactor)
+      else
+        Monad[F].pure(0)
+      response <- Ok(s"$edited")
+    } yield response
+  }
+
   def deleteTransaction(id: Int): F[Response[F]] = {
     for {
       _ <- DBT.deleteTransaction(id).transact(transactor)
       response <- Ok("")
     } yield response
   }
+
+  def deleteTransactions(ids: List[Int]): F[Response[F]] = {
+    for {
+      deleted <- DBT.deleteTransactions(NonEmptyList(ids.head, ids.tail)).transact(transactor)
+      response <- Ok(s"$deleted")
+    } yield response
+  }
+
 }

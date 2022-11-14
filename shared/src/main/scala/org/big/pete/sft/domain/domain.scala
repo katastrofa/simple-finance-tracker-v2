@@ -87,6 +87,8 @@ case class MoneyAccountDeleteStrategy(shiftTransactions: ShiftStrategy)
 case class AccountEdit(oldPermalink: String, id: Int, name: String, permalink: String, owner: Option[Int])
 case class NotAllowedResponse(message: String)
 case class TrackingEdit(id: Int, tracking: TransactionTracking)
+case class DeleteTransactions(ids: List[Int])
+case class MassEditTransactions(ids: List[Int], changeCat: ShiftStrategy, changeMoneyAccount: ShiftStrategy)
 
 
 object Implicits {
@@ -121,6 +123,10 @@ object Implicits {
   implicit val categoryDeleteStrategiesDecoder: Decoder[CategoryDeleteStrategies] = deriveDecoder[CategoryDeleteStrategies]
   implicit val moneyAccountDeleteStrategyEncoder: Encoder[MoneyAccountDeleteStrategy] = deriveEncoder[MoneyAccountDeleteStrategy]
   implicit val moneyAccountDeleteStrategyDecoder: Decoder[MoneyAccountDeleteStrategy] = deriveDecoder[MoneyAccountDeleteStrategy]
+  implicit val deleteTransactionsEncoder: Encoder[DeleteTransactions] = deriveEncoder[DeleteTransactions]
+  implicit val deleteTransactionsDecoder: Decoder[DeleteTransactions] = deriveDecoder[DeleteTransactions]
+  implicit val massEditTransactionsEncoder: Encoder[MassEditTransactions] = deriveEncoder[MassEditTransactions]
+  implicit val massEditTransactionsDecoder: Decoder[MassEditTransactions] = deriveDecoder[MassEditTransactions]
 }
 
 object domain {

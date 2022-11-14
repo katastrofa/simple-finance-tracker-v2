@@ -9,7 +9,7 @@ import com.comcast.ip4s.{Ipv4Address, Port}
 import fs2.{Chunk, Stream}
 import fs2.io.net.tls.TLSContext
 import org.big.pete.cache.BpCache
-import org.big.pete.sft.domain.{Account, AccountEdit, ApiAction, Category, CategoryDeleteStrategies, MoneyAccount, MoneyAccountDeleteStrategy, TrackingEdit, Transaction}
+import org.big.pete.sft.domain.{Account, AccountEdit, ApiAction, Category, CategoryDeleteStrategies, DeleteTransactions, MassEditTransactions, MoneyAccount, MoneyAccountDeleteStrategy, TrackingEdit, Transaction}
 import org.big.pete.sft.domain.Implicits._
 import org.big.pete.sft.server.api.{Categories, General, MoneyAccounts, Transactions}
 import org.big.pete.sft.server.auth.AuthHelper
@@ -191,6 +191,14 @@ class SftV2Server[F[_]: Async](
           transactionsApi.addTransaction(trans)
         )
       } yield response
+    /// TODO: Verify the IDs belong to this account
+    case request @ POST -> Root / "api" / permalink / "transactions" / "mass-edit" as user =>
+      for {
+        massEditData <- request.req.as[MassEditTransactions]
+          response <- accessHelper.verifyAccess(permalink, ApiAction.ModifyOwnTransactions, user)(
+            transactionsApi.massEditTransactions(massEditData.ids, massEditData.changeCat, massEditData.changeMoneyAccount)
+          )
+      } yield response
     /// TODO: Verify the MA and cat are from this account
     case request @ POST -> Root / "api" / permalink / "transactions" as user =>
       for {
@@ -204,6 +212,14 @@ class SftV2Server[F[_]: Async](
       accessHelper.verifyAccess(permalink, ApiAction.DeleteTransactions, user)(
         transactionsApi.deleteTransaction(idTrans)
       )
+    /// TODO: Verify the IDs belong to this account
+    case request @ DELETE -> Root / "api" / permalink / "transactions" as user =>
+      for {
+        ids <- request.req.as[DeleteTransactions]
+        response <- accessHelper.verifyAccess(permalink, ApiAction.DeleteTransactions, user)(
+          transactionsApi.deleteTransactions(ids.ids)
+        )
+      } yield response
     /// TODO: Verify the ID belongs to this account
     case request @ POST -> Root / "api" / permalink / "transactions" / "tracking" as user =>
       for {

@@ -4,7 +4,7 @@ import japgolly.scalajs.react.Callback
 import org.big.pete.BPJson
 import org.big.pete.react.MICheckbox
 import org.big.pete.react.MICheckbox.Status
-import org.big.pete.sft.domain.{EnhancedMoneyAccount, TrackingEdit, Transaction, TransactionTracking, TransactionType}
+import org.big.pete.sft.domain.{DeleteTransactions, EnhancedMoneyAccount, MassEditTransactions, ShiftStrategy, TrackingEdit, Transaction, TransactionTracking, TransactionType}
 import org.big.pete.sft.front.domain.MAUpdateAction
 import org.big.pete.sft.front.utilz.getAccountPermalink
 
@@ -100,6 +100,30 @@ trait TransactionsProcessing extends DataLoad {
           )
           updateStateWithTransaction(state, state.transactions.filter(_.id != id), updatedMA)
         }
+      )
+    }
+  }
+
+  def deleteTransactions(ids: Set[Int]): Callback = {
+    $.props.flatMap { props =>
+      val account = getAccountPermalink(props.activePage).getOrElse("")
+      ajaxUpdate[Int](
+        "DELETE",
+        "/" + account + "/transactions",
+        BPJson.write(DeleteTransactions(ids.toList)),
+        _ => $.modState(_.copy(checkedTransactions = Set.empty)) >> refreshAccount(account).toCallback
+      )
+    }
+  }
+
+  def massEditTransactions(ids: Set[Int], newCat: Option[Int], newMoneyAccount: Option[Int]): Callback = {
+    $.props.flatMap { props =>
+      val account = getAccountPermalink(props.activePage).getOrElse("")
+      ajaxUpdate[Int](
+        "POST",
+        "/" + account + "/transactions/mass-edit",
+        BPJson.write(MassEditTransactions(ids.toList, ShiftStrategy(newCat), ShiftStrategy(newMoneyAccount))),
+        _ => $.modState(_.copy(checkedTransactions = Set.empty)) >> refreshAccount(account).toCallback
       )
     }
   }
