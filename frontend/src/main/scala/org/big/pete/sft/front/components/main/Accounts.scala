@@ -86,9 +86,9 @@ object Accounts {
       }.toVdomArray
 
       tableWrap(
-        AddModal.component(AddModal.Props("add-account-modal", state.isEditModalOpen))(
+        AddModal.component(AddModal.Props("add-account-modal"))(
           addModal.apply(FormProps(state.id, state.name, state.permalink, changeName, changePermalink, save, close))
-        ),
+        ).when(state.isEditModalOpen),
         headerComponent(),
         accounts,
         headerComponent(),

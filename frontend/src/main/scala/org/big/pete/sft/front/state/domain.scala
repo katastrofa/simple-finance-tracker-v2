@@ -20,6 +20,7 @@ case class Props(
 case class State(
     from: LocalDate,
     to: LocalDate,
+    isMenuOpen: Boolean,
 
     activeFilter: Option[FiltersOpen],
     transactionTypeActiveFilters: Set[TransactionType],

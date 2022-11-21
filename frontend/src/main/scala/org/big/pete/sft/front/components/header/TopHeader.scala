@@ -5,6 +5,7 @@ import japgolly.scalajs.react.component.Scala.Component
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{Callback, CtorType, ScalaComponent}
 import org.big.pete.datepicker.ReactDatePicker
+import org.big.pete.react.MaterialIcon
 
 import java.time.LocalDate
 
@@ -14,7 +15,8 @@ object TopHeader {
       from: LocalDate,
       to: LocalDate,
       onFromDateChange: LocalDate => CallbackTo[LocalDate],
-      onToDateChange: LocalDate => CallbackTo[LocalDate]
+      onToDateChange: LocalDate => CallbackTo[LocalDate],
+      menuClick: Callback
   )
 
   val component: Component[Props, Unit, Unit, CtorType.Props] = ScalaComponent.builder[Props]
@@ -27,6 +29,9 @@ object TopHeader {
           <.div(
             ^.cls := "nav-wrapper center-align center",
             List(
+              MaterialIcon.Icon(MaterialIcon.Props(
+                MaterialIcon.span, MaterialIcon.medium, "menu", props.menuClick, Set("right hide-on-large-only padme")
+              )),
               ReactDatePicker.DatePicker.withKey("key-date-select-from").apply(
                 ReactDatePicker.Props(
                   "date-select-from", "date-select date-select-from", props.onFromDateChange, props.from, isOpened = false, Some(42),

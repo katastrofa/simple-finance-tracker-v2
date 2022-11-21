@@ -42,7 +42,7 @@ object LineItem {
     else ""
     val additionalMoneyAccount = props.transaction.destinationMoneyAccountName.map(name => s" -> $name").getOrElse("")
 
-    <.tr(^.cls := "hoverable",
+    <.tr(^.cls := "",
       MICheckbox.component(
         MICheckbox.Props(
           <.td(_: _*),
@@ -66,13 +66,13 @@ object LineItem {
         formatAmount(props.transaction.currencySymbol, props.transaction.amount) + additionalAmountInfo
       ),
       <.td(
-        ^.cls := "category",
+        ^.cls := "category hide-on-small-only",
         <.span(^.cls := "show-on-large hide-on-med-and-down", props.transaction.categoryFullName),
-        <.span(^.cls := "show-on-medium-and-down hide-on-large-only", props.transaction.categoryName)
+        <.span(^.cls := "show-on-medium hide-on-large-only", props.transaction.categoryName)
       ),
-      <.td(^.cls := "money-account", props.transaction.moneyAccountName + additionalMoneyAccount),
+      <.td(^.cls := "money-account hide-on-med-and-down", props.transaction.moneyAccountName + additionalMoneyAccount),
       <.td(
-        ^.cls := "delete",
+        ^.cls := "delete hide-on-med-and-down",
         MaterialIcon.Icon(
           MaterialIcon.Props(
             MaterialIcon.i,
@@ -84,7 +84,7 @@ object LineItem {
         )
       ),
       <.td(
-        ^.cls := "status center-align hide-on-med-and-down",
+        ^.cls := "status center-align",
         MaterialIcon.Icon(
           MaterialIcon.Props(
             MaterialIcon.`i`,

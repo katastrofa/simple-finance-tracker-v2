@@ -12,7 +12,7 @@ import scala.scalajs.js
 
 
 object Sidenav {
-  case class Props(top: TopProps, filters: SidenavFilters.Props)
+  case class Props(isMenuOpen: Boolean, top: TopProps, filters: SidenavFilters.Props)
   case class TopProps(
       routerCtl: RouterCtl[SftPages],
       activePage: SftPages,
@@ -29,7 +29,7 @@ object Sidenav {
           js.undefined
       }
 
-      <.ul(^.id := "sidenav-left", ^.cls := "sidenav sidenav-fixed",
+      <.ul(^.id := "sidenav-left", ^.classSet("sidenav" -> true, "sidenav-fixed" -> true, "open" -> props.isMenuOpen),
         <.li(^.id := "top-navigation", sidenavTopComponent(props.top)),
         <.li(<.h6("Filters", MaterialIcon("filter_list", Set("left")))),
         filters

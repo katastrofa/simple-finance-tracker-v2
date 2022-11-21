@@ -178,6 +178,7 @@ object Page {
 
       def getTransactionsSum(ttype: TransactionType): List[(String, BigDecimal)] = {
         props.transactions
+          .filter(trans => props.checkedTransactions.isEmpty || props.checkedTransactions.contains(trans.id))
           .filter(_.transactionType == ttype)
           .map(trans => trans.currencySymbol -> trans.amount)
           .groupBy(_._1)
@@ -187,7 +188,7 @@ object Page {
 
       tableWrap(
         List(
-          AddModal.component(AddModal.Props("add-transaction-modal", state.isOpen))(
+          AddModal.component(AddModal.Props("add-transaction-modal"))(
             AddForm.component.withRef(formRef)(AddForm.Props(
               props.linearCats, props.moneyAccounts,
               state.id, state.date, state.transactionType, state.amount, state.destAmount, state.description, state.categoryId,
@@ -198,11 +199,11 @@ object Page {
             ))
           ).when(state.isOpen),
 
-          AddModal.component(AddModal.Props("delete-transaction-modal", state.deleteIsOpen)) {
+          AddModal.component(AddModal.Props("delete-transaction-modal")) {
             ModalButtons("Delete", 450, deleteTransaction(), closeDelete)
           }.when(state.deleteIsOpen),
 
-          AddModal.component(AddModal.Props("mass-edit-transactions-modal", state.massEditIsOpen)) {
+          AddModal.component(AddModal.Props("mass-edit-transactions-modal")) {
             MassEditModal.component(MassEditModal.Props(
               props.linearCats, props.moneyAccounts, state.massEditCat, state.massEditMA,
               massEditCatChange, massEditMAChange, saveMassEdit, closeMassEdit

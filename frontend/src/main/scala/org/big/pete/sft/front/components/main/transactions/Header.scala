@@ -69,10 +69,10 @@ object Header {
           MaterialIcon.i, MaterialIcon.small, orderingIcon(SortingColumn.Amount), props.clickOrdering(SortingColumn.Amount)
         )
       ),
-      <.th(^.cls := "category", "Category"),
-      <.th(^.cls := "money-account", "Account"),
-      <.th(^.cls := "delete", ""),
-      <.th(^.cls := "status center-align hide-on-med-and-down", "")
+      <.th(^.cls := "category hide-on-small-only", "Category"),
+      <.th(^.cls := "money-account hide-on-med-and-down", "Account"),
+      <.th(^.cls := "delete hide-on-med-and-down", ""),
+      <.th(^.cls := "status center-align", "")
     )
   }
 }

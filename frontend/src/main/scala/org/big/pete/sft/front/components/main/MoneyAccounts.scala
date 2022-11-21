@@ -141,13 +141,13 @@ object MoneyAccounts {
 
       tableWrap(
         List(
-          AddModal.component(AddModal.Props("add-money-account-modal", state.isOpen)) {
+          AddModal.component(AddModal.Props("add-money-account-modal")) {
             moneyAccountForm(FormProps(
               props.currencies, state.id, state.name, state.startAmount, state.currency, state.created, changeName,
               changeAmount, changeCurrency, changeCreated, saveModal, closeModal
             ))
-          },
-          AddModal.component(AddModal.Props("delete-money-account-modal", state.deleteIsOpen)) {
+          }.when(state.isOpen),
+          AddModal.component(AddModal.Props("delete-money-account-modal")) {
             val toShiftMA = NoShiftMoneyAccount :: props.accounts.filter(ema => !state.toDelete.contains(ema.id))
             <.form(
               <.div(^.cls := "row",
@@ -165,7 +165,7 @@ object MoneyAccounts {
               ),
               ModalButtons("Delete", 351, deleteMoneyAccount(), closeDeleteModal)
             )
-          }
+          }.when(state.deleteIsOpen)
         ).toTagMod,
         headerComponent(),
         moneyAccounts,
@@ -189,11 +189,11 @@ object MoneyAccounts {
     <.tr(
       <.th(^.cls := "id hide-on-small-only center-align", "ID"),
       <.th(^.cls := "name", "Name"),
-      <.th(^.cls := "currency hide-on-small-only", "Currency"),
-      <.th(^.cls := "date hide-on-small-only", "Created"),
-      <.th(^.cls := "amount", "Start Amount", <.span("by period")),
-      <.th(^.cls := "amount", "End Amount", <.span("by period")),
-      <.th(^.cls := "delete", "")
+      <.th(^.cls := "currency hide-on-med-and-down", "Currency"),
+      <.th(^.cls := "date hide-on-med-and-down", "Created"),
+      <.th(^.cls := "amount", "Start Amount", <.span(^.cls := "hide-on-med-and-down", "by period")),
+      <.th(^.cls := "amount", "End Amount", <.span(^.cls := "hide-on-med-and-down", "by period")),
+      <.th(^.cls := "delete hide-on-med-and-down", "")
     )
   }
 
@@ -205,11 +205,11 @@ object MoneyAccounts {
         ^.onClick --> props.openEditModal(props.account),
         props.account.name
       ),
-      <.td(^.cls := "currency hide-on-small-only", s"${props.account.currency.name} (${props.account.currency.symbol})"),
-      <.td(^.cls := "date hide-on-small-only", props.account.created.format(DateFormat)),
+      <.td(^.cls := "currency hide-on-med-and-down", s"${props.account.currency.name} (${props.account.currency.symbol})"),
+      <.td(^.cls := "date hide-on-med-and-down", props.account.created.format(DateFormat)),
       <.td(^.cls := "amount", formatAmount(props.account.currency.symbol, props.account.periodStatus.start)),
       <.td(^.cls := "amount", formatAmount(props.account.currency.symbol, props.account.periodStatus.end)),
-      <.td(^.cls := "delete",
+      <.td(^.cls := "delete hide-on-med-and-down",
         MaterialIcon(MaterialIcon.i, MaterialIcon.small, "delete", props.openDeleteModal(props.account))
       ),
     )

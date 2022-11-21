@@ -7,13 +7,11 @@ import org.scalajs.dom.html.Div
 
 
 object AddModal {
-  case class Props(id: String, isOpen: Boolean)
+  case class Props(id: String)
 
   class Backend {
     def render(props: Props, children: PropsChildren): VdomTagOf[Div] = {
-      <.div(^.id := props.id,
-        ^.tabIndex := 1,
-        ^.classSet("modal" -> true, "open" -> props.isOpen),
+      <.div(^.id := props.id, ^.tabIndex := 1, ^.cls := "modal open",
         <.div(^.cls := "modal-content",
           <.div(^.cls := "container",
             children

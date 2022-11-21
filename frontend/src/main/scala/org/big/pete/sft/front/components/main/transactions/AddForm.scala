@@ -186,6 +186,7 @@ object AddForm {
   val component: Scala.Component[Props, Unit, Backend, CtorType.Props] = ScalaComponent.builder[Props]
     .stateless
     .renderBackend[Backend]
+    .componentDidMount(_.backend.focus)
     .configure(Reusability.shouldComponentUpdate)
     .build
 }

@@ -31,7 +31,7 @@ package object main {
     <.main(
       <.div(^.cls := "padding",
         preTable,
-        <.table(^.cls := "striped small sft",
+        <.table(^.cls := "striped small sft highlight",
           <.thead(head),
           <.tbody(body),
           <.tfoot(foot)

@@ -30,6 +30,10 @@ body {
   line-height: 32px;
 }
 
+.sidenav.sidenav-fixed.open {
+  transform: translateX(0);
+}
+
 .modal {
   max-height: 90%;
 }
@@ -88,8 +92,12 @@ nav .date-select {
   display: inline-block;
 }
 
-nav .date-select-to {
-  margin-right: 300px;
+nav.navbar .padme {
+  padding: 0.8rem;
+}
+
+.summary p span {
+  display: block;
 }
 
 .sft-calendar-picker .input-field input {
@@ -146,7 +154,7 @@ table.sft td.id, table.sft th.id {
 }
 
 table.sft td.date, table.sft th.date {
-  width: 6.5rem;
+  width: 7rem;
 }
 
 table.sft td.amount, table.sft th.amount {
@@ -174,14 +182,25 @@ i.small {
 }
 
 
+
 @media only screen and (min-width: 993px) {
   body.has-fixed-sidenav {
     padding-left: 300px;
+  }
+
+  nav .date-select-to {
+    margin-right: 300px;
   }
 }
 
 @media only screen and (max-width: 992px) {
   .date-select-to {
     margin-right: auto;
+  }
+}
+
+@media only screen and (max-width: 600px) {
+  table.sft td.amount, table.sft th.amount {
+    width: 8rem;
   }
 }

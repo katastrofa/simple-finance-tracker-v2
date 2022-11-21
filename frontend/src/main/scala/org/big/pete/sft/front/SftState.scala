@@ -5,6 +5,9 @@ import japgolly.scalajs.react.callback.{AsyncCallback, Callback, CallbackTo}
 import japgolly.scalajs.react.component.Scala.{BackendScope, Component, Unmounted}
 import org.big.pete.sft.domain.{Account, Currency}
 import org.big.pete.sft.front.SftMain.{AccountsSelectionPage, SftPages}
+import org.big.pete.sft.front.components.header.{Sidenav, SidenavFilters, TopHeader}
+import org.big.pete.sft.front.components.main.{Accounts, Categories, MoneyAccounts}
+import org.big.pete.sft.front.components.main.transactions.Page
 import org.big.pete.sft.front.state.{CookieStorage, DataUpdate, DefaultSorting, Filtering, Props, State, TransactionsProcessing}
 import org.big.pete.sft.front.domain.{Order, SortingColumn}
 import org.big.pete.sft.front.utilz.getAccountPermalink
@@ -63,6 +66,7 @@ object SftState {
         case (None, AccountsSelectionPage) => for {
           ajaxData <- AsyncCallback.sequence(List(loadAccounts, loadCurrencies))
           _ <- $.modStateAsync(_.copy(
+            isMenuOpen = false,
             accounts = ajaxData.head.asInstanceOf[List[Account]],
             currencies = ajaxData.last.asInstanceOf[List[Currency]]
           ))
@@ -70,68 +74,70 @@ object SftState {
 
         case (None, page) if getAccountPermalink(page).nonEmpty =>
           val account = getAccountPermalink(page)
-          refreshAccount(account.get).map(_ => 10)
+          $.modStateAsync(_.copy(isMenuOpen = false)) >> refreshAccount(account.get).map(_ => 10)
 
         case (Some(_), AccountsSelectionPage) =>
-          AsyncCallback.pure(1)
+          $.modStateAsync(_.copy(isMenuOpen = false)) >> AsyncCallback.pure(1)
 
         case (Some(old), page) if getAccountPermalink(old) != getAccountPermalink(page) =>
           val account = getAccountPermalink(page)
-          refreshAccount(account.get).map(_ => 15)
+          $.modStateAsync(_.copy(isMenuOpen = false)) >> refreshAccount(account.get).map(_ => 15)
 
         case _ =>
-          AsyncCallback.pure(999)
+          $.modStateAsync(_.copy(isMenuOpen = false)) >> AsyncCallback.pure(999)
       }
 
       aCall.toCallback
     }
 
+    def menuClick: Callback = $.modState { state =>
+      state.copy(isMenuOpen = !state.isMenuOpen)
+    }
+
     def render(props: Props, state: State): Unmounted[FullPage.Props, Unit, Unit] = {
-      FullPage.component.apply(FullPage.Props(
-        props.router,
-        state.from,
-        state.to,
+      FullPage.component(FullPage.Props(
         props.activePage,
-        state.activeFilter,
-        state.transactionTypeActiveFilters,
-        state.trackingActiveFilters,
-        state.contentFilter,
-        state.categoriesActiveFilters,
-        state.moneyAccountsActiveFilters,
-        state.checkedTransactions,
-        state.transactionsSorting,
-        state.accounts,
-        state.currencies,
-        state.moneyAccounts,
-        state.categoryTree,
-        state.displayTransactions,
-        setFromDate,
-        setToDate,
-        setActiveFilter,
-        setTtFilter,
-        setTrackingFilter,
-        setContentFilter,
-        setCategoriesFilter,
-        setMoneyAccountsFilter,
-        checkTransaction,
-        transactionTrackingClick,
-        onPageClick,
-        clickOrdering,
-        saveAccount,
-        saveCategory,
-        saveMoneyAccount,
-        saveTransaction,
-        deleteCategory,
-        deleteMoneyAccount,
-        deleteTransactions,
-        massEditTransactions
+        state.isMenuOpen,
+        TopHeader.Props(state.from, state.to, setFromDate, setToDate, menuClick),
+        Sidenav.TopProps(props.router, props.activePage, onPageClick),
+        SidenavFilters.Props(
+          state.activeFilter,
+          setActiveFilter,
+          SidenavFilters.TransactionsProps(
+            state.transactionTypeActiveFilters,
+            setTtFilter,
+            state.trackingActiveFilters,
+            setTrackingFilter,
+            state.contentFilter,
+            setContentFilter
+          ),
+          SidenavFilters.CategoriesProps(state.categoriesActiveFilters, setCategoriesFilter, state.categoryTree),
+          SidenavFilters.MoneyAccountProps(state.moneyAccountsActiveFilters, setMoneyAccountsFilter, state.moneyAccounts.values.toList)
+        ),
+
+        Accounts.Props(state.accounts, props.activePage, props.router, onPageClick, saveAccount),
+        Page.Props(
+          state.displayTransactions,
+          state.categoryTree,
+          state.moneyAccounts,
+          state.checkedTransactions,
+          state.transactionsSorting,
+          clickOrdering,
+          checkTransaction,
+          transactionTrackingClick,
+          saveTransaction,
+          deleteTransactions,
+          massEditTransactions
+        ),
+        Categories.Props(state.categoryTree, saveCategory, deleteCategory),
+        MoneyAccounts.Props(state.moneyAccounts.values.toList, state.currencies, saveMoneyAccount, deleteMoneyAccount)
       ))
     }
 
   }
 
   val component: Component[Props, State, Backend, CtorType.Props] = ScalaComponent.builder[Props]
-    .initialStateFromProps(_ => State(CookieStorage.getBrowserSettings.from, CookieStorage.getBrowserSettings.to, None, Set.empty, Set.empty, "", Set.empty, Set.empty, Set.empty, DefaultSorting, List.empty, List.empty, Map.empty, Map.empty, List.empty, List.empty, List.empty))
+    .initialStateFromProps(_ => State(CookieStorage.getBrowserSettings.from, CookieStorage.getBrowserSettings.to, isMenuOpen = false, None, Set.empty, Set.empty, "", Set.empty, Set.empty, Set.empty, DefaultSorting, List.empty, List.empty, Map.empty, Map.empty, List.empty, List.empty, List.empty))
     .renderBackend[Backend]
     .componentDidMount(component => component.backend.onPageClick(component.props.activePage, None))
     .build

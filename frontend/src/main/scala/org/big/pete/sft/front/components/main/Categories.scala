@@ -131,18 +131,18 @@ object Categories {
 
       tableWrap(
         List(
-          AddModal.component(AddModal.Props("add-category-modal", state.isOpen)) {
+          AddModal.component(AddModal.Props("add-category-modal")) {
             addCategoryModal.apply(FormProps(
               props.categories, state.id, state.name, state.description, state.parent,
               changeName, changeDescription, changeParent, saveEdit, closeModal
             ))
-          },
-          AddModal.component(AddModal.Props("delete-category-modal", state.deleteIsOpen)) {
+          }.when(state.isOpen),
+          AddModal.component(AddModal.Props("delete-category-modal")) {
             deleteCategoryModal.apply(DeleteFormProps(
               props.categories, state.deleteId.getOrElse(-1), state.shiftSubCatsTo, state.shiftTransactionsTo,
               changeShiftSubCats, changeShiftTransactions, deleteCategory(), closeDeleteModal
             ))
-          }
+          }.when(state.deleteIsOpen)
         ).toTagMod,
         headerComponent(),
         categoryLines,
@@ -167,7 +167,7 @@ object Categories {
     <.tr(
       <.th(^.cls := "id hide-on-small-only center-align", "ID"),
       <.th(^.cls := "name", "Name"),
-      <.th(^.cls := "description", "Description"),
+      <.th(^.cls := "description hide-on-med-and-down", "Description"),
       <.th(^.cls := "delete", "")
     )
   }
@@ -180,7 +180,7 @@ object Categories {
         ^.onClick --> props.openEditModal(props.category),
         CategoryTree.name(props.category)
       ),
-      <.td(^.cls := "description", props.category.description.getOrElse("").toString),
+      <.td(^.cls := "description hide-on-med-and-down", props.category.description.getOrElse("").toString),
       <.td(^.cls := "delete",
         MaterialIcon(MaterialIcon.i, MaterialIcon.small, "delete", props.openDeleteModal(props.category))
       )
