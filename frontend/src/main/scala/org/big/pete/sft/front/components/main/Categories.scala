@@ -130,6 +130,7 @@ object Categories {
       val categoryLines = props.categories.flatMap(expandCategories).toVdomArray
 
       tableWrap(
+        "categories-table",
         List(
           AddModal.component(AddModal.Props("add-category-modal")) {
             addCategoryModal.apply(FormProps(

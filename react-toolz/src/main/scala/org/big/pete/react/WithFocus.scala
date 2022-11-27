@@ -3,11 +3,17 @@ package org.big.pete.react
 import japgolly.scalajs.react.Ref.{ToScalaComponent, ToVdom}
 import japgolly.scalajs.react.{Callback, Ref}
 import org.scalajs.dom.html
-import org.scalajs.dom.html.Input
+import org.scalajs.dom.html.{Button, Input}
 
 
 trait HasFocus {
   def focus: Callback
+}
+
+trait WithButtonFocus extends HasFocus {
+  protected val buttonRef: ToVdom[Button] = Ref.toVdom[Button]
+  override def focus: Callback =
+    buttonRef.foreach(_.focus())
 }
 
 trait WithInputFocus extends HasFocus {

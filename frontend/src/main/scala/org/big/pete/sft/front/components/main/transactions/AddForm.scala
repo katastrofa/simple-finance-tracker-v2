@@ -60,7 +60,7 @@ object AddForm {
     private val ref6 = Ref.toScalaComponent(dropDownMoneyAccount.component)
     private val ref7 = Ref.toScalaComponent(TextInput.component)
     private val ref8 = Ref.toScalaComponent(SimpleCheckbox.component)
-    private val ref9 = Ref.toScalaComponent(ModalButtons.component)
+    private val ref9 = Ref.toScalaComponent(ModalButtons.comp)
 
     def shiftFocus(ref: Ref.WithScalaComponent[_, _, _ <: HasFocus, CtorType.Props]): Callback =
       ref.foreachCB(_.backend.focus).async.delayMs(50).toCallback
@@ -176,7 +176,7 @@ object AddForm {
         <.div(^.cls := "row",
           SimpleCheckbox.component.withRef(ref8)(SimpleCheckbox.Props("Add another", props.addNext, 409, props.addNextChange))
         ).when(props.id.isEmpty),
-        ModalButtons.component.withRef(ref9)(
+        ModalButtons.comp.withRef(ref9)(
           ModalButtons.Props(props.id.map(_ => "Save").getOrElse("Add"), 410, props.save, props.close)
         )
       )

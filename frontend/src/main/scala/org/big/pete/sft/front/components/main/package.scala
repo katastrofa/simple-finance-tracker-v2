@@ -22,6 +22,7 @@ package object main {
     Try(BigDecimal(newAmount)).getOrElse(old)
 
   def tableWrap(
+      id: String,
       preTable: TagMod,
       head: VdomElement,
       body: VdomArray,
@@ -31,7 +32,7 @@ package object main {
     <.main(
       <.div(^.cls := "padding",
         preTable,
-        <.table(^.cls := "striped small sft highlight",
+        <.table(^.id := id, ^.cls := "striped small sft highlight",
           <.thead(head),
           <.tbody(body),
           <.tfoot(foot)

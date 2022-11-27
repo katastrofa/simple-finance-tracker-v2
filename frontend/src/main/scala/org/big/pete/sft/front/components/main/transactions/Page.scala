@@ -2,6 +2,7 @@ package org.big.pete.sft.front.components.main.transactions
 
 import japgolly.scalajs.react.callback.CallbackTo
 import japgolly.scalajs.react.component.Scala.{BackendScope, Component}
+import japgolly.scalajs.react.extra.{EventListener, OnUnmount}
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{Callback, CtorType, ReactFormEventFromInput, Ref, Reusability, ScalaComponent}
 import org.big.pete.react.{MICheckbox, MaterialIcon}
@@ -11,6 +12,7 @@ import org.big.pete.sft.front.domain.{CategoryTree, EnhancedTransaction, Order, 
 import org.big.pete.sft.front.helpers.{AddModal, ModalButtons}
 import org.big.pete.sft.front.state.{AddTransactionSetup, CookieStorage}
 import org.scalajs.dom.html.Element
+import org.scalajs.dom.window
 
 import java.time.LocalDate
 
@@ -36,6 +38,7 @@ object Page {
       isOpen: Boolean,
       deleteIsOpen: Boolean,
       massEditIsOpen: Boolean,
+      visibleDetails: Set[Int],
       id: Option[Int],
       date: LocalDate,
       transactionType: TransactionType,
@@ -59,7 +62,7 @@ object Page {
     Reusability.caseClassExcept[ConfirmProps]("deleteTransaction", "close")
 
 
-  class Backend($: BackendScope[Props, State]) {
+  class Backend($: BackendScope[Props, State]) extends Utilz with OnUnmount {
 
     private val formRef = Ref.toScalaComponent(AddForm.component)
 
@@ -127,6 +130,11 @@ object Page {
       state.copy(massEditMA = Some(ma.id))
     }
 
+    def toggleDetails(id: Int): Callback = $.modState { state =>
+      val newVisibleDetails = if (state.visibleDetails.contains(id)) state.visibleDetails - id else state.visibleDetails + id
+      state.copy(visibleDetails = newVisibleDetails)
+    }
+
 
     def openModalAddNew: Callback = $.modState { state =>
       val setup = CookieStorage.getAddTransactionSetup
@@ -139,7 +147,7 @@ object Page {
 
     def openEditModal(trans: EnhancedTransaction): Callback = $.modState { state =>
       state.copy(
-        isOpen = true, deleteIsOpen = false, massEditIsOpen = false,
+        isOpen = true, deleteIsOpen = false, massEditIsOpen = false, visibleDetails = state.visibleDetails,
         Some(trans.id), trans.date, trans.transactionType, trans.amount, trans.destinationAmount, trans.description,
         Some(trans.categoryId), Some(trans.moneyAccountId), trans.destinationMoneyAccountId
       )
@@ -170,9 +178,18 @@ object Page {
     } yield ()
 
     def render(props: Props, state: State): VdomTagOf[Element] = {
+      val colSpan = calculateColSpan
       val reactTransactions = props.transactions.map { transaction =>
         LineItem.component.withKey(s"t-${transaction.id}").apply(LineItem.Props(
-          transaction, props.checkedTransactions, props.checkTransaction, props.trackingChanged, openEditModal, openDeleteModal
+          transaction,
+          props.checkedTransactions.contains(transaction.id),
+          state.visibleDetails.contains(transaction.id),
+          props.checkTransaction,
+          props.trackingChanged,
+          openEditModal,
+          openDeleteModal,
+          toggleDetails,
+          colSpan
         ))
       }.toVdomArray
 
@@ -187,8 +204,9 @@ object Page {
       }
 
       tableWrap(
+        "transactions-table",
         List(
-          AddModal.component(AddModal.Props("add-transaction-modal"))(
+          AddModal.component.withKey("add-transaction-modal-key").apply(AddModal.Props("add-transaction-modal"))(
             AddForm.component.withRef(formRef)(AddForm.Props(
               props.linearCats, props.moneyAccounts,
               state.id, state.date, state.transactionType, state.amount, state.destAmount, state.description, state.categoryId,
@@ -199,26 +217,26 @@ object Page {
             ))
           ).when(state.isOpen),
 
-          AddModal.component(AddModal.Props("delete-transaction-modal")) {
+          AddModal.component.withKey("delete-transaction-modal-key").apply(AddModal.Props("delete-transaction-modal")) {
             ModalButtons("Delete", 450, deleteTransaction(), closeDelete)
           }.when(state.deleteIsOpen),
 
-          AddModal.component(AddModal.Props("mass-edit-transactions-modal")) {
+          AddModal.component.withKey("mass-edit-transaction-modal-key").apply(AddModal.Props("mass-edit-transactions-modal")) {
             MassEditModal.component(MassEditModal.Props(
               props.linearCats, props.moneyAccounts, state.massEditCat, state.massEditMA,
               massEditCatChange, massEditMAChange, saveMassEdit, closeMassEdit
             ))
           }.when(state.massEditIsOpen),
 
-          <.div(^.cls := "row summary",
-            <.div(^.cls := "col xl2 l3 m4 s6",
+          <.div(^.cls := "row summary", ^.key := "money-summary-key",
+            <.div(^.cls := "col xl3 l4 m5 s6",
               <.h6("Income"),
               <.p(^.cls := "green-text text-darken-1",
                 getTransactionsSum(TransactionType.Income).map(a => <.span(formatAmount(a._1, a._2))).toTagMod
               )
             ),
             <.div(
-              ^.cls := "col xl2 l3 m4 s6",
+              ^.cls := "col xl3 l4 m5 s6",
               <.h6("Expenses"),
               <.p(
                 ^.cls := "red-text text-darken-1",
@@ -235,20 +253,17 @@ object Page {
           Header.Props(props.transactions, props.checkedTransactions, props.ordering, props.checkTransaction, props.clickOrdering)
         ),
         List(
-          <.a(
-            ^.cls := "waves-effect waves-light btn nice",
+          <.a(^.cls := "waves-effect waves-light btn nice", ^.key := "add-button-key",
             ^.onClick --> openModalAddNew,
             MaterialIcon("add"),
             "Add"
           ),
-          <.a(
-            ^.cls := "waves-effect waves-light btn nice",
+          <.a(^.cls := "waves-effect waves-light btn nice", ^.key := "mass-edit-button-key",
             ^.onClick --> openMassEditModal,
             MaterialIcon("edit"),
             "Edit selected"
           ).when(props.checkedTransactions.nonEmpty),
-          <.a(
-            ^.cls := "waves-effect waves-light btn nice",
+          <.a(^.cls := "waves-effect waves-light btn nice", ^.key := "mass-delete-button-key",
             ^.onClick --> openDeleteModal(props.checkedTransactions),
             MaterialIcon("delete"),
             "Delete selected"
@@ -260,9 +275,10 @@ object Page {
 
   val component: Component[Props, State, Backend, CtorType.Props] = ScalaComponent.builder[Props]
     .initialState[State](State(
-      isOpen = false, deleteIsOpen = false, massEditIsOpen = false, None, LocalDate.now(), TransactionType.Expense, BigDecimal(0),
-      None, "", None, None, None, addNext = false, Set.empty, None, None
+      isOpen = false, deleteIsOpen = false, massEditIsOpen = false, Set.empty, None, LocalDate.now(),
+      TransactionType.Expense, BigDecimal(0), None, "", None, None, None, addNext = false, Set.empty, None, None
     ))
     .renderBackend[Backend]
+    .configure(EventListener.install("resize", _.backend.controlledInvocationOfUpdateColSpanCB, _ => window))
     .build
 }

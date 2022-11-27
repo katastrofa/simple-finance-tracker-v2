@@ -140,6 +140,7 @@ object MoneyAccounts {
         .toVdomArray
 
       tableWrap(
+        "money-accounts-table",
         List(
           AddModal.component(AddModal.Props("add-money-account-modal")) {
             moneyAccountForm(FormProps(

@@ -73,7 +73,7 @@ object MassEditModal {
             )
           )
         ),
-        ModalButtons.component(
+        ModalButtons.comp(
           ModalButtons.Props("Save", 432, props.confirm, props.close)
         )
       )

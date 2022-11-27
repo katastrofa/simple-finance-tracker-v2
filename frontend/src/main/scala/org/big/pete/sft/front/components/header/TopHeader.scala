@@ -29,7 +29,7 @@ object TopHeader {
           <.div(
             ^.cls := "nav-wrapper center-align center",
             List(
-              MaterialIcon.Icon(MaterialIcon.Props(
+              MaterialIcon.Icon.withKey("key-menu-icon").apply(MaterialIcon.Props(
                 MaterialIcon.span, MaterialIcon.medium, "menu", props.menuClick, Set("right hide-on-large-only padme")
               )),
               ReactDatePicker.DatePicker.withKey("key-date-select-from").apply(

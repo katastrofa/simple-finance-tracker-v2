@@ -32,6 +32,7 @@ body {
 
 .sidenav.sidenav-fixed.open {
   transform: translateX(0);
+  transition: transform 0.5s;
 }
 
 .modal {
@@ -73,7 +74,7 @@ a.btn.nice {
   display: inline-flex;
 }
 
-a.btn.nice i {
+a.btn.nice i, button.btn.nice i {
   margin-right: 0.5rem;
 }
 
@@ -96,12 +97,36 @@ nav.navbar .padme {
   padding: 0.8rem;
 }
 
+.pad-right {
+  padding-right: 0.6rem;
+}
+
+.pad-top {
+  padding-top: 0.6rem;
+}
+
 .summary p span {
   display: block;
 }
 
+#filters ul.collapsible a.collapsible-header {
+  color: firebrick;
+}
+
+#filters ul.collapsible a.collapsible-header.has-active-items {
+  color: darkolivegreen;
+}
+
 .sft-calendar-picker .input-field input {
   max-width: 7rem;
+}
+
+.show-on-hover {
+  display: none;
+}
+
+.show-hoverable:hover .show-on-hover {
+  display: inline;
 }
 
 table.small th {
@@ -177,11 +202,53 @@ table.sft td.currency, table.sft th.currency {
   width: 7rem;
 }
 
+.details-item.row {
+  margin-bottom: 0;
+}
+
 i.small {
   vertical-align: middle;
 }
 
 
+table.sft td.category, table.sft th.category {
+  width: 15rem;
+}
+
+span.category-small {
+  display: none;
+}
+
+span.category-big {
+  display: inline;
+}
+
+@media only screen and (max-width: 1400px) {
+  span.category-small {
+    display: inline;
+  }
+  span.category-big {
+    display: none;
+  }
+  table.sft td.category, table.sft th.category {
+    width: 11rem;
+  }
+  table.sft td.money-account, table.sft th.money-account {
+    width: 13rem;
+  }
+}
+
+@media only screen and (max-width: 1200px) {
+  table.sft td.money-account, table.sft th.money-account {
+    display: none;
+  }
+}
+
+@media only screen and (max-width: 700px) {
+  table.sft td.category, table.sft th.category {
+    display: none;
+  }
+}
 
 @media only screen and (min-width: 993px) {
   body.has-fixed-sidenav {

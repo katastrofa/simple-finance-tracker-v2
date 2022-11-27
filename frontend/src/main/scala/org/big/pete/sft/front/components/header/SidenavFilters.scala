@@ -1,11 +1,11 @@
 package org.big.pete.sft.front.components.header
 
 import japgolly.scalajs.react.callback.Callback
-import japgolly.scalajs.react.{CtorType, ReactFormEventFromInput, ScalaComponent, ScalaFnComponent}
+import japgolly.scalajs.react.{CtorType, ReactFormEventFromInput, Reusability, ScalaComponent, ScalaFnComponent}
 import japgolly.scalajs.react.component.Scala.Component
 import japgolly.scalajs.react.component.ScalaFn
 import japgolly.scalajs.react.vdom.html_<^._
-import org.big.pete.react.MICheckbox
+import org.big.pete.react.{MICheckbox, MaterialIcon, TextInput}
 import org.big.pete.react.MICheckbox.Status
 import org.big.pete.sft.domain.{EnhancedMoneyAccount, TransactionTracking, TransactionType}
 import org.big.pete.sft.front.domain.CategoryTree
@@ -20,7 +20,7 @@ object SidenavFilters {
       moneyAccounts: MoneyAccountProps
   )
 
-  case class CollapsibleHeaderProps(text: String, section: FiltersOpen, onOpenFilter: FiltersOpen => Callback)
+  case class CollapsibleHeaderProps(hasActiveFilters: Boolean, text: String, section: FiltersOpen, onOpenFilter: FiltersOpen => Callback)
   case class TransactionsProps(
       transactionTypeActiveFilters: Set[TransactionType],
       onTransactionTypeChange: (Status, String) => Callback,
@@ -45,6 +45,10 @@ object SidenavFilters {
   case object CategoriesFiltersOpen extends FiltersOpen
   case object MoneyAccountFiltersOpen extends FiltersOpen
 
+  implicit val filtersOpenReuse: Reusability[FiltersOpen] = Reusability.byRefOr_==[FiltersOpen]
+  implicit val collapsibleHeaderPropsReuse: Reusability[CollapsibleHeaderProps] =
+    Reusability.caseClassExcept("onOpenFilter")
+
 
   val component: Component[Props, Unit, Unit, CtorType.Props] = ScalaComponent.builder[Props]
     .stateless
@@ -63,9 +67,11 @@ object SidenavFilters {
     }.build
 
   val collapsibleHeaderComponent: ScalaFn.Component[CollapsibleHeaderProps, CtorType.Props] =
-    ScalaFnComponent.apply[CollapsibleHeaderProps] { props =>
-      <.a(^.cls := "collapsible-header", ^.href := "#!",
+    ScalaFnComponent.withReuse[CollapsibleHeaderProps] { props =>
+      val icon = if (props.hasActiveFilters) "toggle_on" else "toggle_off"
+      <.a(^.href := "#!", ^.classSet("collapsible-header" -> true, "has-active-items" -> props.hasActiveFilters),
         ^.onClick ==> (_.preventDefaultCB >> props.onOpenFilter(props.section)),
+        MaterialIcon(icon),
         props.text
       )
     }
@@ -96,7 +102,12 @@ object SidenavFilters {
           ))
 
         <.div(
-          collapsibleHeaderComponent.apply(CollapsibleHeaderProps("Transactions", TransactionsFiltersOpen, onOpenFilter)),
+          collapsibleHeaderComponent.apply(CollapsibleHeaderProps(
+            props.transactionTypeActiveFilters.nonEmpty || props.trackingActiveFilters.nonEmpty || props.contentFilter.nonEmpty,
+            "Transactions",
+            TransactionsFiltersOpen,
+            onOpenFilter
+          )),
           <.div(^.cls := "collapsible-body",
             <.ul(
               <.li(
@@ -109,15 +120,7 @@ object SidenavFilters {
               ),
               <.li(
                 <.h6("Content"),
-                <.div(^.cls := "input-field",
-                  <.input(^.`type` := "text",
-                    ^.id := "transactions-filter",
-                    ^.placeholder := "filter",
-                    ^.value := props.contentFilter,
-                    ^.onChange ==> props.onContentFilterChange
-                  ),
-                  <.label(^.`for` := "transactions-filter", "Content filter")
-                )
+                TextInput("transactions-filter", "Content filter", props.contentFilter, props.onContentFilterChange)
               )
             )
           )
@@ -157,7 +160,12 @@ object SidenavFilters {
           cat :: cat.children.flatMap(expandCategory)
 
         <.div(
-          collapsibleHeaderComponent.apply(CollapsibleHeaderProps("Categories", CategoriesFiltersOpen, onOpenFilter)),
+          collapsibleHeaderComponent.apply(CollapsibleHeaderProps(
+            props.categoriesActiveFilters.nonEmpty,
+            "Categories",
+            CategoriesFiltersOpen,
+            onOpenFilter
+          )),
           <.div(^.cls := "collapsible-body",
             <.ul(props.categoryTree.flatMap(expandCategory).map(mapCategory).toVdomArray)
           )
@@ -179,7 +187,12 @@ object SidenavFilters {
           ))
 
         <.div(
-          collapsibleHeaderComponent.apply(CollapsibleHeaderProps("Money Account", MoneyAccountFiltersOpen, onOpenFilter)),
+          collapsibleHeaderComponent.apply(CollapsibleHeaderProps(
+            props.moneyAccountsActiveFilters.nonEmpty,
+            "Money Account",
+            MoneyAccountFiltersOpen,
+            onOpenFilter
+          )),
           <.div(^.cls := "collapsible-body",
             <.ul(props.moneyAccounts.map(expandMoneyAccount).toVdomArray)
           )

@@ -1,7 +1,7 @@
 package org.big.pete.react
 
 import japgolly.scalajs.react.callback.Callback
-import japgolly.scalajs.react.{CtorType, Reusability, ScalaFnComponent}
+import japgolly.scalajs.react.{CtorType, ReactMouseEvent, Reusability, ScalaFnComponent}
 import japgolly.scalajs.react.component.ScalaFn
 import japgolly.scalajs.react.vdom.html_<^._
 
@@ -17,7 +17,14 @@ object MaterialIcon {
   case object medium extends Size
   case object large extends Size
 
-  case class Props(dom: DomType, size: Size, icon: String, onClick: Callback, additionalClasses: Set[String])
+  case class Props(
+      dom: DomType,
+      size: Size,
+      icon: String,
+      onClick: Callback,
+      additionalClasses: Set[String],
+      stopPropagation: Boolean = false
+  )
 
   implicit val domTypeReuse: Reusability[DomType] = Reusability.byRefOr_==[DomType]
   implicit val sizeReuse: Reusability[Size] = Reusability.byRefOr_==[Size]
@@ -33,9 +40,12 @@ object MaterialIcon {
     }
     val classes = (Set("material-icons", sizeClass) ++ props.additionalClasses).mkString(" ")
 
+    val updatedOnClick = (evt: ReactMouseEvent) =>
+      (if (props.stopPropagation) evt.stopPropagationCB else Callback.empty) >> props.onClick
+
     props.dom match {
-      case `span` => <.span(^.cls := classes, ^.onClick --> props.onClick, props.icon)
-      case `i` => <.i(^.cls := classes, ^.onClick --> props.onClick, props.icon)
+      case `span` => <.span(^.cls := classes, ^.onClick ==> updatedOnClick, props.icon)
+      case `i` => <.i(^.cls := classes, ^.onClick ==> updatedOnClick, props.icon)
     }
   }
 
