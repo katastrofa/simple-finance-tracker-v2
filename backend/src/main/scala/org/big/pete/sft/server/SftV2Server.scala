@@ -39,7 +39,8 @@ class SftV2Server[F[_]: Async](
     transactionsApi: Transactions[F],
     dsl: Http4sDsl[F],
     ipAddress: String,
-    port: Int
+    port: Int,
+    environment: String
 ) extends FunctorSyntax
     with SemigroupKSyntax
     with FlatMapSyntax
@@ -49,27 +50,31 @@ class SftV2Server[F[_]: Async](
 
 
   private final val logger = Slf4jLogger.getLogger[F]
+  private val mainHtmlPath = if (environment.toLowerCase == "prod")
+    "./static-assets/index-main.html"
+  else
+    "./frontend/src/main/assets/index-main.html"
 
-  val authMiddleware: AuthMiddleware[F, AuthUser] =
+  private val authMiddleware: AuthMiddleware[F, AuthUser] =
     AuthMiddleware(authHelper.authSftUser, authHelper.loginRedirectHandler)
 
-  val loginSupportRoutes: HttpRoutes[F] = HttpRoutes.of[F] {
+  private val loginSupportRoutes: HttpRoutes[F] = HttpRoutes.of[F] {
     case request @ GET -> Root / "google" / "response" :? CodeQueryParamMatcher(codeToken) =>
       authHelper.processLoginFromElgoog(codeToken, request)
     case GET -> Root / "google" / "response" :? ErrorQueryParamMatcher(errorCode) =>
       authHelper.processLoginError(errorCode)
   }
 
-  def recovery(pf: PartialFunction[AuthedRequest[F, AuthUser], F[Response[F]]]): PartialFunction[AuthedRequest[F, AuthUser], F[Response[F]]] = {
+  private def recovery(pf: PartialFunction[AuthedRequest[F, AuthUser], F[Response[F]]]): PartialFunction[AuthedRequest[F, AuthUser], F[Response[F]]] = {
     pf.andThen(_.handleErrorWith { throwable =>
       logger.error(throwable)(throwable.getMessage)
         .flatMap(_ => InternalServerError(throwable.getMessage))
     })
   }
 
-  val apiRoutes: AuthedRoutes[AuthUser, F] = AuthedRoutes.of(recovery {
+  private val apiRoutes: AuthedRoutes[AuthUser, F] = AuthedRoutes.of(recovery {
     case _ @ GET -> Root as _ =>
-      val htmlDataF = fs2.io.file.Files[F].readAll(fs2.io.file.Path("./frontend/src/main/assets/index-main.html"))
+      val htmlDataF = fs2.io.file.Files[F].readAll(fs2.io.file.Path(mainHtmlPath))
         .through(fs2.text.utf8.decode)
         .map(_.replace("{current}", System.currentTimeMillis().toString))
         .compile.string
