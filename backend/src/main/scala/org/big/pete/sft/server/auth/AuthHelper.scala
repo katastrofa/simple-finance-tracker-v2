@@ -8,7 +8,9 @@ import com.typesafe.config.Config
 import doobie.syntax.ToConnectionIOOps
 import doobie.util.transactor.Transactor
 import io.circe.jawn
+import org.big.pete.cache.BpCache
 import org.big.pete.sft.db.dao.Users
+import org.big.pete.sft.db.domain.User
 import org.big.pete.sft.server.auth.domain._
 import org.http4s.dsl.Http4sDsl
 import org.http4s.{AuthedRequest, HttpDate, Request, RequestCookie, Response, ResponseCookie}
@@ -22,6 +24,7 @@ class AuthHelper[F[_]: MonadCancelThrow](
     config: Config,
     dsl: Http4sDsl[F],
     sttpBackend: SttpBackend[F, Any],
+    usersCache: BpCache[F, Int, User],
     implicit val transactor: Transactor[F]
 ) extends FunctorSyntax with FlatMapSyntax with MonadCancelSyntax with ToConnectionIOOps
 {
@@ -64,11 +67,11 @@ class AuthHelper[F[_]: MonadCancelThrow](
   }
 
   private def verifyLogin(cookie: AuthCookieData, browserInfo: String): OptionT[F, AuthUser] = {
-    OptionT.liftF(Users.getLogins(cookie.id).transact(transactor)).flatMap { logins =>
-      val auth = logins.find { case (login, _) => generateAuthCode(cookie.id, login.accessToken, browserInfo) == cookie.authCode }
-        .map { case (login, user) => AuthUser(user, login) }
-      OptionT.fromOption[F](auth)
-    }
+    for {
+      logins <- OptionT.liftF(Users.getLogins(cookie.id).transact(transactor))
+      login <- OptionT.fromOption(logins.find(login => generateAuthCode(cookie.id, login.accessToken, browserInfo) == cookie.authCode))
+      user <- OptionT(usersCache.get(login.userId))
+    } yield AuthUser(user, login)
   }
 
   private def generateAuthCode(userId: Int, token: String, browserInfo: String): String = {
@@ -100,7 +103,7 @@ class AuthHelper[F[_]: MonadCancelThrow](
       result => Found(Location(uri"/")).map(_.addCookie(
         ResponseCookie(
           AuthCookieName,
-          generateAuthCode(result._2, result._1.access_token, parseBrowserInfo(request)),
+          result._2.toString + AuthCookieSeparator + generateAuthCode(result._2, result._1.access_token, parseBrowserInfo(request)),
           Some(HttpDate.unsafeFromEpochSecond((System.currentTimeMillis() / 1000) + 2592000)),
           path = Some("/")
         )
@@ -146,9 +149,9 @@ class AuthHelper[F[_]: MonadCancelThrow](
 
   private def storeLogin(token: GoogleTokenResponse, person: PersonResponse): EitherT[F, String, Int] = {
     val result = for {
-      email <- OptionT.fromOption[F](person.emails.headOption.map(_.value))
+      email <- OptionT.fromOption[F](person.emailAddresses.headOption.map(_.value))
       user <- OptionT(Users.getUser(email).transact(transactor))
-      _ <- OptionT.liftF(Users.storeLogin(user.id, token.access_token, token.refresh_token).transact(transactor))
+      _ <- OptionT.liftF(Users.storeLogin(user.id, token.access_token, "").transact(transactor))
     } yield user.id
 
     EitherT.fromOptionF[F, String, Int](result.value, "Could not store login in DB")

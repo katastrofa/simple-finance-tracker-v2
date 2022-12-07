@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html" charset="UTF-8">
+  <title>SFT v2</title>
+
+  <!--Import Google Icon Font-->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+  <link rel="stylesheet" href="materialize.css" />
+  <link rel="stylesheet" href="react-toolz/src/main/assets/date-picker.css" />
+  <!--Let browser know website is optimized for mobile-->
+  <link rel="stylesheet" href="frontend/src/main/assets/sft-v2-main.css">
+  <!--Let browser know website is optimized for mobile-->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/js-cookie@3.0.1/dist/js.cookie.min.js"></script>
+</head>
+<body class="dark has-fixed-sidenav">
+
+
+  <header>
+    <div class="navbar-fixed">
+      <nav class="navbar">
+        <div class="nav-wrapper center-align center">
+          <div id="main-date-from" class="sft-calendar-picker"></div>
+          <div id="main-date-to" class="sft-calendar-picker"></div>
+        </div>
+      </nav>
+    </div>
+
+    <ul id="sidenav-left" class="sidenav sidenav-fixed">
+      <li>
+        <ul class="collection with-header">
+          <li class="collection-header"><a href="#!"><h5>Peter Baran <i class="material-icons left">account_balance</i></h5></a></li>
+          <li class="collection-item"><a href="#!">Accounts <i class="material-icons left">account_balance_wallet</i></a></li>
+          <li class="collection-item active"><a href="#!">Transactions <i class="material-icons left">receipt_long</i></a></li>
+          <li class="collection-item"><a href="#!">Categories <i class="material-icons left">category</i></a></li>
+          <li class="collection-item"><a href="#!">Money Accounts <i class="material-icons left">local_atm</i></a></li>
+        </ul>
+      </li>
+      <li><h6>Filters <i class="material-icons left">filter_list</i></h6></li>
+      <li>
+        <ul class="collapsible">
+          <li class="bold waves-effect">
+            <a class="collapsible-header" href="#!">Transactions</a>
+            <div class="collapsible-body">
+              <ul>
+                <li>
+                  <h6>Tracking</h6>
+                  <ul>
+                    <li>None</li>
+                    <li>Auto</li>
+                    <li>Verified</li>
+                  </ul>
+                </li>
+                <li>
+                  <h6>Content</h6>
+                  <div class="input-field">
+                    <input placeholder="filter" id="transactions-filter" type="text">
+                    <label for="transactions-filter">Content filter</label>
+                  </div>
+                </li>
+              </ul>
+            </div>
+
+          </li>
+          <li class="bold waves-effect active">
+            <a class="collapsible-header" href="#!">Categories</a>
+            <div class="collapsible-body" style="display: block;">
+              <ul>
+                <li class="sft-checkbox" data-value="ch-jedlo" data-key="ch1">Jedlo</li>
+                <li class="sft-checkbox" data-value="ch-pifko" data-key="ch2">-- Pifko</li>
+                <li class="sft-checkbox" data-value="ch-resti" data-key="ch3">-- Restika</li>
+                <li class="sft-checkbox" data-value="ch-byvan" data-key="ch4">Byvanie</li>
+                <li class="sft-checkbox" data-value="ch-ambro" data-key="ch5">-- Ambroseho</li>
+                <li class="sft-checkbox" data-value="ch-revuc" data-key="ch6">-- Revuce</li>
+              </ul>
+            </div>
+          </li>
+        </ul>
+      </li>
+    </ul>
+  </header>
+
+  <main>
+    <div class="padding">
+      <p class="summary">Transferred: xxx, Out: yyy, In: zzz</p>
+      <table class="striped small transactions">
+        <thead>
+          <tr>
+            <th class="check sft-checkbox-a hide-on-med-and-down center-align" data-value="t-all" data-key="tall">A</th>
+            <th class="date">Date</th>
+            <th>Description</th>
+            <th class="amount">Amount</th>
+            <th>Category</th>
+            <th>Account</th>
+            <th class="status center-align hide-on-med-and-down">V</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="check sft-checkbox-a hide-on-med-and-down center-align" data-value="t-123" data-key="t-123">i</td>
+            <td class="date">2021-11-23</td>
+            <td>Pekarnicka</td>
+            <td class="right-align amount">€8.47</td>
+            <td>Jedlo - Mnamky</td>
+            <td>TB Credit</td>
+            <td class="valign-wrapper status center-align hide-on-med-and-down"><i class="small material-icons">check_circle</i></td>
+          </tr>
+          <tr>
+            <td class="check sft-checkbox-a hide-on-med-and-down center-align" data-value="t-123" data-key="t-123">i</td>
+            <td class="date">2021-11-22</td>
+            <td>Engerau</td>
+            <td class="right-align amount">€12.42</td>
+            <td>Jedlo - Restika</td>
+            <td>EU Cash</td>
+            <td class="valign-wrapper status center-align hide-on-med-and-down"><i class="small material-icons">horizontal_rule</i></td>
+          </tr>
+          <tr>
+            <td class="check sft-checkbox-a hide-on-med-and-down center-align" data-value="t-123" data-key="t-123">i</td>
+            <td class="date">2021-11-21</td>
+            <td>Beer Station</td>
+            <td class="right-align amount">€34.12</td>
+            <td>Jedlo - Pifkarcenie</td>
+            <td>TB Credit</td>
+            <td class="valign-wrapper status center-align hide-on-med-and-down"><i class="small material-icons">check_circle</i></td>
+          </tr>
+          <tr>
+            <td class="check sft-checkbox-a hide-on-med-and-down center-align" data-value="t-123" data-key="t-123">i</td>
+            <td class="date">2021-11-20</td>
+            <td>Najom</td>
+            <td class="right-align amount">€342.88</td>
+            <td>Byvanie - Ambroseho</td>
+            <td>VUB Spol</td>
+            <td class="valign-wrapper status center-align hide-on-med-and-down"><i class="small material-icons">blur_circular</i></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <script type="text/javascript" src="react-toolz/target/scala-2.13/scalajs-bundler/main/react-date-picker-fastopt-bundle.js"></script>
+</body>
+</html>
