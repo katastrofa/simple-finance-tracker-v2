@@ -113,7 +113,8 @@ object Main extends IOApp with LogSupport with ToConnectionIOOps {
         transactionsApi,
         dsl,
         mainConfig.getString("server.ip"),
-        mainConfig.getInt("server.port")
+        mainConfig.getInt("server.port"),
+        mainConfig.getString("server.environment")
       )
 
       val tlsOpt = if (useHttps) Some(tls) else None
