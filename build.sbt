@@ -17,7 +17,7 @@ scalaVersion := MyScalaVersion
 
 lazy val basicSettings = Seq(
   organization := "org.big.pete",
-  version := "0.1-SNAPSHOT",
+  version := "0.1.0",
   scalaVersion := MyScalaVersion,
   credentials += Credentials(Path.userHome / ".sbt" / ".credentials-github-repo"),
   resolvers += ("scala-toolz-github" at "https://maven.pkg.github.com/katastrofa/scala-toolz/")
