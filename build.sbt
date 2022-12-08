@@ -1,6 +1,8 @@
 import java.nio.file.StandardCopyOption
 
-val Http4sVersion = "1.0.0-M35"
+val sftFullBuild = taskKey[Unit]("Builds the back-end assembly and front-end and pushes it into the back-end target folder")
+
+val Http4sVersion = "1.0.0-M37"
 val CirceVersion = "0.14.2"
 //val MunitVersion = "0.7.29"
 val LogbackVersion = "1.2.11"
@@ -76,7 +78,11 @@ lazy val backend = (project in file("backend"))
     addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.13.2" cross CrossVersion.full),
     addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"),
 
-    scalacOptions += "-Ymacro-annotations"
+    scalacOptions += "-Ymacro-annotations",
+    assembly / assemblyMergeStrategy := {
+      case x if x.endsWith("netty.versions.properties") => MergeStrategy.concat
+      case x => (assembly / assemblyMergeStrategy).value.apply(x)
+    }
   )
 
 lazy val shapeFun = (project in file("shape-fun"))
@@ -152,7 +158,57 @@ lazy val root = (project in file("."))
   .settings(basicSettings)
   .settings(
     name := s"$MyProjectName-root",
-    publish := {}
+    publish := {},
+    sftFullBuild := {
+      val targetFolder = target.value
+      val deployFolder = s"${targetFolder.toString}/deployment"
+      java.nio.file.Files.createDirectories(file(s"$deployFolder/static-assets/js").toPath)
+      java.nio.file.Files.createDirectories(file(s"$deployFolder/static-assets/css").toPath)
+
+      val frontendResourcesFolder = (frontend / Compile / resourceDirectory).value
+      val reactToolzResourcesFolder = (reactToolz / Compile / resourceDirectory).value
+      val backendResourcesFolder = (backend / Compile / resourceDirectory).value
+
+      val jsFiles = (frontend / Compile / fullOptJS / webpack).value
+      val log = streams.value.log
+
+      val finalJsFiles = jsFiles.flatMap { attributed =>
+        if (attributed.data.toString.endsWith(".js")) {
+          val destFile = file(s"$deployFolder/static-assets/js/simple-finance-tracker-v2-frontend.js")
+          log.info(s"Copying: ${attributed.data.toString} -> ${destFile.toString}")
+          java.nio.file.Files.copy(attributed.data.toPath, destFile.toPath, StandardCopyOption.REPLACE_EXISTING)
+          Some(destFile)
+        } else None
+      }
+
+      val htmlSource = file(s"${frontendResourcesFolder.toString}/index-prod.html").toPath
+      val htmlDestination = file(s"$deployFolder/static-assets/index-main.html")
+      java.nio.file.Files.copy(htmlSource, htmlDestination.toPath, StandardCopyOption.REPLACE_EXISTING)
+
+      val finalCssFiles = List(
+        file(s"$frontendResourcesFolder/sft-v2-main.css"),
+        file(s"$frontendResourcesFolder/my-materialize.css"),
+        file(s"$reactToolzResourcesFolder/date-picker.css")
+      ).map { fileToMove =>
+        val destFile = file(s"$deployFolder/static-assets/css/${fileToMove.name}")
+        log.info(s"Copying: ${fileToMove.toString} -> ${destFile.toString}")
+        java.nio.file.Files.copy(fileToMove.toPath, destFile.toPath, StandardCopyOption.REPLACE_EXISTING)
+        destFile
+      }
+
+      val backEndJar = (backend / assembly).value
+      val backendJarDest = file(s"$deployFolder/simple-finance-tracker-v2.jar")
+      java.nio.file.Files.copy(backEndJar.toPath, backendJarDest.toPath, StandardCopyOption.REPLACE_EXISTING)
+
+      val logbackFileDest = file(s"$deployFolder/logback.xml")
+      java.nio.file.Files.copy(file(s"${backendResourcesFolder.toString}/prod-logback.xml").toPath, logbackFileDest.toPath, StandardCopyOption.REPLACE_EXISTING)
+
+      val allFiles = List(backendJarDest, logbackFileDest, htmlDestination) ++ finalJsFiles ++ finalCssFiles
+
+      log.info("==================================================")
+      log.info("Deployment Files:")
+      allFiles.map(_.toString).foreach(log.info(_))
+    }
 //      "org.scalameta"   %% "munit"               % MunitVersion           % Test,
 //      "org.typelevel"   %% "munit-cats-effect-3" % MunitCatsEffectVersion % Test,
 //    testFrameworks += new TestFramework("munit.Framework")

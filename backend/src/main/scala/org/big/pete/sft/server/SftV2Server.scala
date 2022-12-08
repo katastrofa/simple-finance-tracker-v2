@@ -5,8 +5,8 @@ import cats.data.Kleisli
 import cats.effect.{Async, Resource}
 import cats.implicits.catsSyntaxApplicativeError
 import cats.syntax.{FlatMapSyntax, FunctorSyntax, SemigroupKSyntax}
-import com.comcast.ip4s.{Ipv4Address, Port}
-import fs2.{Chunk, Stream}
+import com.comcast.ip4s.{Host, Hostname, Port}
+import fs2.Stream
 import fs2.io.net.tls.TLSContext
 import org.big.pete.cache.BpCache
 import org.big.pete.sft.domain.{Account, AccountEdit, ApiAction, Category, CategoryDeleteStrategies, DeleteTransactions, MassEditTransactions, MoneyAccount, MoneyAccountDeleteStrategy, TrackingEdit, Transaction}
@@ -24,6 +24,7 @@ import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.staticcontent.{FileService, fileService}
 import org.http4s.server.{AuthMiddleware, Router}
 import org.typelevel.log4cats.slf4j.Slf4jLogger
+import scodec.bits.ByteVector
 
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -38,7 +39,7 @@ class SftV2Server[F[_]: Async](
     moneyAccountsApi: MoneyAccounts[F],
     transactionsApi: Transactions[F],
     dsl: Http4sDsl[F],
-    ipAddress: String,
+    host: String,
     port: Int,
     environment: String
 ) extends FunctorSyntax
@@ -54,6 +55,11 @@ class SftV2Server[F[_]: Async](
     "./static-assets/index-main.html"
   else
     "./frontend/src/main/assets/index-main.html"
+
+  private val hostObj = if (environment.toLowerCase == "prod")
+    Hostname.fromString(host)
+  else
+    Host.fromString(host)
 
   private val authMiddleware: AuthMiddleware[F, AuthUser] =
     AuthMiddleware(authHelper.authSftUser, authHelper.loginRedirectHandler)
@@ -85,7 +91,7 @@ class SftV2Server[F[_]: Async](
 
       Ok.apply(htmlDataF)(
         implicitly[Monad[F]],
-        EntityEncoder.simple[String](headers.`Content-Type`(MediaType.text.html))(s => Chunk.array(s.getBytes(`UTF-8`.nioCharset)))
+        EntityEncoder.simple[String](headers.`Content-Type`(MediaType.text.html))(s => ByteVector(s.getBytes(`UTF-8`.nioCharset)))
       ).map {
         _.withHeaders(Headers(
           headers.Expires(HttpDate.MinValue),
@@ -242,9 +248,11 @@ class SftV2Server[F[_]: Async](
       "dev-assets" -> fileService[F](FileService.Config("./frontend/src/main/assets"))
     ).orNotFound
 
+    EmberServerBuilder.default[F]
+      .withHttp2
     def standardServerBuilder =
       EmberServerBuilder.default[F]
-        .withHost(Ipv4Address.fromString(ipAddress).get)
+        .withHost(hostObj.get)
         .withPort(Port.fromInt(port).get)
         .withHttpApp(httpApp)
 

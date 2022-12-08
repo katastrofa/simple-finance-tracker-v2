@@ -4,4 +4,5 @@ target/
 .idea/
 .bsp/
 backend/src/main/resources/application.conf
+backend/src/main/resources/prod.conf
 ignore/

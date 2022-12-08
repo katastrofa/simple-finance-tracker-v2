@@ -107,7 +107,7 @@ object Categories {
       $.modState(_.copy(deleteIsOpen = false))
 
     def openAddNew: Callback = $.modState { state =>
-      state.copy(isOpen = true, deleteIsOpen = false, Some(-42), "", "", TopLevelCat)
+      state.copy(isOpen = true, deleteIsOpen = false, None, "", "", TopLevelCat)
     }
 
     def openEditModal(cat: CategoryTree): Callback = $.modState { state =>
