@@ -118,23 +118,24 @@ object Categories {
       state.copy(deleteIsOpen = true, deleteId = Some(cat.id), shiftSubCatsTo = TopLevelCat.id, shiftTransactionsTo = NoShiftTransactions.id)
     }
 
-    def render(props: Props, state: State): html_<^.VdomTagOf[Element] = {
-      def expandCategories(cat: CategoryTree): List[ScalaFn.Unmounted[CategoryProps]] = {
-        if (state.parent.id == -42 || state.parent.id != cat.id)
-          categoryComponent.withKey(s"cat-${cat.id}").apply(CategoryProps(cat, openEditModal, openDeleteModal)) ::
-            cat.children.flatMap(expandCategories)
-        else
-          Nil
-      }
+    def expandCategories(excludeId: Option[Int])(cat: CategoryTree): List[ScalaFn.Unmounted[CategoryProps]] = {
+      if (!excludeId.contains(cat.id))
+        categoryComponent.withKey(s"cat-${cat.id}").apply(CategoryProps(cat, openEditModal, openDeleteModal)) ::
+          cat.children.flatMap(expandCategories(excludeId))
+      else
+        Nil
+    }
 
-      val categoryLines = props.categories.flatMap(expandCategories).toVdomArray
+    def render(props: Props, state: State): html_<^.VdomTagOf[Element] = {
+      val categoryLines = props.categories.flatMap(expandCategories(None)).toVdomArray
 
       tableWrap(
         "categories-table",
         List(
           AddModal.component(AddModal.Props("add-category-modal")) {
             addCategoryModal.apply(FormProps(
-              props.categories, state.id, state.name, state.description, state.parent,
+              CategoryTree.linearize(props.categories),
+              state.id, state.name, state.description, state.parent,
               changeName, changeDescription, changeParent, saveEdit, closeModal
             ))
           }.when(state.isOpen),

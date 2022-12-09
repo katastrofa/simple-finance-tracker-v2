@@ -54,7 +54,7 @@ class SftV2Server[F[_]: Async](
   private val mainHtmlPath = if (environment.toLowerCase == "prod")
     "./static-assets/index-main.html"
   else
-    "./frontend/src/main/assets/index-main.html"
+    "./frontend/src/main/resources/index-main.html"
 
   private val hostObj = if (environment.toLowerCase == "prod")
     Hostname.fromString(host)
@@ -245,7 +245,7 @@ class SftV2Server[F[_]: Async](
     val httpApp: Kleisli[F, Request[F], Response[F]] = Router(
       "" -> loginSupportRoutes.combineK(authMiddleware(apiRoutes)),
       "static" -> fileService[F](FileService.Config("./static-assets")),
-      "dev-assets" -> fileService[F](FileService.Config("./frontend/src/main/assets"))
+      "dev-assets" -> fileService[F](FileService.Config("./frontend/src/main/resources"))
     ).orNotFound
 
     EmberServerBuilder.default[F]

@@ -40,8 +40,8 @@ object CategoryTree {
       .map(cat => catToTree(cat, 0))
   }
 
-  def makeLinearCats(cats: List[CategoryTree]): List[CategoryTree] = {
-    cats.flatMap(cat => cat :: makeLinearCats(cat.children))
+  def linearize(cats: List[CategoryTree]): List[CategoryTree] = {
+    cats.flatMap(cat => cat :: linearize(cat.children))
   }
 
   def name(cat: CategoryTree): String =
