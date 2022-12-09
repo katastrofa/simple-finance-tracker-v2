@@ -37,6 +37,7 @@ body {
 
 .modal {
   max-height: 90%;
+  overflow-y: visible;
 }
 
 .modal.open {

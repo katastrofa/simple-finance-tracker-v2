@@ -19,7 +19,7 @@ scalaVersion := MyScalaVersion
 
 lazy val basicSettings = Seq(
   organization := "org.big.pete",
-  version := "0.1.0",
+  version := "0.2-SNAPSHOT",
   scalaVersion := MyScalaVersion,
   credentials += Credentials(Path.userHome / ".sbt" / ".credentials-github-repo"),
   resolvers += ("scala-toolz-github" at "https://maven.pkg.github.com/katastrofa/scala-toolz/")
@@ -145,8 +145,8 @@ lazy val frontend = (project in file("frontend"))
       val compiled = (Compile / fastOptJS / webpack).value
       val log = streams.value.log
       compiled.foreach { attributed =>
-        val destinationPath = file(s"frontend/src/main/assets/ignore/${attributed.data.name}").toPath
-        log.info(s"Copying: ${destinationPath.toString}")
+        val destinationPath = file(s"frontend/src/main/resources/ignore/${attributed.data.name}").toPath
+        log.info(s"Copying: ${attributed.data} -> ${destinationPath.toString}")
         java.nio.file.Files.copy(attributed.data.toPath, destinationPath, StandardCopyOption.REPLACE_EXISTING)
       }
       compiled
