@@ -2,9 +2,9 @@ package org.big.pete.sft.front.state
 
 import japgolly.scalajs.react.callback.Callback
 import org.big.pete.BPJson
-import org.big.pete.sft.domain.{Account, AccountEdit, Category, CategoryDeleteStrategies, EnhancedMoneyAccount, MoneyAccount, MoneyAccountDeleteStrategy, PeriodAmountStatus, ShiftStrategy}
+import org.big.pete.sft.domain.{Account, AccountEdit, Category, CategoryDeleteStrategies, EnhancedMoneyAccount, MoneyAccount, MoneyAccountCurrency, MoneyAccountDeleteStrategy, ShiftStrategy}
 import org.big.pete.sft.front.domain.CategoryTree
-import org.big.pete.sft.front.utilz.getAccountPermalink
+import org.big.pete.sft.front.utilz.{getAccountId, getAccountPermalink}
 
 import java.time.LocalDate
 
@@ -61,7 +61,7 @@ trait DataUpdate extends DataLoad {
     }
   }
 
-  def saveMoneyAccount(id: Option[Int], name: String, startAmount: BigDecimal, currency: String, created: LocalDate): Callback = {
+  def saveMoneyAccount(id: Option[Int], name: String, created: LocalDate, currencies: List[MoneyAccountCurrency]): Callback = {
     $.props.flatMap { props =>
       val account = getAccountPermalink(props.activePage).getOrElse("")
       val method = if (id.isDefined) "POST" else "PUT"
@@ -70,7 +70,7 @@ trait DataUpdate extends DataLoad {
       ajaxUpdate[MoneyAccount](
         method,
         "/" + account + "/money-accounts",
-        BPJson.write(MoneyAccount(maId, name, startAmount, currency, created, -1, None)),
+        BPJson.write(MoneyAccount(maId, name, created, -1, None, currencies)),
         ma => $.modState { oldState =>
           val currencyObj = oldState.currencies.find(_.id == ma.currencyId).get
           val period = PeriodAmountStatus(ma.startAmount, ma.startAmount)

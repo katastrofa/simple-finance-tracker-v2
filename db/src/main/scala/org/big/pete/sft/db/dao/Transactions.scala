@@ -22,17 +22,21 @@ object Transactions {
   def deleteForCategory(cat: Int): ConnectionIO[Int] =
     sql"""DELETE FROM transactions WHERE category = $cat""".update.run
 
-  def changeMoneyAccount(oldMA: Int, newMA: Int, accountId: Int): List[ConnectionIO[Int]] = {
-    List(
-      sql"""UPDATE transactions AS t JOIN money_accounts AS m ON t.money_account = m.id
-           SET t.money_account = $newMA WHERE t.money_account = $oldMA AND m.account = $accountId""".update.run,
-      sql"""UPDATE transactions AS t JOIN money_accounts AS m ON t.dest_money_account = m.id
-           SET t.dest_money_account = $newMA WHERE t.dest_money_account = $oldMA AND m.account = $accountId""".update.run
-    )
+  def changeMoneyAccount(currency: String, oldMA: Int, newMA: Option[Int]): List[ConnectionIO[Int]] = {
+    val oldMainFr = fr"(money_account = $oldMA AND currency = $currency)"
+    val oldDestFr = fr"(dest_money_account = $oldMA AND dest_currency = $currency)"
+
+    if (newMA.isEmpty)
+      List((fr"DELETE FROM transactions WHERE" ++ oldMainFr ++ fr"OR" ++ oldDestFr).update.run)
+    else
+      List(
+        (fr"UPDATE transactions SET money_account = $newMA WHERE" ++ oldMainFr).update.run,
+        (fr"UPDATE transactions SET dest_money_account = $newMA WHERE" ++ oldDestFr).update.run
+      )
   }
 
   def getBalances(moneyAccounts: NonEmptyList[Int], until: LocalDate): ConnectionIO[List[Balance]] = (
-    fr"SELECT date, type, amount, money_account, dest_amount, dest_money_account FROM transactions WHERE " ++
+    fr"SELECT date, type, amount, money_account, currency, dest_amount, dest_money_account, dest_currency FROM transactions WHERE " ++
       fr"(" ++ in(fr"money_account", moneyAccounts) ++ fr" OR " ++
       in(fr"dest_money_account", moneyAccounts) ++
       fr") AND date <= $until ORDER BY date"
@@ -52,19 +56,19 @@ object Transactions {
 
   def addTransaction(trans: Transaction): ConnectionIO[Int] =
     sql"""INSERT INTO transactions (
-                date, type, amount, description, category, money_account, tracking, dest_amount, dest_money_account, owner
+                date, type, amount, description, category, money_account, currency, tracking, dest_amount, dest_money_account, dest_currency, owner
             ) VALUE (
                 ${trans.date}, ${trans.transactionType}, ${trans.amount}, ${trans.description}, ${trans.categoryId},
-                ${trans.moneyAccount}, ${trans.tracking}, ${trans.destinationAmount}, ${trans.destinationMoneyAccountId},
-                ${trans.owner}
+                ${trans.moneyAccount}, ${trans.currency}, ${trans.tracking}, ${trans.destinationAmount},
+                ${trans.destinationMoneyAccountId}, ${trans.destinationCurrency}, ${trans.owner}
             )""".update.withUniqueGeneratedKeys[Int]("id")
 
   def editTransaction(trans: Transaction): ConnectionIO[Int] =
     sql"""UPDATE transactions
             SET date = ${trans.date}, type = ${trans.transactionType}, amount = ${trans.amount},
                 description = ${trans.description}, category = ${trans.categoryId}, money_account = ${trans.moneyAccount},
-                tracking = ${trans.tracking}, dest_amount = ${trans.destinationAmount},
-                dest_money_account = ${trans.destinationMoneyAccountId}
+                currency = ${trans.currency}, tracking = ${trans.tracking}, dest_amount = ${trans.destinationAmount},
+                dest_money_account = ${trans.destinationMoneyAccountId}, dest_currency = ${trans.destinationCurrency}
             WHERE id = ${trans.id}
             LIMIT 1
     """.update.run

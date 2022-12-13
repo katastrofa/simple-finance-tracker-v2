@@ -50,9 +50,54 @@ case object ApiAction extends Enum[ApiAction] with CirceEnum[ApiAction] {
 }
 
 case class Account(id: Int, name: String, permalink: String, owner: Option[Int])
+
 case class Currency(id: String, name: String, symbol: String)
-case class MoneyAccount(id: Int, name: String, startAmount: BigDecimal, currencyId: String, created: LocalDate, accountId: Int, owner: Option[Int])
+
+case class MoneyAccountCurrencyInfo(moneyAccount: Int, currency: String, startAmount: BigDecimal)
+case class MoneyAccountCurrency(id: Int, moneyAccount: Int, currency: String, startAmount: BigDecimal) {
+  def expand(fullCurrency: Currency): ExpandedMoneyAccountCurrency =
+    ExpandedMoneyAccountCurrency(id, moneyAccount, fullCurrency, startAmount)
+  def expand(currencies: List[Currency]): ExpandedMoneyAccountCurrency =
+    expand(currencies.find(_.id == currency).get)
+
+  def toInfo: MoneyAccountCurrencyInfo =
+    MoneyAccountCurrencyInfo(moneyAccount, currency, startAmount)
+}
+case class ExpandedMoneyAccountCurrency(id: Int, moneyAccount: Int, currency: Currency, startAmount: BigDecimal)
+
+case class MoneyAccountWithCurrency(
+    id: Int,
+    name: String,
+    created: LocalDate,
+    accountId: Int,
+    owner: Option[Int],
+    currencyId: Int,
+    currency: String,
+    startAmount: BigDecimal
+) {
+  def getCurrency: MoneyAccountCurrency = MoneyAccountCurrency(currencyId, id, currency, startAmount)
+}
+
+case class PureMoneyAccount(id: Int, name: String, created: LocalDate, accountId: Int, owner: Option[Int]) {
+  def expand(moneyCurrencies: List[MoneyAccountCurrency]): MoneyAccount =
+    MoneyAccount(id, name, created, accountId, owner, moneyCurrencies)
+  def duplicateExpand(moneyCurrencies: List[MoneyAccountCurrency]): List[MoneyAccountWithCurrency] = {
+    moneyCurrencies.map( mCurrency =>
+      MoneyAccountWithCurrency(id, name, created, accountId, owner, mCurrency.id, mCurrency.currency, mCurrency.startAmount)
+    )
+  }
+}
+case class MoneyAccount(
+    id: Int,
+    name: String,
+    created: LocalDate,
+    accountId: Int,
+    owner: Option[Int],
+    currencies: List[MoneyAccountCurrency]
+)
+
 case class Category(id: Int, name: String, description: Option[String], parent: Option[Int], accountId: Int, owner: Option[Int])
+
 case class Transaction(
     id: Int,
     date: LocalDate,
@@ -61,29 +106,31 @@ case class Transaction(
     description: String,
     categoryId: Int,
     moneyAccount: Int,
+    currency: String,
     tracking: TransactionTracking,
     destinationAmount: Option[BigDecimal],
     destinationMoneyAccountId: Option[Int],
+    destinationCurrency: Option[String],
     owner: Option[Int]
 )
 
 case class EnhancedMoneyAccount(
     id: Int,
     name: String,
-    startAmount: BigDecimal,
-    currency: Currency,
     created: LocalDate,
-    periodStatus: PeriodAmountStatus,
+    currencies: List[ExpandedMoneyAccountCurrency],
+    status: List[CurrencyAndStatus],
     owner: Option[Int]
 )
-case class PeriodAmountStatus(start: BigDecimal, end: BigDecimal)
+case class CurrencyAndStatus(currency: Currency, startAmount: BigDecimal, start: BigDecimal, end: BigDecimal)
 
 case class UserPermissions(global: Set[ApiAction], perAccount: Map[Int, Set[ApiAction]], default: Set[ApiAction])
 
 
 case class ShiftStrategy(newId: Option[Int])
+case class ShiftStrategyPerCurrency(newId: Option[Int], currency: String)
 case class CategoryDeleteStrategies(shiftSubCats: ShiftStrategy, shiftTransactions: ShiftStrategy)
-case class MoneyAccountDeleteStrategy(shiftTransactions: ShiftStrategy)
+case class MoneyAccountDeleteStrategy(shiftTransactions: List[ShiftStrategyPerCurrency])
 case class AccountEdit(oldPermalink: String, id: Int, name: String, permalink: String, owner: Option[Int])
 case class NotAllowedResponse(message: String)
 case class TrackingEdit(id: Int, tracking: TransactionTracking)
@@ -94,20 +141,26 @@ case class MassEditTransactions(ids: List[Int], changeCat: ShiftStrategy, change
 object Implicits {
   implicit val accountEncoder: Encoder[Account] = deriveEncoder[Account]
   implicit val currencyEncoder: Encoder[Currency] = deriveEncoder[Currency]
+  implicit val moneyAccountCurrencyEncoder: Encoder[MoneyAccountCurrency] = deriveEncoder[MoneyAccountCurrency]
+  implicit val expandedMoneyAccountCurrencyEncoder: Encoder[ExpandedMoneyAccountCurrency] = deriveEncoder[ExpandedMoneyAccountCurrency]
+  implicit val pureMoneyAccountEncoder: Encoder[PureMoneyAccount] = deriveEncoder[PureMoneyAccount]
   implicit val moneyAccountEncoder: Encoder[MoneyAccount] = deriveEncoder[MoneyAccount]
   implicit val categoryEncoder: Encoder[Category] = deriveEncoder[Category]
   implicit val transactionEncoder: Encoder[Transaction] = deriveEncoder[Transaction]
-  implicit val periodAmountStatusEncoder: Encoder[PeriodAmountStatus] = deriveEncoder[PeriodAmountStatus]
+  implicit val currencyAndStatusEncoder: Encoder[CurrencyAndStatus] = deriveEncoder[CurrencyAndStatus]
   implicit val enhancedMoneyAccountEncoder: Encoder[EnhancedMoneyAccount] = deriveEncoder[EnhancedMoneyAccount]
   implicit val accountEditEncoder: Encoder[AccountEdit] = deriveEncoder[AccountEdit]
   implicit val trackingEditEncoder: Encoder[TrackingEdit] = deriveEncoder[TrackingEdit]
 
   implicit val accountDecoder: Decoder[Account] = deriveDecoder[Account]
   implicit val currencyDecoder: Decoder[Currency] = deriveDecoder[Currency]
+  implicit val moneyAccountCurrencyDecoder: Decoder[MoneyAccountCurrency] = deriveDecoder[MoneyAccountCurrency]
+  implicit val expandedMoneyAccountCurrencyDecoder: Decoder[ExpandedMoneyAccountCurrency] = deriveDecoder[ExpandedMoneyAccountCurrency]
+  implicit val pureMoneyAccountDecoder: Decoder[PureMoneyAccount] = deriveDecoder[PureMoneyAccount]
   implicit val moneyAccountDecoder: Decoder[MoneyAccount] = deriveDecoder[MoneyAccount]
   implicit val categoryDecoder: Decoder[Category] = deriveDecoder[Category]
   implicit val transactionDecoder: Decoder[Transaction] = deriveDecoder[Transaction]
-  implicit val periodAmountStatusDecoder: Decoder[PeriodAmountStatus] = deriveDecoder[PeriodAmountStatus]
+  implicit val currencyAndStatusDecoder: Decoder[CurrencyAndStatus] = deriveDecoder[CurrencyAndStatus]
   implicit val enhancedMoneyAccountDecoder: Decoder[EnhancedMoneyAccount] = deriveDecoder[EnhancedMoneyAccount]
   implicit val accountEditDecoder: Decoder[AccountEdit] = deriveDecoder[AccountEdit]
   implicit val trackingEditDecoder: Decoder[TrackingEdit] = deriveDecoder[TrackingEdit]
@@ -119,6 +172,8 @@ object Implicits {
   implicit val notAllowedResponseDecoder: Decoder[NotAllowedResponse] = deriveDecoder[NotAllowedResponse]
   implicit val shiftStrategyEncoder: Encoder[ShiftStrategy] = deriveEncoder[ShiftStrategy]
   implicit val shiftStrategyDecoder: Decoder[ShiftStrategy] = deriveDecoder[ShiftStrategy]
+  implicit val shiftStrategyPerCurrencyEncoder: Encoder[ShiftStrategyPerCurrency] = deriveEncoder[ShiftStrategyPerCurrency]
+  implicit val shiftStrategyPerCurrencyDecoder: Decoder[ShiftStrategyPerCurrency] = deriveDecoder[ShiftStrategyPerCurrency]
   implicit val categoryDeleteStrategiesEncoder: Encoder[CategoryDeleteStrategies] = deriveEncoder[CategoryDeleteStrategies]
   implicit val categoryDeleteStrategiesDecoder: Decoder[CategoryDeleteStrategies] = deriveDecoder[CategoryDeleteStrategies]
   implicit val moneyAccountDeleteStrategyEncoder: Encoder[MoneyAccountDeleteStrategy] = deriveEncoder[MoneyAccountDeleteStrategy]

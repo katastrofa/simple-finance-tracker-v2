@@ -3,7 +3,7 @@ import java.nio.file.StandardCopyOption
 val sftFullBuild = taskKey[Unit]("Builds the back-end assembly and front-end and pushes it into the back-end target folder")
 
 val Http4sVersion = "1.0.0-M37"
-val CirceVersion = "0.14.2"
+val CirceVersion = "0.14.3"
 //val MunitVersion = "0.7.29"
 val LogbackVersion = "1.2.11"
 //val MunitCatsEffectVersion = "1.0.6"
@@ -19,7 +19,7 @@ scalaVersion := MyScalaVersion
 
 lazy val basicSettings = Seq(
   organization := "org.big.pete",
-  version := "0.2.1",
+  version := "0.3-SNAPSHOT",
   scalaVersion := MyScalaVersion,
   credentials += Credentials(Path.userHome / ".sbt" / ".credentials-github-repo"),
   resolvers += ("scala-toolz-github" at "https://maven.pkg.github.com/katastrofa/scala-toolz/")
@@ -56,7 +56,7 @@ lazy val db = (project in file("db"))
     name := s"$MyProjectName-db",
     libraryDependencies += "org.tpolecat" %% "doobie-core" % DoobieVersion,
     libraryDependencies += "io.circe" %% "circe-jawn" % CirceVersion,
-    libraryDependencies += "org.wvlet.airframe" %% "airframe-log" % "22.7.3"
+    libraryDependencies += "org.wvlet.airframe" %% "airframe-log" % "22.11.4"
   )
 
 lazy val backend = (project in file("backend"))
@@ -65,7 +65,7 @@ lazy val backend = (project in file("backend"))
   .settings(
     name := s"$MyProjectName-backend",
 
-    libraryDependencies += "com.softwaremill.sttp.client3" %% "async-http-client-backend-cats" % "3.7.6",
+    libraryDependencies += "com.softwaremill.sttp.client3" %% "cats" % "3.8.5",
     libraryDependencies += "org.tpolecat" %% "doobie-hikari" % DoobieVersion,
     libraryDependencies += "org.http4s" %% "http4s-ember-server" % Http4sVersion,
     libraryDependencies += "org.http4s" %% "http4s-circe" % Http4sVersion,
@@ -89,7 +89,7 @@ lazy val shapeFun = (project in file("shape-fun"))
   .settings(basicSettings)
   .settings(
     name := s"shape-fun",
-    libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.9"
+    libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.10"
   )
 
 lazy val scalajsToolz = (project in file("scalajs-toolz"))
