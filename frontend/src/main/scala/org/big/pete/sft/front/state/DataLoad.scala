@@ -55,7 +55,7 @@ trait DataLoad extends Base {
 
       data.flatMap { dataList =>
         val accounts = dataList.head.asInstanceOf[List[Account]]
-        val currencies = dataList(1).asInstanceOf[List[Currency]]
+        val currencies = dataList(1).asInstanceOf[List[Currency]].map(cur => cur.id -> cur).toMap
         val cats = dataList(2).asInstanceOf[Map[Int, Category]]
         val moneyAccounts = dataList(3).asInstanceOf[Map[Int, EnhancedMoneyAccount]]
         val transactions = dataList(4).asInstanceOf[List[Transaction]]

@@ -7,8 +7,9 @@ import japgolly.scalajs.react.util.EffectSyntax
 import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.sft.front.SftMain.SftPages
 import org.big.pete.sft.front.components.header.{Sidenav, SidenavFilters, TopHeader}
+import org.big.pete.sft.front.components.main.moneyaccount.Page
 import org.big.pete.sft.front.components.main.transactions.Page
-import org.big.pete.sft.front.components.main.{Accounts, Categories, MoneyAccounts}
+import org.big.pete.sft.front.components.main.{Accounts, Categories}
 
 
 object FullPage extends EffectSyntax {
@@ -23,7 +24,7 @@ object FullPage extends EffectSyntax {
       accounts: Accounts.Props,
       transactions: Page.Props,
       categories: Categories.Props,
-      moneyAccounts: MoneyAccounts.Props
+      moneyAccounts: Page.Props
   )
 
   val component: Component[Props, Unit, Unit, CtorType.Props] = ScalaComponent.builder[Props]
@@ -37,7 +38,7 @@ object FullPage extends EffectSyntax {
         case SftMain.CategoriesPage(_) =>
           Categories.component(props.categories)
         case SftMain.MoneyAccountsPage(_) =>
-          MoneyAccounts.component(props.moneyAccounts)
+          Page.component(props.moneyAccounts)
       }
 
       ReactFragment(

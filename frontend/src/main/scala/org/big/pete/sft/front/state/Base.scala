@@ -80,7 +80,7 @@ trait Base {
       .filterNonEmpty(categoriesActiveFilters.getOrElse(state.categoriesActiveFilters), _.categoryId)
       .filterNonEmpty(moneyAccountsActiveFilters.getOrElse(state.moneyAccountsActiveFilters), _.moneyAccount)
       .filter(filterContent(contentFilter.getOrElse(state.contentFilter)))
-      .map(EnhancedTransaction.enhance(categories.getOrElse(state.categories), moneyAccounts.getOrElse(state.moneyAccounts)))
+      .map(EnhancedTransaction.enhance(categories.getOrElse(state.categories), moneyAccounts.getOrElse(state.moneyAccounts), state.currencies))
       .sorted(new TransactionsOrdering(transactionsSorting.getOrElse(state.transactionsSorting)))
   }
 
@@ -134,12 +134,18 @@ trait Base {
       from: LocalDate
   ): EnhancedMoneyAccount = {
     val realOp = MAOperations(action)(op)
-    if (trans.date.isAfter(from.asInstanceOf[ChronoLocalDate]))
-      ma.copy(periodStatus = ma.periodStatus.copy(end = realOp(ma.periodStatus.end, trans.amount)))
-    else
-      ma.copy(
-        periodStatus = ma.periodStatus
-          .copy(realOp(ma.periodStatus.start, trans.amount), realOp(ma.periodStatus.end, trans.amount))
-      )
+    if (trans.date.isAfter(from.asInstanceOf[ChronoLocalDate])) {
+      val newStatus = ma.status.filter(_.currency.id != trans.currency) ++
+        ma.status.find(_.currency.id == trans.currency).map { status =>
+          status.copy(end = realOp(status.end, trans.amount))
+        }.toList
+      ma.copy(status = newStatus)
+    } else {
+      val newStatus = ma.status.filter(_.currency.id != trans.currency) ++
+        ma.status.find(_.currency.id == trans.currency).map { status =>
+          status.copy(start = realOp(status.start, trans.amount), end = realOp(status.end, trans.amount))
+        }
+      ma.copy(status = newStatus)
+    }
   }
 }

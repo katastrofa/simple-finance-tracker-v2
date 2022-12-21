@@ -6,7 +6,7 @@ import japgolly.scalajs.react.extra.{EventListener, OnUnmount}
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{Callback, CtorType, ReactFormEventFromInput, Ref, Reusability, ScalaComponent}
 import org.big.pete.react.{MICheckbox, MaterialIcon}
-import org.big.pete.sft.domain.{EnhancedMoneyAccount, TransactionTracking, TransactionType}
+import org.big.pete.sft.domain.{Currency, EnhancedMoneyAccount, TransactionTracking, TransactionType}
 import org.big.pete.sft.front.components.main.{formatAmount, parseAmount, tableWrap}
 import org.big.pete.sft.front.domain.{CategoryTree, EnhancedTransaction, Order, SortingColumn}
 import org.big.pete.sft.front.helpers.{AddModal, ModalButtons}
@@ -29,7 +29,7 @@ object Page {
       clickOrdering: SortingColumn => Callback,
       checkTransaction: (MICheckbox.Status, String) => Callback,
       trackingChanged: (Int, TransactionTracking) => Callback,
-      save: (Option[Int], LocalDate, TransactionType, BigDecimal, String, Int, Int, Option[BigDecimal], Option[Int]) => Callback,
+      save: (Option[Int], LocalDate, TransactionType, BigDecimal, String, Int, Int, String, Option[BigDecimal], Option[Int], Option[String]) => Callback,
       deleteTransactions: Set[Int] => Callback,
       massEditSave: (Set[Int], Option[Int], Option[Int]) => Callback
   )
@@ -48,6 +48,8 @@ object Page {
       categoryId: Option[Int],
       moneyAccountId: Option[Int],
       destMAId: Option[Int],
+      currency: Option[String],
+      destCurrency: Option[String],
       addNext: Boolean,
       toDelete: Set[Int],
       massEditCat: Option[Int],
@@ -83,11 +85,25 @@ object Page {
     def categoryChange(cat: CategoryTree): Callback =
       $.modState(_.copy(categoryId = Some(cat.id)))
 
-    def maChange(ma: EnhancedMoneyAccount): Callback =
-      $.modState(_.copy(moneyAccountId = Some(ma.id)))
+    def maChange(ma: EnhancedMoneyAccount): Callback = $.modState { state =>
+      val newCurrency = state.currency
+        .flatMap(cur => ma.currencies.find(_.currency.id == cur))
+        .map(_.currency.id)
+      state.copy(moneyAccountId = Some(ma.id), currency = newCurrency)
+    }
 
-    def destinationMAChange(ma: EnhancedMoneyAccount): Callback =
-      $.modState(_.copy(destMAId = Some(ma.id)))
+    def currencyChange(currency: Currency): Callback =
+      $.modState(_.copy(currency = Some(currency.id)))
+
+    def destinationMAChange(ma: EnhancedMoneyAccount): Callback = $.modState { state =>
+      val newDestCurrency = state.destCurrency
+        .flatMap(cur => ma.currencies.find(_.currency.id == cur))
+        .map(_.currency.id)
+      state.copy(destMAId = Some(ma.id), destCurrency = newDestCurrency)
+    }
+
+    def destinationCurrencyChange(currency: Currency): Callback =
+      $.modState(_.copy(destCurrency = Some(currency.id)))
 
     def destinationAmountChange(event: ReactFormEventFromInput): Callback = $.modState { state =>
       state.copy(destAmount = Some(parseAmount(event.target.value, state.destAmount.getOrElse(BigDecimal(0)))))
@@ -102,12 +118,14 @@ object Page {
         state <- $.state
         destAmount = if (state.transactionType == TransactionType.Transfer) state.destAmount else None
         destMA = if (state.transactionType == TransactionType.Transfer) state.destMAId else None
-        _ = CookieStorage.updateAddTransactionSetup(
-          AddTransactionSetup(state.date, state.transactionType, state.categoryId, state.moneyAccountId, state.destMAId)
-        )
+        destCurrency = if (state.transactionType == TransactionType.Transfer) state.destCurrency else None
+        _ = CookieStorage.updateAddTransactionSetup(AddTransactionSetup(
+          state.date, state.transactionType, state.categoryId, state.moneyAccountId, state.currency,
+          state.destMAId, state.destCurrency
+        ))
         _ <- props.save(
           state.id, state.date, state.transactionType, state.amount, state.description, state.categoryId.get,
-          state.moneyAccountId.get, destAmount, destMA
+          state.moneyAccountId.get, state.currency.get, destAmount, destMA, destCurrency
         )
         _ <- if (state.addNext) openModalAddNew else close
     } yield ()
@@ -197,7 +215,7 @@ object Page {
         props.transactions
           .filter(trans => props.checkedTransactions.isEmpty || props.checkedTransactions.contains(trans.id))
           .filter(_.transactionType == ttype)
-          .map(trans => trans.currencySymbol -> trans.amount)
+          .map(trans => trans.currency.symbol -> trans.amount)
           .groupBy(_._1)
           .view.mapValues(_.map(_._2).sum)
           .toList
@@ -210,9 +228,9 @@ object Page {
             AddForm.component.withRef(formRef)(AddForm.Props(
               props.linearCats, props.moneyAccounts,
               state.id, state.date, state.transactionType, state.amount, state.destAmount, state.description, state.categoryId,
-              state.moneyAccountId, state.destMAId, state.addNext,
-              dateChange, ttChange, amountChange, descriptionChange, categoryChange, maChange, destinationMAChange,
-              destinationAmountChange, addNextChange,
+              state.moneyAccountId, state.destMAId, state.currency, state.destCurrency, state.addNext,
+              dateChange, ttChange, amountChange, descriptionChange, categoryChange, maChange, currencyChange,
+              destinationMAChange, destinationAmountChange, destinationCurrencyChange, addNextChange,
               save, close
             ))
           ).when(state.isOpen),
@@ -223,6 +241,7 @@ object Page {
 
           AddModal.component.withKey("mass-edit-transaction-modal-key").apply(AddModal.Props("mass-edit-transactions-modal")) {
             MassEditModal.component(MassEditModal.Props(
+              props.transactions.filter(t => props.checkedTransactions.contains(t.id)),
               props.linearCats, props.moneyAccounts, state.massEditCat, state.massEditMA,
               massEditCatChange, massEditMAChange, saveMassEdit, closeMassEdit
             ))
@@ -276,7 +295,7 @@ object Page {
   val component: Component[Props, State, Backend, CtorType.Props] = ScalaComponent.builder[Props]
     .initialState[State](State(
       isOpen = false, deleteIsOpen = false, massEditIsOpen = false, Set.empty, None, LocalDate.now(),
-      TransactionType.Expense, BigDecimal(0), None, "", None, None, None, addNext = false, Set.empty, None, None
+      TransactionType.Expense, BigDecimal(0), None, "", None, None, None, None, None, addNext = false, Set.empty, None, None
     ))
     .renderBackend[Backend]
     .configure(EventListener.install("resize", _.backend.controlledInvocationOfUpdateColSpanCB, _ => window))

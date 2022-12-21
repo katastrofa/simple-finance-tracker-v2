@@ -33,8 +33,10 @@ trait TransactionsProcessing extends DataLoad {
       description: String,
       category: Int,
       moneyAccount: Int,
+      currency: String,
       destinationAmount: Option[BigDecimal],
-      destinationMoneyAccountId: Option[Int]
+      destinationMoneyAccountId: Option[Int],
+      destinationCurrency: Option[String]
   ): Callback = {
     $.props.flatMap { props =>
       val account = getAccountPermalink(props.activePage).getOrElse("")
@@ -45,8 +47,8 @@ trait TransactionsProcessing extends DataLoad {
         "/" + account + "/transactions",
         BPJson.write(
           Transaction(
-            id.getOrElse(-1), date, transactionType, amount, description, category, moneyAccount,
-            TransactionTracking.None, destinationAmount, destinationMoneyAccountId, None
+            id.getOrElse(-1), date, transactionType, amount, description, category, moneyAccount, currency,
+            TransactionTracking.None, destinationAmount, destinationMoneyAccountId, destinationCurrency, None
           )
         ),
         transaction => $.modState { state =>
@@ -128,7 +130,7 @@ trait TransactionsProcessing extends DataLoad {
     }
   }
 
-  def updateStateWithTransaction(
+  private def updateStateWithTransaction(
       state: State,
       newTransactions: List[Transaction],
       updatedMoneyAccounts: Map[Int, EnhancedMoneyAccount]

@@ -63,7 +63,9 @@ case class MoneyAccountCurrency(id: Int, moneyAccount: Int, currency: String, st
   def toInfo: MoneyAccountCurrencyInfo =
     MoneyAccountCurrencyInfo(moneyAccount, currency, startAmount)
 }
-case class ExpandedMoneyAccountCurrency(id: Int, moneyAccount: Int, currency: Currency, startAmount: BigDecimal)
+case class ExpandedMoneyAccountCurrency(id: Int, moneyAccount: Int, currency: Currency, startAmount: BigDecimal) {
+  def simple: MoneyAccountCurrency =  MoneyAccountCurrency(id, moneyAccount, currency.id, startAmount)
+}
 
 case class MoneyAccountWithCurrency(
     id: Int,

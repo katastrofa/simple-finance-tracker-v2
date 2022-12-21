@@ -6,7 +6,8 @@ import japgolly.scalajs.react.component.Scala.{BackendScope, Component, Unmounte
 import org.big.pete.sft.domain.{Account, Currency}
 import org.big.pete.sft.front.SftMain.{AccountsSelectionPage, SftPages}
 import org.big.pete.sft.front.components.header.{Sidenav, SidenavFilters, TopHeader}
-import org.big.pete.sft.front.components.main.{Accounts, Categories, MoneyAccounts}
+import org.big.pete.sft.front.components.main.moneyaccount.Page
+import org.big.pete.sft.front.components.main.{Accounts, Categories}
 import org.big.pete.sft.front.components.main.transactions.Page
 import org.big.pete.sft.front.state.{CookieStorage, DataUpdate, DefaultSorting, Filtering, Props, State, TransactionsProcessing}
 import org.big.pete.sft.front.domain.{Order, SortingColumn}
@@ -19,7 +20,7 @@ object SftState {
 
   class Backend(val $: BackendScope[Props, State]) extends DataUpdate with Filtering with TransactionsProcessing {
 
-    def setFromDate(newFrom: LocalDate): CallbackTo[LocalDate] = {
+    private def setFromDate(newFrom: LocalDate): CallbackTo[LocalDate] = {
       def updateFrom(state: State): CallbackTo[LocalDate] = {
         if (newFrom.isBefore(state.to))
           $.setState(state.copy(from = newFrom)) >> CallbackTo.pure(newFrom)
@@ -37,7 +38,7 @@ object SftState {
       } yield from
     }
 
-    def setToDate(newTo: LocalDate): CallbackTo[LocalDate] = {
+    private def setToDate(newTo: LocalDate): CallbackTo[LocalDate] = {
       for {
         state <- $.state
         props <- $.props
@@ -68,7 +69,7 @@ object SftState {
           _ <- $.modStateAsync(_.copy(
             isMenuOpen = false,
             accounts = ajaxData.head.asInstanceOf[List[Account]],
-            currencies = ajaxData.last.asInstanceOf[List[Currency]]
+            currencies = ajaxData.last.asInstanceOf[List[Currency]].map(cur => cur.id -> cur).toMap
           ))
         } yield 3
 
@@ -130,14 +131,18 @@ object SftState {
           massEditTransactions
         ),
         Categories.Props(state.categoryTree, saveCategory, deleteCategory),
-        MoneyAccounts.Props(state.moneyAccounts.values.toList, state.currencies, saveMoneyAccount, deleteMoneyAccount)
+        Page.Props(state.moneyAccounts.values.toList, state.currencies, saveMoneyAccount, deleteMoneyAccount)
       ))
     }
 
   }
 
   val component: Component[Props, State, Backend, CtorType.Props] = ScalaComponent.builder[Props]
-    .initialStateFromProps(_ => State(CookieStorage.getBrowserSettings.from, CookieStorage.getBrowserSettings.to, isMenuOpen = false, None, Set.empty, Set.empty, "", Set.empty, Set.empty, Set.empty, DefaultSorting, List.empty, List.empty, Map.empty, Map.empty, List.empty, List.empty, List.empty))
+    .initialState(State(
+      CookieStorage.getBrowserSettings.from, CookieStorage.getBrowserSettings.to, isMenuOpen = false, None, Set.empty, Set.empty,
+      "", Set.empty, Set.empty, Set.empty, DefaultSorting, List.empty, Map.empty, Map.empty, Map.empty, List.empty, List.empty,
+      List.empty
+    ))
     .renderBackend[Backend]
     .componentDidMount(component => component.backend.onPageClick(component.props.activePage, None))
     .build

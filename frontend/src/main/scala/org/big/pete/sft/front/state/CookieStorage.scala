@@ -22,7 +22,7 @@ object CookieStorage {
     )
 
   def defaultAddTransactionSetup: AddTransactionSetup =
-    AddTransactionSetup(LocalDate.now(), TransactionType.Expense, None, None, None)
+    AddTransactionSetup(LocalDate.now(), TransactionType.Expense, None, None, None, None, None)
 
   def getBrowserSettings: BrowserSettings = {
     if (browserSettings == null)

@@ -2,9 +2,9 @@ package org.big.pete.sft.front.state
 
 import japgolly.scalajs.react.callback.Callback
 import org.big.pete.BPJson
-import org.big.pete.sft.domain.{Account, AccountEdit, Category, CategoryDeleteStrategies, EnhancedMoneyAccount, MoneyAccount, MoneyAccountCurrency, MoneyAccountDeleteStrategy, ShiftStrategy}
+import org.big.pete.sft.domain.{Account, AccountEdit, Category, CategoryDeleteStrategies, EnhancedMoneyAccount, MoneyAccount, MoneyAccountCurrency, MoneyAccountDeleteStrategy, ShiftStrategy, ShiftStrategyPerCurrency}
 import org.big.pete.sft.front.domain.CategoryTree
-import org.big.pete.sft.front.utilz.{getAccountId, getAccountPermalink}
+import org.big.pete.sft.front.utilz.getAccountPermalink
 
 import java.time.LocalDate
 
@@ -67,27 +67,24 @@ trait DataUpdate extends DataLoad {
       val method = if (id.isDefined) "POST" else "PUT"
       val maId = id.getOrElse(-1)
 
-      ajaxUpdate[MoneyAccount](
+      ajaxUpdate[EnhancedMoneyAccount](
         method,
         "/" + account + "/money-accounts",
         BPJson.write(MoneyAccount(maId, name, created, -1, None, currencies)),
         ma => $.modState { oldState =>
-          val currencyObj = oldState.currencies.find(_.id == ma.currencyId).get
-          val period = PeriodAmountStatus(ma.startAmount, ma.startAmount)
-          val enhanced = EnhancedMoneyAccount(ma.id, ma.name, ma.startAmount, currencyObj, ma.created, period, ma.owner)
-          oldState.copy(moneyAccounts = oldState.moneyAccounts + (ma.id -> enhanced))
+          oldState.copy(moneyAccounts = oldState.moneyAccounts + (ma.id -> ma))
         }
       )
     }
   }
 
-  def deleteMoneyAccount(id: Int, moveTo: Option[Int]): Callback = {
+  def deleteMoneyAccount(id: Int, strategies: List[ShiftStrategyPerCurrency]): Callback = {
     $.props.flatMap { props =>
       val account = getAccountPermalink(props.activePage).getOrElse("")
       ajaxUpdate[String](
         "DELETE",
         "/" + account + "/money-accounts/" + id.toString,
-        BPJson.write(MoneyAccountDeleteStrategy(ShiftStrategy(moveTo))),
+        BPJson.write(MoneyAccountDeleteStrategy(strategies)),
         _ => refreshAccount(account).toCallback
       )
     }

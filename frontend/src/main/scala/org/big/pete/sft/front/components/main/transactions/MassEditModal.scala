@@ -4,9 +4,9 @@ import japgolly.scalajs.react.component.Scala.Component
 import japgolly.scalajs.react.{Callback, CtorType, Reusability, ScalaComponent}
 import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.react.WithFocus
-import org.big.pete.sft.domain.{Currency, EnhancedMoneyAccount, PeriodAmountStatus}
+import org.big.pete.sft.domain.EnhancedMoneyAccount
 import org.big.pete.sft.front.SftMain.{dropDownCategoryTree, dropDownMoneyAccount}
-import org.big.pete.sft.front.domain.CategoryTree
+import org.big.pete.sft.front.domain.{CategoryTree, EnhancedTransaction}
 import org.big.pete.sft.front.helpers.ModalButtons
 import org.scalajs.dom.html.Form
 
@@ -18,6 +18,7 @@ object MassEditModal {
   import Page.moneyAccountMapReuse
 
   case class Props(
+      selectedTransactions: List[EnhancedTransaction],
       linearCats: List[CategoryTree],
       moneyAccounts: Map[Int, EnhancedMoneyAccount],
       selectedCat: Option[Int],
@@ -33,14 +34,15 @@ object MassEditModal {
   )
 
   final val LeaveAsIsCat = CategoryTree(-1, "Leave as is", None, 0, List.empty)
-  final val LeaveAsIsMa = EnhancedMoneyAccount(
-    -1, "Leave as is", BigDecimal(0), Currency("na", "na", "na"), LocalDate.now(), PeriodAmountStatus(BigDecimal(0), BigDecimal(0)), None
-  )
+  final val LeaveAsIsMa = EnhancedMoneyAccount(-1, "Leave as is", LocalDate.now(), List.empty, List.empty, None)
 
   class Backend extends WithFocus[dropDownCategoryTree.Props, dropDownCategoryTree.State, dropDownCategoryTree.Backend] {
     def render(props: Props): VdomTagOf[Form] = {
       val extendedCats = LeaveAsIsCat :: props.linearCats
-      val extendedMas = props.moneyAccounts + (-1 -> LeaveAsIsMa)
+      val usedCurrencies = props.selectedTransactions.map(_.currency.id).toSet
+      val extendedMas = props.moneyAccounts.filter { case (_, ma) =>
+        ma.currencies.map(_.currency.id).toSet.intersect(usedCurrencies).size == usedCurrencies.size
+      } + (-1 -> LeaveAsIsMa)
 
       <.form(
         <.div(^.cls := "row",
