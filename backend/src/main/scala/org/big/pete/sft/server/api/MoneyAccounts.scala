@@ -101,7 +101,7 @@ class MoneyAccounts[F[_]: Async: Parallel](
   def addMoneyAccount(ma: MoneyAccount, start: LocalDate, end: LocalDate): F[Response[F]] = {
     for {
       newId <- DBMA.addMoneyAccount(ma).transact(transactor)
-      moneyCurrencies <- DBMA.addCurrencies(ma.currencies).transact(transactor)
+      moneyCurrencies <- DBMA.addCurrencies(ma.currencies.map(_.copy(moneyAccount = newId))).transact(transactor)
       newPureMa <- DBMA.getPureMoneyAccount(newId, ma.accountId).transact(transactor)
       enhanced <- enhanceMoneyAccounts(newPureMa.get.duplicateExpand(moneyCurrencies), start, end)
       response <- Ok(enhanced.asJson)

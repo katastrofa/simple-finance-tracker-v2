@@ -18,8 +18,6 @@ import java.time.LocalDate
 
 
 object Page {
-  import org.big.pete.sft.front.domain.Implicits._
-
   case class Props(
       transactions: List[EnhancedTransaction],
       linearCats: List[CategoryTree],
@@ -59,7 +57,6 @@ object Page {
 
   case class ConfirmProps(id: Int, deleteTransaction: Callback, close: Callback)
 
-  implicit val moneyAccountMapReuse: Reusability[Map[Int, EnhancedMoneyAccount]] = Reusability.map[Int, EnhancedMoneyAccount]
   implicit val confirmPropsReuse: Reusability[ConfirmProps] =
     Reusability.caseClassExcept[ConfirmProps]("deleteTransaction", "close")
 

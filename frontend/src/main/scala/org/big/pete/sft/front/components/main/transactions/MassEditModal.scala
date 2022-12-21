@@ -14,8 +14,7 @@ import java.time.LocalDate
 
 
 object MassEditModal {
-  import org.big.pete.sft.front.domain.Implicits.categoryTreeReuse
-  import Page.moneyAccountMapReuse
+  import org.big.pete.sft.front.domain.Implicits._
 
   case class Props(
       selectedTransactions: List[EnhancedTransaction],

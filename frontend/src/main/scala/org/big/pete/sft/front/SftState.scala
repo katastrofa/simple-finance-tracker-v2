@@ -6,9 +6,9 @@ import japgolly.scalajs.react.component.Scala.{BackendScope, Component, Unmounte
 import org.big.pete.sft.domain.{Account, Currency}
 import org.big.pete.sft.front.SftMain.{AccountsSelectionPage, SftPages}
 import org.big.pete.sft.front.components.header.{Sidenav, SidenavFilters, TopHeader}
-import org.big.pete.sft.front.components.main.moneyaccount.Page
+import org.big.pete.sft.front.components.main.moneyaccount
 import org.big.pete.sft.front.components.main.{Accounts, Categories}
-import org.big.pete.sft.front.components.main.transactions.Page
+import org.big.pete.sft.front.components.main.transactions
 import org.big.pete.sft.front.state.{CookieStorage, DataUpdate, DefaultSorting, Filtering, Props, State, TransactionsProcessing}
 import org.big.pete.sft.front.domain.{Order, SortingColumn}
 import org.big.pete.sft.front.utilz.getAccountPermalink
@@ -117,7 +117,7 @@ object SftState {
         ),
 
         Accounts.Props(state.accounts, props.activePage, props.router, onPageClick, saveAccount),
-        Page.Props(
+        transactions.Page.Props(
           state.displayTransactions,
           state.categoryTree,
           state.moneyAccounts,
@@ -131,7 +131,7 @@ object SftState {
           massEditTransactions
         ),
         Categories.Props(state.categoryTree, saveCategory, deleteCategory),
-        Page.Props(state.moneyAccounts.values.toList, state.currencies, saveMoneyAccount, deleteMoneyAccount)
+        moneyaccount.Page.Props(state.moneyAccounts.values.toList, state.currencies, saveMoneyAccount, deleteMoneyAccount)
       ))
     }
 

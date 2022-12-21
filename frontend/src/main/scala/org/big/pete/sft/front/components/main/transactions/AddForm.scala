@@ -19,7 +19,6 @@ import java.time.LocalDate
 object AddForm {
   import org.big.pete.react.Implicits.bigDecimalReuse
   import org.big.pete.sft.front.domain.Implicits._
-  import Page.moneyAccountMapReuse
 
   case class Props(
       linearCats: List[CategoryTree],
@@ -52,8 +51,8 @@ object AddForm {
   )
 
   implicit val formPropsReuse: Reusability[Props] = Reusability.caseClassExcept[Props](
-    "dateChange", "ttChange", "amountChange", "descriptionChange", "categoryChange", "maChange",
-    "destinationMAChange", "destinationAmountChange", "addNextChange", "save", "close"
+    "dateChange", "ttChange", "amountChange", "descriptionChange", "categoryChange", "maChange", "currencyChange",
+    "destinationMAChange", "destinationAmountChange", "destinationCurrencyChange", "addNextChange", "save", "close"
   )
 
   class Backend extends WithFocus[ReactDatePicker.Props, ReactDatePicker.State, ReactDatePicker.Backend] {

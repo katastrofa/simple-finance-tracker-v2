@@ -16,6 +16,8 @@ import java.time.LocalDate
 
 
 object Forms {
+  import org.big.pete.sft.front.domain.Implicits._
+
   case class FormProps(
       currencies: Map[String, Currency],
       id: Option[Int],

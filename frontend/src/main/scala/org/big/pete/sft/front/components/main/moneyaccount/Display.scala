@@ -9,6 +9,8 @@ import org.big.pete.sft.front.components.main.{DateFormat, formatAmount}
 
 
 object Display {
+  import org.big.pete.sft.front.domain.Implicits._
+
   case class Props(
       account: EnhancedMoneyAccount,
       openEditModal: EnhancedMoneyAccount => Callback,
