@@ -19,7 +19,7 @@ scalaVersion := MyScalaVersion
 
 lazy val basicSettings = Seq(
   organization := "org.big.pete",
-  version := "0.3.0",
+  version := "0.3.1",
   scalaVersion := MyScalaVersion,
   credentials += Credentials(Path.userHome / ".sbt" / ".credentials-github-repo"),
   resolvers += ("scala-toolz-github" at "https://maven.pkg.github.com/katastrofa/scala-toolz/")
@@ -81,6 +81,7 @@ lazy val backend = (project in file("backend"))
     scalacOptions += "-Ymacro-annotations",
     assembly / assemblyMergeStrategy := {
       case x if x.endsWith("netty.versions.properties") => MergeStrategy.concat
+      case x if x.endsWith("module-info.class") => MergeStrategy.concat
       case x => (assembly / assemblyMergeStrategy).value.apply(x)
     }
   )
