@@ -20,8 +20,10 @@ object domain {
       transactionType: TransactionType,
       amount: BigDecimal,
       moneyAccount: Int,
+      currency: String,
       destinationAmount: Option[BigDecimal],
-      destinationMoneyAccountId: Option[Int]
+      destinationMoneyAccountId: Option[Int],
+      destinationCurrency: Option[String]
   )
 
   final val MySqlDateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")

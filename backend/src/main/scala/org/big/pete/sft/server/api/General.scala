@@ -6,10 +6,10 @@ import cats.syntax.{FlatMapSyntax, FunctorSyntax}
 import doobie.syntax.ToConnectionIOOps
 import doobie.util.transactor.Transactor
 import io.circe.syntax.EncoderOps
-import org.big.pete.cache.BpCache
+import org.big.pete.cache.{BpCache, FullRefreshBpCache}
 import org.big.pete.sft.db.dao.{Users, General => DBG}
 import org.big.pete.sft.db.domain.User
-import org.big.pete.sft.domain.{Account, AccountEdit}
+import org.big.pete.sft.domain.{Account, AccountEdit, Currency}
 import org.big.pete.sft.domain.Implicits._
 import org.big.pete.sft.server.auth.domain.AuthUser
 import org.http4s.Response
@@ -20,6 +20,7 @@ import org.http4s.circe.CirceEntityEncoder._
 class General[F[_]: MonadCancelThrow](
     usersCache: BpCache[F, Int, User],
     accountsCache: BpCache[F, String, Account],
+    currencyCache: FullRefreshBpCache[F, String, Currency],
     dsl: Http4sDsl[F],
     implicit val transactor: Transactor[F]
 ) extends ToConnectionIOOps with FunctorSyntax with FlatMapSyntax {
@@ -27,7 +28,7 @@ class General[F[_]: MonadCancelThrow](
 
   def listCurrencies: F[Response[F]] = {
     for {
-      currencies <- DBG.listCurrencies.transact(transactor)
+      currencies <- currencyCache.getValues
       response <- Ok(currencies.asJson)
     } yield response
   }

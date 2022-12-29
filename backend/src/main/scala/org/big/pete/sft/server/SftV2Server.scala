@@ -85,10 +85,6 @@ class SftV2Server[F[_]: Async](
         .map(_.replace("{current}", System.currentTimeMillis().toString))
         .compile.string
 
-      //      StaticFile.fromPath(fs2.io.file.Path("./frontend/src/main/assets/index-main.html"), Some(request.req))
-      //        .map(_.withContentType(`Content-Type`(MediaType.text.html)))
-      //        .getOrElseF(NotFound())
-
       Ok.apply(htmlDataF)(
         implicitly[Monad[F]],
         EntityEncoder.simple[String](headers.`Content-Type`(MediaType.text.html))(s => ByteVector(s.getBytes(`UTF-8`.nioCharset)))
@@ -162,26 +158,29 @@ class SftV2Server[F[_]: Async](
           moneyAccountsApi.listExtendedMoneyAccounts(account.id, start, end)
         }
       } yield response
-    case request @ PUT -> Root / "api" / permalink / "money-accounts" as user =>
+    case request @ PUT -> Root / "api" / permalink / "money-accounts" :? StartDateParamMatcher(start) +& EndDateParamMatcher(end) as user =>
       for {
         account <- accountsCache.get(permalink).map(_.get)
         ma <- request.req.as[MoneyAccount]
           .map(_.copy(owner = Some(user.db.id), accountId = account.id))
-        response <- accessHelper.verifyAccess(permalink, ApiAction.ModifyOwnMoneyAccount, user)(moneyAccountsApi.addMoneyAccount(ma))
+        response <- accessHelper.verifyAccess(permalink, ApiAction.ModifyOwnMoneyAccount, user)(
+          moneyAccountsApi.addMoneyAccount(ma, start, end)
+        )
       } yield response
-    case request @ POST -> Root / "api" / permalink / "money-accounts" as user =>
+    case request @ POST -> Root / "api" / permalink / "money-accounts" :? StartDateParamMatcher(start) +& EndDateParamMatcher(end) as user =>
       for {
         account <- accountsCache.get(permalink).map(_.get)
-        ma <- request.req.as[MoneyAccount]
+        ma <- request.req.as[MoneyAccount].map(_.copy(accountId = account.id))
         apiAction = if (ma.owner.contains(user.db.id)) ApiAction.ModifyOwnMoneyAccount else ApiAction.ModifyMoneyAccount
-        response <- accessHelper.verifyAccess(permalink, apiAction, user)(moneyAccountsApi.editMoneyAccount(ma, account.id))
+        response <- accessHelper.verifyAccess(permalink, apiAction, user)(
+          moneyAccountsApi.editMoneyAccount(ma, start, end)
+        )
       } yield response
     case request @ DELETE -> Root / "api" / permalink / "money-accounts" / IntVar(maId) as user =>
       for {
-        account <- accountsCache.get(permalink).map(_.get)
         strategy <- request.req.as[MoneyAccountDeleteStrategy]
         response <- accessHelper.verifyAccess(permalink, ApiAction.DeleteMoneyAccount, user) {
-          moneyAccountsApi.deleteMoneyAccount(maId, account.id, strategy.shiftTransactions)
+          moneyAccountsApi.deleteMoneyAccount(maId, strategy.shiftTransactions)
         }
       } yield response
 
@@ -192,17 +191,14 @@ class SftV2Server[F[_]: Async](
           transactionsApi.listTransaction(account.id, start, end)
         )
       } yield response
-    /// TODO: Verify the MA and cat are from this account
     case request @ PUT -> Root / "api" / permalink / "transactions" as user =>
       for {
-//        account <- accountsCache.get(permalink).map(_.get)
         trans <- request.req.as[Transaction]
           .map(_.copy(owner = Some(user.db.id)))
         response <- accessHelper.verifyAccess(permalink, ApiAction.ModifyOwnTransactions, user)(
           transactionsApi.addTransaction(trans)
         )
       } yield response
-    /// TODO: Verify the IDs belong to this account
     case request @ POST -> Root / "api" / permalink / "transactions" / "mass-edit" as user =>
       for {
         massEditData <- request.req.as[MassEditTransactions]
@@ -210,7 +206,6 @@ class SftV2Server[F[_]: Async](
             transactionsApi.massEditTransactions(massEditData.ids, massEditData.changeCat, massEditData.changeMoneyAccount)
           )
       } yield response
-    /// TODO: Verify the MA and cat are from this account
     case request @ POST -> Root / "api" / permalink / "transactions" as user =>
       for {
         trans <- request.req.as[Transaction]
@@ -218,12 +213,10 @@ class SftV2Server[F[_]: Async](
           transactionsApi.editTransaction(trans)
         )
       } yield response
-    /// TODO: Verify the ID belongs to this account
     case _ @ DELETE -> Root / "api" / permalink / "transactions" / IntVar(idTrans) as user =>
       accessHelper.verifyAccess(permalink, ApiAction.DeleteTransactions, user)(
         transactionsApi.deleteTransaction(idTrans)
       )
-    /// TODO: Verify the IDs belong to this account
     case request @ DELETE -> Root / "api" / permalink / "transactions" as user =>
       for {
         ids <- request.req.as[DeleteTransactions]
@@ -231,7 +224,6 @@ class SftV2Server[F[_]: Async](
           transactionsApi.deleteTransactions(ids.ids)
         )
       } yield response
-    /// TODO: Verify the ID belongs to this account
     case request @ POST -> Root / "api" / permalink / "transactions" / "tracking" as user =>
       for {
         data <- request.req.as[TrackingEdit]

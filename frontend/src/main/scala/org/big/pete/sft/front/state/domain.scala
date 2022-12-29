@@ -32,7 +32,7 @@ case class State(
     transactionsSorting: List[(SortingColumn, Order)],
 
     accounts: List[Account],
-    currencies: List[Currency],
+    currencies: Map[String, Currency],
     categories: Map[Int, Category],
     moneyAccounts: Map[Int, EnhancedMoneyAccount],
     transactions: List[Transaction],
@@ -51,7 +51,9 @@ case class AddTransactionSetup(
     transactionType: TransactionType,
     categoryId: Option[Int],
     moneyAccountId: Option[Int],
-    destMAId: Option[Int]
+    currency: Option[String],
+    destMAId: Option[Int],
+    destCurrency: Option[String]
 )
 
 object Implicits {

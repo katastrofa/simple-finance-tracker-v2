@@ -3,8 +3,9 @@ package org.big.pete.cache
 import cats.syntax._
 import cats.Monad
 import cats.data.OptionT
+import cats.effect.kernel.Resource
 import cats.effect.kernel.syntax.AsyncSyntax
-import cats.effect.std.Semaphore
+import cats.effect.std.{Semaphore, Supervisor}
 import cats.effect.{Async, Clock, Deferred, ExitCode, IO, IOApp, Ref}
 import cats.implicits.catsSyntaxParallelSequence1
 
@@ -29,6 +30,9 @@ trait BpCache[F[_], K, V] extends MonadSyntax with FlatMapSyntax with FunctorSyn
   def get(key: K): F[Option[V]] =
     getEntry(key).map(_.map(_.value))
 
+  def getValues: F[List[V]] =
+    data.get.map(_.values.map(_.value).toList)
+
   def putEntry(key: K, entry: Entry[V]): F[Entry[V]] =
     data.modify(_.addOne(key -> entry) -> entry)
 
@@ -36,6 +40,14 @@ trait BpCache[F[_], K, V] extends MonadSyntax with FlatMapSyntax with FunctorSyn
     inserted <- clockF.realTime
     entry <- putEntry(key, Entry(inserted, value))
   } yield entry
+
+  def putMany(values: List[(K, V)]): F[Unit] = for {
+    inserted <- clockF.realTime
+    _ <- data.update { map =>
+      values.foreach { case (key, value) => map.addOne(key -> Entry(inserted, value)) }
+      map
+    }
+  } yield ()
 
   def remove(key: K): F[Option[Entry[V]]] = data.modify { map =>
     val entry = map.remove(key)
@@ -168,6 +180,63 @@ trait AutoFetchBpCache[F[_], K, V] extends BpCache[F, K, V] {
 }
 
 
+trait FullRefreshBpCache[F[_], K, V] extends BpCache[F, K, V] {
+  implicit val asyncF: Async[F]
+  val supervisor: Supervisor[F]
+  val refreshMethod: () => F[List[(K, V)]]
+  val refreshing: Semaphore[F]
+  val refreshInterval: FiniteDuration
+
+  private def fetchAll: F[Unit] = for {
+    acquired <- refreshing.tryAcquire
+    _ <- if (acquired) doRefresh() else asyncF.unit
+    _ <- refreshing.release
+  } yield ()
+
+  private def doRefresh(): F[Unit] = for {
+    refreshedData <- refreshMethod()
+    _ <- clear()
+    _ <- putMany(refreshedData)
+  } yield ()
+
+  private def start(): F[Unit] = for {
+    _ <- fetchAll
+    _ <- asyncF.sleep(refreshInterval)
+    _ <- start()
+  } yield ()
+
+  def init: F[Unit] =
+    supervisor.supervise(start()).void
+}
+
+object FullRefreshBpCache {
+  private final val DefaultRefreshInterval = 1.hour
+
+  def apply[K, V](rInterval: FiniteDuration, rMethod: () => IO[List[(K, V)]]): Resource[IO, IO[FullRefreshBpCache[IO, K, V]]] = {
+    Supervisor[IO].map { createdSupervisor =>
+      for {
+        createdData <- Ref[IO].of(mutable.Map.empty[K, Entry[V]])
+        createdRefreshing <- Semaphore.apply[IO](1)
+        cache = new FullRefreshBpCache[IO, K, V] {
+          override implicit val asyncF: Async[IO] = IO.asyncForIO
+          override val supervisor: Supervisor[IO] = createdSupervisor
+          override val refreshMethod: () => IO[List[(K, V)]] = rMethod
+          override val refreshing: Semaphore[IO] = createdRefreshing
+          override val refreshInterval: FiniteDuration = rInterval
+          override implicit val clockF: Clock[IO] = Clock[IO]
+          override implicit val monadF: Monad[IO] = Monad[IO]
+          override protected val data: Ref[IO, mutable.Map[K, Entry[V]]] = createdData
+        }
+        _ <- cache.init
+      } yield cache
+    }
+  }
+
+  def apply[K, V](rMethod: () => IO[List[(K, V)]]): Resource[IO, IO[FullRefreshBpCache[IO, K, V]]] =
+    apply(DefaultRefreshInterval, rMethod)
+}
+
+
 class SimpleBpCache[F[_], K, V](val data: Ref[F, mutable.Map[K, Entry[V]]])(implicit val clockF: Clock[F], val monadF: Monad[F])
   extends BpCache[F, K, V]
 
@@ -230,6 +299,7 @@ object FullBpCache {
   } yield new FullBpCache[IO, K, V](maxSize, fetchMethod, data, keyAges, canModify, attempts, overhead)
 }
 
+
 object Test extends IOApp with AsyncSyntax {
   def fetch(key: Int): IO[Option[String]] =
     IO.println(s"fetching $key") >> IO.sleep(1000.millis).map(_ => Some(s"$key - stored"))
@@ -238,58 +308,37 @@ object Test extends IOApp with AsyncSyntax {
     Range.apply(0, count).map(_ => cache.get(42)).toList.parSequence
   }
 
+  def fullRefresh(): IO[List[(Int, String)]] = {
+    IO.println("Refreshing ... ") >> IO.pure(List(1 -> "Fuck", 2 -> "this", 3 -> "Shit"))
+  }
+
   override def run(args: List[String]): IO[ExitCode] = {
-    for {
-      cache <- FullBpCache(10, fetch, Some(1))
-      val1 <- cache.get(3)
-      _ <- IO.println(val1)
-      val2 <- cache.get(1)
-      _ <- IO.println(val2)
-      val3 <- cache.get(3)
-      _ <- IO.println(val3)
-      val4 <- cache.get(2)
-      _ <- IO.println(val4)
-
-      data <- getMultiple(cache, 5)
-      _ <- IO.println(data)
-
-//      cache <- SimpleBpCache.apply[Int, String]
-//      val1 <- cache.get(42)
+    FullRefreshBpCache.apply(5.seconds, fullRefresh).use { cacheIO =>
+      for {
+        cache <- cacheIO
+        _ <- IO.sleep(1.second)
+        val1 <- cache.get(1)
+        _ <- IO.println(val1)
+        _ <- IO.sleep(10.seconds)
+        val2 <- cache.get(3)
+        _ <- IO.println(val2)
+      } yield ExitCode.Success
+    }
+//    for {
+//      cache <- FullBpCache(10, fetch, Some(1))
+//      val1 <- cache.get(3)
 //      _ <- IO.println(val1)
-//      _ <- cache.put(42, "42 - stored")
-//      val2 <- cache.get(42)
+//      val2 <- cache.get(1)
 //      _ <- IO.println(val2)
-
-//      cache <- MaxSizeBpCache.apply[Int, String](10, Some(1))
-//      val1 <- cache.get(42)
-//      _ <- IO.println(val1)
-//      _ <- cache.put(42, "42 - stored")
-//      val2 <- cache.get(42)
-//      _ <- IO.println(val2)
-//      _ <- cache.put(44, "44 - stored")
-//      _ <- cache.put(45, "45 - stored")
-//      _ <- cache.put(46, "46 - stored")
-//      _ <- cache.put(47, "47 - stored")
-//      _ <- cache.put(48, "48 - stored")
-//      _ <- cache.put(49, "49 - stored")
-//      _ <- cache.put(12, "12 - stored")
-//      _ <- cache.put(22, "22 - stored")
-//      _ <- cache.put(32, "32 - stored")
-//      _ <- cache.put(442, "442 - stored")
-//      _ <- cache.put(141, "141 - stored")
-//      _ <- cache.put(142, "142 - stored")
-//      _ <- cache.put(143, "143 - stored")
-//      _ <- cache.put(144, "144 - stored")
-//      _ <- cache.put(145, "145 - stored")
-//      _ <- cache.put(146, "146 - stored")
-//      val3 <- cache.get(42)
+//      val3 <- cache.get(3)
 //      _ <- IO.println(val3)
-//      val4 <- cache.get(45)
+//      val4 <- cache.get(2)
 //      _ <- IO.println(val4)
-//      val5 <- cache.get(142)
-//      _ <- IO.println(val5)
-//      val6 <- cache.get(145)
-//      _ <- IO.println(val6)
-    } yield ExitCode.Success
+//
+//      data <- getMultiple(cache, 5)
+//      _ <- IO.println(data)
+
+
+//    } yield ExitCode.Success
   }
 }

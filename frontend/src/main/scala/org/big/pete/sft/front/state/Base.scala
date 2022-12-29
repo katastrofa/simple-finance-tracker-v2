@@ -7,7 +7,7 @@ import japgolly.scalajs.react.extra.Ajax
 import japgolly.scalajs.react.extra.internal.AjaxException
 import org.big.pete.BPJson
 import org.big.pete.react.MICheckbox
-import org.big.pete.sft.domain.{Category, EnhancedMoneyAccount, Transaction, TransactionTracking, TransactionType}
+import org.big.pete.sft.domain.{Category, Currency, EnhancedMoneyAccount, Transaction, TransactionTracking, TransactionType}
 import org.big.pete.sft.front.domain.{EnhancedTransaction, MAUpdateAction, MAUpdateOperation, Order, SortingColumn}
 import org.big.pete.sft.front.utilz.TransactionsOrdering
 
@@ -22,20 +22,19 @@ trait Base {
     if (status == MICheckbox.Status.checkedStatus) set(state) + element else set(state) - element
 
   def ajaxCall[T: Decoder](method: String, apiPath: String, payload: Option[String], empty: => T): AsyncCallback[T] = {
-    Callback.log(s"AJAX - $method $apiPath with payload $payload").async >>
-      $.props.async.flatMap { props =>
-        val step1 = Ajax(method, props.apiBase + apiPath)
-        payload.map(str => step1.send(str))
-          .getOrElse(step1.send)
-          .validateStatusIs(200)(displayException)
-          .asAsyncCallback
-          .flatMap { response =>
-            BPJson.extract[T](response.responseText) match {
-              case Left(value) => displayExceptionStr(value).async >> AsyncCallback.pure(empty)
-              case Right(value) => AsyncCallback.pure(value)
-            }
+    $.props.async.flatMap { props =>
+      val step1 = Ajax(method, props.apiBase + apiPath)
+      payload.map(str => step1.send(str))
+        .getOrElse(step1.send)
+        .validateStatusIs(200)(displayException)
+        .asAsyncCallback
+        .flatMap { response =>
+          BPJson.extract[T](response.responseText) match {
+            case Left(value) => displayExceptionStr(value).async >> AsyncCallback.pure(empty)
+            case Right(value) => AsyncCallback.pure(value)
           }
-      }
+        }
+    }
   }
 
   /// TODO: Do this
@@ -47,19 +46,18 @@ trait Base {
     Callback.log(error)
 
   def ajaxUpdate[T: Decoder](method: String, apiPath: String, payload: String, update: T => Callback): Callback = {
-    Callback.log(s"AJAX - $method $apiPath with $payload") >>
-      $.props.flatMap { props =>
-        Ajax(method, props.apiBase + apiPath)
-          .setRequestContentTypeJsonUtf8
-          .send(payload)
-          .validateStatusIs(200)(displayException)
-          .onComplete { response =>
-            BPJson.extract[T](response.responseText) match {
-              case Left(value) => displayExceptionStr(value)
-              case Right(obj) => Callback.log(s"Response - ${response.status} - ${response.responseText}") >> update(obj)
-            }
-          }.asCallback
-      }
+    $.props.flatMap { props =>
+      Ajax(method, props.apiBase + apiPath)
+        .setRequestContentTypeJsonUtf8
+        .send(payload)
+        .validateStatusIs(200)(displayException)
+        .onComplete { response =>
+          BPJson.extract[T](response.responseText) match {
+            case Left(value) => displayExceptionStr(value)
+            case Right(obj) => update(obj)
+          }
+        }.asCallback
+    }
   }
 
   def filterTransactions(
@@ -72,7 +70,8 @@ trait Base {
       contentFilter: Option[String] = None,
       categoriesActiveFilters: Option[Set[Int]] = None,
       moneyAccountsActiveFilters: Option[Set[Int]] = None,
-      transactionsSorting: Option[List[(SortingColumn, Order)]] = None
+      transactionsSorting: Option[List[(SortingColumn, Order)]] = None,
+      currencies: Option[Map[String, Currency]] = None
   ): List[EnhancedTransaction] = {
     transactions.getOrElse(state.transactions)
       .filterNonEmpty(transactionTypeActiveFilters.getOrElse(state.transactionTypeActiveFilters), _.transactionType)
@@ -80,7 +79,11 @@ trait Base {
       .filterNonEmpty(categoriesActiveFilters.getOrElse(state.categoriesActiveFilters), _.categoryId)
       .filterNonEmpty(moneyAccountsActiveFilters.getOrElse(state.moneyAccountsActiveFilters), _.moneyAccount)
       .filter(filterContent(contentFilter.getOrElse(state.contentFilter)))
-      .map(EnhancedTransaction.enhance(categories.getOrElse(state.categories), moneyAccounts.getOrElse(state.moneyAccounts)))
+      .map(EnhancedTransaction.enhance(
+        categories.getOrElse(state.categories),
+        moneyAccounts.getOrElse(state.moneyAccounts),
+        currencies.getOrElse(state.currencies)
+      ))
       .sorted(new TransactionsOrdering(transactionsSorting.getOrElse(state.transactionsSorting)))
   }
 
@@ -134,12 +137,18 @@ trait Base {
       from: LocalDate
   ): EnhancedMoneyAccount = {
     val realOp = MAOperations(action)(op)
-    if (trans.date.isAfter(from.asInstanceOf[ChronoLocalDate]))
-      ma.copy(periodStatus = ma.periodStatus.copy(end = realOp(ma.periodStatus.end, trans.amount)))
-    else
-      ma.copy(
-        periodStatus = ma.periodStatus
-          .copy(realOp(ma.periodStatus.start, trans.amount), realOp(ma.periodStatus.end, trans.amount))
-      )
+    if (trans.date.isAfter(from.asInstanceOf[ChronoLocalDate])) {
+      val newStatus = ma.status.filter(_.currency.id != trans.currency) ++
+        ma.status.find(_.currency.id == trans.currency).map { status =>
+          status.copy(end = realOp(status.end, trans.amount))
+        }.toList
+      ma.copy(status = newStatus)
+    } else {
+      val newStatus = ma.status.filter(_.currency.id != trans.currency) ++
+        ma.status.find(_.currency.id == trans.currency).map { status =>
+          status.copy(start = realOp(status.start, trans.amount), end = realOp(status.end, trans.amount))
+        }
+      ma.copy(status = newStatus)
+    }
   }
 }

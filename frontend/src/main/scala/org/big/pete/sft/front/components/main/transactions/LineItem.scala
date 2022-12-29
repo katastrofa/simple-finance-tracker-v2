@@ -42,7 +42,7 @@ object LineItem {
       case TransactionType.Transfer => "amber-text text-darken-2"
     }
     val additionalAmountInfo = if (props.transaction.destinationAmount.isDefined)
-      " -> " + formatAmount(props.transaction.destinationCurrencySymbol.get, props.transaction.destinationAmount.get)
+      " -> " + formatAmount(props.transaction.destinationCurrency.get.symbol, props.transaction.destinationAmount.get)
     else ""
     val additionalMoneyAccount = props.transaction.destinationMoneyAccountName.map(name => s" -> $name").getOrElse("")
 
@@ -67,7 +67,7 @@ object LineItem {
       ),
       <.td(
         ^.cls := s"right-align amount $amountClass",
-        formatAmount(props.transaction.currencySymbol, props.transaction.amount) + additionalAmountInfo
+        formatAmount(props.transaction.currency.symbol, props.transaction.amount) + additionalAmountInfo
       ),
       <.td(
         ^.cls := "category",
@@ -113,7 +113,7 @@ object LineItem {
         ),
         <.div(^.cls := "details-item row",
           <.strong(^.cls := "col l2 s3", "Amount: "),
-          <.span(^.cls := s"col l10 s9 $amountClass", formatAmount(props.transaction.currencySymbol, props.transaction.amount) + additionalAmountInfo)
+          <.span(^.cls := s"col l10 s9 $amountClass", formatAmount(props.transaction.currency.symbol, props.transaction.amount) + additionalAmountInfo)
         ),
         <.div(^.cls := "details-item row",
           <.strong(^.cls := "col l2 s3", "Category: "),
