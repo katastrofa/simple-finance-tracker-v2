@@ -7,7 +7,7 @@ import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{Callback, CallbackTo, CtorType, ReactFormEventFromInput, Reusability, ScalaComponent, ScalaFnComponent}
 import org.big.pete.datepicker.ReactDatePicker
 import org.big.pete.react.{MaterialIcon, TextInput}
-import org.big.pete.sft.domain.{Currency, EnhancedMoneyAccount, MoneyAccountCurrency}
+import org.big.pete.sft.domain.{Currency, EnhancedMoneyAccount, MoneyAccountOptionalCurrency}
 import org.big.pete.sft.front.SftMain
 import org.big.pete.sft.front.components.main.displayCurrency
 import org.big.pete.sft.front.helpers.ModalButtons
@@ -23,7 +23,7 @@ object Forms {
       id: Option[Int],
       name: String,
       created: LocalDate,
-      editCurrencies: Map[Int, MoneyAccountCurrency],
+      editCurrencies: Map[Int, MoneyAccountOptionalCurrency],
       changeName: ReactFormEventFromInput => Callback,
       changeAmount: Int => ReactFormEventFromInput => Callback,
       changeCurrency: Int => Currency => Callback,
@@ -36,8 +36,9 @@ object Forms {
 
   case class CurrencyEditProps(
       availableCurrencies: Map[String, Currency],
-      maCurrency: MoneyAccountCurrency,
+      maCurrency: MoneyAccountOptionalCurrency,
       hasNextButton: Boolean,
+      hasDeleteButton: Boolean,
       tabIndex: Int,
       changeAmount: ReactFormEventFromInput => Callback,
       changeCurrency: Currency => Callback,
@@ -80,18 +81,24 @@ object Forms {
   val editForm: Scala.Component[FormProps, Unit, Unit, CtorType.Props] = ScalaComponent.builder[FormProps]
     .stateless
     .render_P { props =>
-      val availableCurrencies = props.currencies.filterNot { case (id, _) => props.editCurrencies.exists(_._2.currency == id) }
+      val availableCurrencies = props.currencies.filterNot { case (id, _) => props.editCurrencies.exists(_._2.currency.exists(_ == id)) }
       val editCurrencyIds = props.editCurrencies.keys.toList.sorted
+      val firstId = editCurrencyIds.head
       val lastId = editCurrencyIds.last
 
       val editCurrenciesDOM = editCurrencyIds.map { id =>
         val editCurrency = props.editCurrencies(id)
+        val available = if (editCurrency.currency.isDefined)
+          availableCurrencies + (editCurrency.currency.get -> props.currencies(editCurrency.currency.get))
+        else
+          availableCurrencies
 
         currencyEditComponent.withKey(s"add-ma-ec-$id").apply(
           CurrencyEditProps(
-            availableCurrencies + (editCurrency.currency -> props.currencies(editCurrency.currency)),
+            available,
             editCurrency,
             id == lastId,
+            id != firstId,
             303 + id * 2,
             props.changeAmount(id),
             props.changeCurrency(id),
@@ -128,7 +135,13 @@ object Forms {
 
   private val currencyEditComponent: Component[CurrencyEditProps, CtorType.Props] = ScalaFnComponent.withReuse[CurrencyEditProps]
     { props =>
-      val columns = if (props.hasNextButton) "s8" else "s10"
+      val columns = (props.hasNextButton, props.hasDeleteButton) match {
+        case (true, true) => "s8"
+        case (false, true) => "s10"
+        case (true, false) => "s10"
+        case (false, false) => "s12"
+      }
+      val iconClasses = Set("col", "s2", "edit-icon", "center-align", "pointer")
 
       ReactFragment(
         <.div(^.cls := "row",
@@ -140,13 +153,13 @@ object Forms {
               displayCurrency,
               cur => s"ck-${props.maCurrency.id}-" + cur.id,
               props.changeCurrency,
-              props.availableCurrencies.get(props.maCurrency.currency),
+              props.maCurrency.currency.flatMap(props.availableCurrencies.get),
               props.tabIndex,
               List("col", "s12")
             )
           )
         ),
-        <.div(^.cls := "row",
+        <.div(^.cls := "row valign-wrapper",
           TextInput.component(
             TextInput.Props(
               s"add-ma-amount-${props.maCurrency.id}",
@@ -157,8 +170,8 @@ object Forms {
               List("col", columns)
             )
           ),
-          MaterialIcon.Icon(MaterialIcon.Props(MaterialIcon.i, MaterialIcon.medium, "delete", props.remove, Set("col", "s2"))),
-          MaterialIcon.Icon(MaterialIcon.Props(MaterialIcon.i, MaterialIcon.medium, "add", props.addNext, Set("col", "s2"))).when(props.hasNextButton)
+          MaterialIcon.Icon(MaterialIcon.Props(MaterialIcon.i, MaterialIcon.midMedium, "delete", props.remove, iconClasses)).when(props.hasDeleteButton),
+          MaterialIcon.Icon(MaterialIcon.Props(MaterialIcon.i, MaterialIcon.midMedium, "add", props.addNext, iconClasses)).when(props.hasNextButton)
         )
       )
     }

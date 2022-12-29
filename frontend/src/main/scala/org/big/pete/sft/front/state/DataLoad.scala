@@ -26,9 +26,7 @@ trait DataLoad extends Base {
     ajaxCall[List[Transaction]]("GET", apiPath, None, List.empty)
   }
 
-  def loadMoneyAccounts(
-      accountPermalink: String, start: LocalDate, end: LocalDate
-  ): AsyncCallback[Map[Int, EnhancedMoneyAccount]] = {
+  def loadMoneyAccounts(accountPermalink: String, start: LocalDate, end: LocalDate): AsyncCallback[Map[Int, EnhancedMoneyAccount]] = {
     val apiPath = "/" + accountPermalink + "/money-accounts?" +
       "start=" + start.format(ReactDatePicker.DateFormat) +
       "&end=" + end.format(ReactDatePicker.DateFormat)
@@ -68,7 +66,7 @@ trait DataLoad extends Base {
             moneyAccounts = moneyAccounts,
             transactions = transactions,
             categoryTree = CategoryTree.generateTree(cats.values.toList),
-            displayTransactions = filterTransactions(s, Some(transactions), Some(cats), Some(moneyAccounts))
+            displayTransactions = filterTransactions(s, Some(transactions), Some(cats), Some(moneyAccounts), currencies = Some(currencies))
           )
         )
       }

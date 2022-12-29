@@ -54,6 +54,11 @@ case class Account(id: Int, name: String, permalink: String, owner: Option[Int])
 case class Currency(id: String, name: String, symbol: String)
 
 case class MoneyAccountCurrencyInfo(moneyAccount: Int, currency: String, startAmount: BigDecimal)
+case class MoneyAccountOptionalCurrency(id: Int, moneyAccount: Int, currency: Option[String], startAmount: BigDecimal) {
+  def toCurrency: Option[MoneyAccountCurrency] = currency.map { cur =>
+    MoneyAccountCurrency(id, moneyAccount, cur, startAmount)
+  }
+}
 case class MoneyAccountCurrency(id: Int, moneyAccount: Int, currency: String, startAmount: BigDecimal) {
   def expand(fullCurrency: Currency): ExpandedMoneyAccountCurrency =
     ExpandedMoneyAccountCurrency(id, moneyAccount, fullCurrency, startAmount)
@@ -62,6 +67,8 @@ case class MoneyAccountCurrency(id: Int, moneyAccount: Int, currency: String, st
 
   def toInfo: MoneyAccountCurrencyInfo =
     MoneyAccountCurrencyInfo(moneyAccount, currency, startAmount)
+  def toOptional: MoneyAccountOptionalCurrency =
+    MoneyAccountOptionalCurrency(id, moneyAccount, Some(currency), startAmount)
 }
 case class ExpandedMoneyAccountCurrency(id: Int, moneyAccount: Int, currency: Currency, startAmount: BigDecimal) {
   def simple: MoneyAccountCurrency =  MoneyAccountCurrency(id, moneyAccount, currency.id, startAmount)

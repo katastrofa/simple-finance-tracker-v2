@@ -2,7 +2,7 @@ package org.big.pete.sft.front.domain
 
 import enumeratum.{Enum, EnumEntry}
 import japgolly.scalajs.react.Reusability
-import org.big.pete.sft.domain.{Account, Category, Currency, CurrencyAndStatus, EnhancedMoneyAccount, ExpandedMoneyAccountCurrency, MoneyAccountCurrency, Transaction, TransactionTracking, TransactionType}
+import org.big.pete.sft.domain.{Account, Category, Currency, CurrencyAndStatus, EnhancedMoneyAccount, ExpandedMoneyAccountCurrency, MoneyAccountCurrency, MoneyAccountOptionalCurrency, Transaction, TransactionTracking, TransactionType}
 import org.big.pete.sft.front.SftMain.SftPages
 
 import java.time.LocalDate
@@ -155,6 +155,8 @@ object Implicits {
   implicit val currencyMapReuse: Reusability[Map[String, Currency]] = Reusability.map[String, Currency]
   implicit val moneyAccountCurrencyReuse: Reusability[MoneyAccountCurrency] = Reusability.derive[MoneyAccountCurrency]
   implicit val moneyAccountCurrencyMapReuse: Reusability[Map[Int, MoneyAccountCurrency]] = Reusability.map[Int, MoneyAccountCurrency]
+  implicit val moneyAccountOptionalCurrencyReuse: Reusability[MoneyAccountOptionalCurrency] = Reusability.derive[MoneyAccountOptionalCurrency]
+  implicit val moneyAccountOptionalCurrencyMapReuse: Reusability[Map[Int, MoneyAccountOptionalCurrency]] = Reusability.map[Int, MoneyAccountOptionalCurrency]
   implicit val categoryTreeReuse: Reusability[CategoryTree] = Reusability.by_==[CategoryTree]
   implicit val currencyAndStatusReuse: Reusability[CurrencyAndStatus] = Reusability.derive[CurrencyAndStatus]
   implicit val expandedMoneyAccountCurrencyReuse: Reusability[ExpandedMoneyAccountCurrency] = Reusability.derive[ExpandedMoneyAccountCurrency]

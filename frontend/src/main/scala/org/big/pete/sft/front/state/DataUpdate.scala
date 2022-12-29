@@ -2,6 +2,7 @@ package org.big.pete.sft.front.state
 
 import japgolly.scalajs.react.callback.Callback
 import org.big.pete.BPJson
+import org.big.pete.datepicker.ReactDatePicker
 import org.big.pete.sft.domain.{Account, AccountEdit, Category, CategoryDeleteStrategies, EnhancedMoneyAccount, MoneyAccount, MoneyAccountCurrency, MoneyAccountDeleteStrategy, ShiftStrategy, ShiftStrategyPerCurrency}
 import org.big.pete.sft.front.domain.CategoryTree
 import org.big.pete.sft.front.utilz.getAccountPermalink
@@ -63,18 +64,22 @@ trait DataUpdate extends DataLoad {
 
   def saveMoneyAccount(id: Option[Int], name: String, created: LocalDate, currencies: List[MoneyAccountCurrency]): Callback = {
     $.props.flatMap { props =>
-      val account = getAccountPermalink(props.activePage).getOrElse("")
-      val method = if (id.isDefined) "POST" else "PUT"
-      val maId = id.getOrElse(-1)
+      $.state.flatMap { state =>
+        val account = getAccountPermalink(props.activePage).getOrElse("")
+        val method = if (id.isDefined) "POST" else "PUT"
+        val maId = id.getOrElse(-1)
 
-      ajaxUpdate[EnhancedMoneyAccount](
-        method,
-        "/" + account + "/money-accounts",
-        BPJson.write(MoneyAccount(maId, name, created, -1, None, currencies)),
-        ma => $.modState { oldState =>
-          oldState.copy(moneyAccounts = oldState.moneyAccounts + (ma.id -> ma))
-        }
-      )
+        ajaxUpdate[EnhancedMoneyAccount](
+          method,
+          "/" + account + "/money-accounts?" +
+            "start=" + state.from.format(ReactDatePicker.DateFormat) +
+            "&end=" + state.to.format(ReactDatePicker.DateFormat),
+          BPJson.write(MoneyAccount(maId, name, created, -1, None, currencies)),
+          ma => $.modState { oldState =>
+            oldState.copy(moneyAccounts = oldState.moneyAccounts + (ma.id -> ma))
+          }
+        )
+      }
     }
   }
 

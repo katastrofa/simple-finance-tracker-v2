@@ -1,6 +1,7 @@
 
 INSERT INTO accounts (name, permalink, owner) VALUES
     ('Test', 'test', 1);
+UPDATE users SET permissions = JSON_INSERT(permissions, '$.perAccount."1"', JSON_EXTRACT(permissions, '$.default'));
 INSERT INTO categories (name, description, parent, account, owner) VALUES
     ('Test Cat', null, null, 1, 1),
     ('Test SubCat', null, 1, 1, 1),

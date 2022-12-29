@@ -47,8 +47,10 @@ class MoneyAccounts[F[_]: Async: Parallel](
           calculatedBalances(primaryKey) = calculatedBalances(primaryKey) - balance.amount
         case TransactionType.Transfer =>
           val otherKey = (balance.destinationMoneyAccountId.get, balance.destinationCurrency.get, date)
-          calculatedBalances(primaryKey) = calculatedBalances(primaryKey) - balance.amount
-          calculatedBalances(otherKey) = calculatedBalances(otherKey) + balance.destinationAmount.get
+          if (calculatedBalances.contains(primaryKey))
+            calculatedBalances(primaryKey) = calculatedBalances(primaryKey) - balance.amount
+          if (calculatedBalances.contains(otherKey))
+            calculatedBalances(otherKey) = calculatedBalances(otherKey) + balance.destinationAmount.get
       }
     }
 
@@ -101,10 +103,10 @@ class MoneyAccounts[F[_]: Async: Parallel](
   def addMoneyAccount(ma: MoneyAccount, start: LocalDate, end: LocalDate): F[Response[F]] = {
     for {
       newId <- DBMA.addMoneyAccount(ma).transact(transactor)
-      moneyCurrencies <- DBMA.addCurrencies(ma.currencies.map(_.copy(moneyAccount = newId))).transact(transactor)
-      newPureMa <- DBMA.getPureMoneyAccount(newId, ma.accountId).transact(transactor)
-      enhanced <- enhanceMoneyAccounts(newPureMa.get.duplicateExpand(moneyCurrencies), start, end)
-      response <- Ok(enhanced.asJson)
+      _ <- DBMA.addCurrencies(ma.currencies.map(_.copy(moneyAccount = newId))).transact(transactor)
+      newMoneyAccount <- DBMA.getMoneyAccount(newId).transact(transactor)
+      enhanced <- enhanceMoneyAccounts(newMoneyAccount, start, end)
+      response <- Ok(enhanced.head.asJson)
     } yield response
   }
 
@@ -126,7 +128,7 @@ class MoneyAccounts[F[_]: Async: Parallel](
 
       newMa <- DBMA.getMoneyAccount(ma.id).transact(transactor)
       enhanced <- enhanceMoneyAccounts(newMa, start, end)
-      response <- Ok(enhanced.asJson)
+      response <- Ok(enhanced.head.asJson)
     } yield response
   }
 

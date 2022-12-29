@@ -6,7 +6,7 @@ import japgolly.scalajs.react.vdom.html_<^
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{Callback, CallbackTo, CtorType, ReactFormEventFromInput, ScalaComponent}
 import org.big.pete.react.MaterialIcon
-import org.big.pete.sft.domain.{Currency, EnhancedMoneyAccount, MoneyAccountCurrency, ShiftStrategyPerCurrency}
+import org.big.pete.sft.domain.{Currency, EnhancedMoneyAccount, MoneyAccountCurrency, MoneyAccountOptionalCurrency, ShiftStrategyPerCurrency}
 import org.big.pete.sft.front.components.main.tableWrap
 import org.big.pete.sft.front.helpers.AddModal
 import org.scalajs.dom.html.Element
@@ -30,13 +30,13 @@ object Page {
       id: Option[Int],
       name: String,
       created: LocalDate,
-      editCurrencies: Map[Int, MoneyAccountCurrency],
+      editCurrencies: Map[Int, MoneyAccountOptionalCurrency],
       shiftTransactionsTo: Map[String, Int],
       toDelete: Option[Int]
   )
 
   private def initialMACurrency(currencies: Map[String, Currency]) =
-    MoneyAccountCurrency(0, 0, currencies.head._2.id, BigDecimal(0))
+    MoneyAccountOptionalCurrency(0, 0, currencies.headOption.map(_._2.id), BigDecimal(0))
 
 
   class Backend($: BackendScope[Props, State]) {
@@ -52,7 +52,7 @@ object Page {
     }
 
     private def changeCurrency(curId: Int)(cur: Currency): Callback = $.modState { state =>
-      val newCurrency = state.editCurrencies(curId).copy(currency = cur.id)
+      val newCurrency = state.editCurrencies(curId).copy(currency = Some(cur.id))
       state.copy(editCurrencies = state.editCurrencies + (curId -> newCurrency))
     }
 
@@ -62,10 +62,10 @@ object Page {
 
     private def addEditCurrency(): Callback = $.props.flatMap { props =>
       $.modState { state =>
-        val usedCurrencies = state.editCurrencies.values.map(_.currency).toSet
-        val unusedCurrency = props.currencies.find(item => !usedCurrencies.contains(item._1)).get._1
+        val usedCurrencies = state.editCurrencies.values.flatMap(_.currency).toSet
+        val unusedCurrency = props.currencies.find(item => !usedCurrencies.contains(item._1)).map(_._1)
         val newId = state.editCurrencies.keys.max + 1
-        val newEditCurrency = MoneyAccountCurrency(newId, state.id.getOrElse(0), unusedCurrency, BigDecimal(0))
+        val newEditCurrency = MoneyAccountOptionalCurrency(newId, state.id.getOrElse(0), unusedCurrency, BigDecimal(0))
         state.copy(editCurrencies = state.editCurrencies + (newId -> newEditCurrency))
       }
     }
@@ -87,7 +87,7 @@ object Page {
       for {
         props <- $.props
         state <- $.state
-        _ <- props.save(state.id, state.name, state.created, state.editCurrencies.values.toList)
+        _ <- props.save(state.id, state.name, state.created, state.editCurrencies.values.toList.flatMap(_.toCurrency))
         _ <- closeModal
       } yield ()
     }
@@ -102,7 +102,7 @@ object Page {
     def openEditModal(account: EnhancedMoneyAccount): Callback = $.modState { state =>
       state.copy(
         isOpen = true, deleteIsOpen = false, Some(account.id), account.name, account.created,
-        account.currencies.map(cur => cur.id -> cur.simple).toMap
+        account.currencies.map(cur => cur.id -> cur.simple.toOptional).toMap
       )
     }
 

@@ -4,6 +4,7 @@ import japgolly.scalajs.react.{Callback, CtorType, ReactFormEventFromInput, Reac
 import japgolly.scalajs.react.component.Scala.{BackendScope, Component}
 import japgolly.scalajs.react.extra.{EventListener, OnUnmount}
 import japgolly.scalajs.react.vdom.html_<^._
+import org.big.pete.DelayedInvocation
 import org.scalajs.dom.html.Div
 
 import scala.annotation.{nowarn, tailrec}
@@ -30,7 +31,7 @@ class DropDown[T: Reusability] {
 
 
   /// TODO: css
-  class Backend($: BackendScope[Props, State]) extends OnUnmount with WithInputFocus {
+  class Backend($: BackendScope[Props, State]) extends OnUnmount with WithInputFocus with DelayedInvocation {
 
     def isActive(state: State): Boolean =
       state.text.nonEmpty || state.focus
@@ -38,18 +39,18 @@ class DropDown[T: Reusability] {
     def focusIn: Callback =
       inputRef.foreach(_.select()) >> $.modState(_.copy(focus = true))
     def focusOut: Callback =
-      $.modState(_.copy(focus = false))
+      executeWithDelay("focusout", 100, $.modState(_.copy(focus = false)))
 
-    def dropDownOpen(state: State): Boolean =
+    private def dropDownOpen(state: State): Boolean =
       state.focus
 
-    def prepareSearchables(searchString: String): List[String] =
+    private def prepareSearchables(searchString: String): List[String] =
       searchString.trim
         .split("\\s").toList
         .filter(_.nonEmpty)
         .map(_.toLowerCase)
 
-    def filterItems(props: Props, searchString: String): List[T] = {
+    private def filterItems(props: Props, searchString: String): List[T] = {
       def search(searchables: List[String])(itemText: String): Boolean =
         searchables.forall(searchable => itemText.toLowerCase.contains(searchable))
 
@@ -58,23 +59,23 @@ class DropDown[T: Reusability] {
         .filter(item => searchFn(props.display(item)))
     }
 
-    def textChange(e: ReactFormEventFromInput): Callback = $.props.flatMap { props =>
+    private def textChange(e: ReactFormEventFromInput): Callback = $.props.flatMap { props =>
       $.modState(_.copy(text = e.target.value, filteredItems = filterItems(props, e.target.value)))
     }
 
     def onSelect(props: Props, item: T): Callback =
-      props.onSelect(item) >> $.modState(_.copy(props.display(item), focus = false, traversing = Some(item)))
+      props.onSelect(item) >> cancelExecution("focusout") >> $.modState(_.copy(props.display(item), focus = false, traversing = Some(item)))
 
-    def onItemClick(item: T)(e: ReactMouseEventFromHtml): Callback = $.props.flatMap { props =>
+    private def onItemClick(item: T)(e: ReactMouseEventFromHtml): Callback = $.props.flatMap { props =>
       e.preventDefaultCB >> onSelect(props, item)
     }
 
-    def onCancel(props: Props): Callback = {
+    private def onCancel(props: Props): Callback = {
       val newText = props.selected.map(props.display).getOrElse("")
-      $.modState(_.copy(newText, focus = false, props.items, None))
+      cancelExecution("focusout") >> $.modState(_.copy(newText, focus = false, props.items, None))
     }
 
-    def getCurrentTraversal(state: State): Option[T] = {
+    private def getCurrentTraversal(state: State): Option[T] = {
       if (state.traversing.isDefined)
         state.traversing
       else if (state.filteredItems.length == 1)
@@ -83,7 +84,7 @@ class DropDown[T: Reusability] {
         None
     }
 
-    def findClosestFilteredItem(direction: Int, item: T, allItems: List[T], filteredItems: List[T]): Option[T] = {
+    private def findClosestFilteredItem(direction: Int, item: T, allItems: List[T], filteredItems: List[T]): Option[T] = {
       val itemIndex = allItems.indexOf(item)
       val filterCondition = if (direction < 0) (x: Int) => x < itemIndex else (x: Int) => x > itemIndex
       val validIndexes = filteredItems.map(it => allItems.indexOf(it))
@@ -101,7 +102,7 @@ class DropDown[T: Reusability] {
       }
     }
 
-    def moveTraversal(direction: Int): Callback = $.props.flatMap( props => $.modState { state =>
+    private def moveTraversal(direction: Int): Callback = $.props.flatMap( props => $.modState { state =>
       if (state.filteredItems.isEmpty)
         state.copy(traversing = None)
       else

@@ -43,15 +43,13 @@ object MoneyAccounts {
          ${ma.name}, ${ma.created}, ${ma.accountId}, ${ma.owner}
        )""".update.withUniqueGeneratedKeys[Int]("id")
 
-  def addCurrencies(currencies: List[MoneyAccountCurrency]): ConnectionIO[List[MoneyAccountCurrency]] = {
+  def addCurrencies(currencies: List[MoneyAccountCurrency]): ConnectionIO[Int] = {
     if (currencies.nonEmpty) {
       val insert = "INSERT INTO money_account_currencies (money_account, currency, start_amount) VALUES (?, ?, ?)"
       val data = currencies.map(_.toInfo)
-      Update[MoneyAccountCurrencyInfo](insert).updateManyWithGeneratedKeys[MoneyAccountCurrency](
-        "id", "money_account", "currency", "ts", "amount"
-      )(data).compile.toList
+      Update[MoneyAccountCurrencyInfo](insert).updateMany(data)
     } else
-      doobie.free.connection.pure(List.empty[MoneyAccountCurrency])
+      doobie.free.connection.pure(0)
   }
 
   def editMoneyAccount(ma: MoneyAccount): ConnectionIO[Int] =

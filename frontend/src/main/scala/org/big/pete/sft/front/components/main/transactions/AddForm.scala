@@ -153,7 +153,7 @@ object AddForm {
               props.moneyAccountId.flatMap(id => props.moneyAccounts.get(id)),
               406,
               List("col", "s12"),
-              shiftFocus(refToNext)
+              shiftFocus(refCurrency)
             )
           )
         ),
@@ -169,7 +169,7 @@ object AddForm {
               props.currency.flatMap(currencyId => mainAccountCurrencies.find(_.id == currencyId)),
               407,
               List("col", "s12"),
-              shiftFocus(refDestMoneyAccount)
+              shiftFocus(refToNext)
             )
           )
         ),
