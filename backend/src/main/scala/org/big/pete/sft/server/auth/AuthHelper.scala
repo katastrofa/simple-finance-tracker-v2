@@ -16,6 +16,7 @@ import org.http4s.dsl.Http4sDsl
 import org.http4s.{AuthedRequest, HttpDate, Request, RequestCookie, Response, ResponseCookie}
 import org.http4s.headers.{Location, `User-Agent`}
 import sttp.client3.{SttpBackend, basicRequest}
+import wvlet.log.LogSupport
 
 import java.security.MessageDigest
 
@@ -26,15 +27,13 @@ class AuthHelper[F[_]: MonadCancelThrow](
     sttpBackend: SttpBackend[F, Any],
     usersCache: BpCache[F, Int, User],
     implicit val transactor: Transactor[F]
-) extends FunctorSyntax with FlatMapSyntax with MonadCancelSyntax with ToConnectionIOOps
+) extends FunctorSyntax with FlatMapSyntax with MonadCancelSyntax with ToConnectionIOOps with LogSupport
 {
   import dsl._
 
-  final val AuthCookieName = "SftV2Auth"
-  final val Scopes = List("https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile")
+  final private val AuthCookieName = "SftV2Auth"
+  final private val Scopes = List("https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile")
     .mkString(" ")
-
-  final private val md = MessageDigest.getInstance("SHA-256")
 
   def authSftUser: Kleisli[F, Request[F], Either[LoginRedirect, AuthUser]] = Kleisli { request =>
     val loginOption = for {
@@ -76,7 +75,11 @@ class AuthHelper[F[_]: MonadCancelThrow](
 
   private def generateAuthCode(userId: Int, token: String, browserInfo: String): String = {
     val toObscure = userId.toString + browserInfo + token + config.getString("login.secret")
-    md.digest(toObscure.getBytes("UTF-8")).map("%02X".format(_)).mkString
+    val md = MessageDigest.getInstance("SHA-256")
+    val loginToken = md.digest(toObscure.getBytes("UTF-8")).map("%02X".format(_)).mkString
+    md.reset()
+
+    loginToken
   }
 
   private def parseBrowserInfo(request: Request[F]): String =
@@ -157,7 +160,7 @@ class AuthHelper[F[_]: MonadCancelThrow](
     EitherT.fromOptionF[F, String, Int](result.value, "Could not store login in DB")
   }
 
-  def getUri(endpoint: String): sttp.model.Uri =
+  private def getUri(endpoint: String): sttp.model.Uri =
     sttp.model.Uri.parse(endpoint)
       .getOrElse(throw new RuntimeException("Cannot parse uri"))
 }
