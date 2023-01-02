@@ -103,7 +103,8 @@ lazy val scalajsToolz = (project in file("scalajs-toolz"))
     libraryDependencies += "io.circe" %%% "circe-parser" % CirceVersion,
 
     Compile / npmDependencies ++= Seq(
-      "js-cookie" -> "3.0.1"
+      "js-cookie" -> "3.0.1",
+      "mathjs" -> "11.5.0"
     )
   )
 

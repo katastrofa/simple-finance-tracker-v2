@@ -12,7 +12,6 @@ import org.big.pete.sft.front.helpers.AddModal
 import org.scalajs.dom.html.Element
 
 import java.time.LocalDate
-import scala.util.{Failure, Success, Try}
 
 
 object Page {
@@ -43,11 +42,8 @@ object Page {
     def changeName(e: ReactFormEventFromInput): Callback =
       $.modState(_.copy(name = e.target.value))
 
-    private def changeAmount(curId: Int)(e: ReactFormEventFromInput): Callback = $.modState { state =>
-      val newCurrency = Try(BigDecimal(e.target.value.trim)) match {
-        case Failure(_) => state.editCurrencies(curId)
-        case Success(value) => state.editCurrencies(curId).copy(startAmount = value)
-      }
+    private def changeAmount(curId: Int)(amount: BigDecimal): Callback = $.modState { state =>
+      val newCurrency = state.editCurrencies(curId).copy(startAmount = amount)
       state.copy(editCurrencies = state.editCurrencies + (curId -> newCurrency))
     }
 

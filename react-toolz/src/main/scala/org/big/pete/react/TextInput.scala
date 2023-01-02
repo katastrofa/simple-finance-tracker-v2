@@ -15,21 +15,24 @@ object TextInput {
       onChange: ReactFormEventFromInput => Callback,
       tabIndex: Int = -1,
       classes: List[String] = List.empty,
-      onEnterHit: Callback = Callback.empty
+      onEnterHit: Callback = Callback.empty,
+      onLostFocus: String => Callback = _ => Callback.empty
   )
   case class State(focus: Boolean)
 
-  implicit val propsReuse: Reusability[Props] = Reusability.caseClassExcept[Props]("onChange", "onEnterHit")
+  implicit val propsReuse: Reusability[Props] = Reusability.caseClassExcept[Props]("onChange", "onEnterHit", "onLostFocus")
   implicit val stateReuse: Reusability[State] = Reusability.derive[State]
 
   class Backend($: BackendScope[Props, State]) extends OnUnmount with WithInputFocus {
     def isActive(props: Props, state: State): Boolean =
       props.value.nonEmpty || state.focus
 
-    def focusIn: Callback = $.modState(_.copy(true)) >> inputRef.foreach(_.select())
-    def focusOut: Callback = $.modState(_.copy(false))
+    def focusIn: Callback =
+      $.modState(_.copy(true)) >> inputRef.foreach(_.select())
+    def focusOut: Callback =
+      $.modState(_.copy(false)) >> $.props.flatMap(props => props.onLostFocus(props.value))
 
-    def keyPress(onEnterHit: Callback)(evt: ReactKeyboardEventFromInput): Callback = {
+    private def keyPress(onEnterHit: Callback)(evt: ReactKeyboardEventFromInput): Callback = {
       if (evt.key == "Enter")
         onEnterHit
       else

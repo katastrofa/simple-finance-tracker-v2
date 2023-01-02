@@ -10,7 +10,7 @@ import org.big.pete.sft.domain.{Currency, EnhancedMoneyAccount, TransactionType}
 import org.big.pete.sft.front.SftMain.{dropDownCategoryTree, dropDownCurrency, dropDownMoneyAccount, dropDownTT}
 import org.big.pete.sft.front.components.main.displayCurrency
 import org.big.pete.sft.front.domain.CategoryTree
-import org.big.pete.sft.front.helpers.{ModalButtons, SimpleCheckbox}
+import org.big.pete.sft.front.helpers.{ModalButtons, MoneyTextBox, SimpleCheckbox}
 import org.scalajs.dom.html.Form
 
 import java.time.LocalDate
@@ -37,13 +37,13 @@ object AddForm {
       addNext: Boolean,
       dateChange: LocalDate => CallbackTo[LocalDate],
       ttChange: TransactionType => Callback,
-      amountChange: ReactFormEventFromInput => Callback,
+      amountChange: BigDecimal => Callback,
       descriptionChange: ReactFormEventFromInput => Callback,
       categoryChange: CategoryTree => Callback,
       maChange: EnhancedMoneyAccount => Callback,
       currencyChange: Currency => Callback,
       destinationMAChange: EnhancedMoneyAccount => Callback,
-      destinationAmountChange: ReactFormEventFromInput => Callback,
+      destinationAmountChange: BigDecimal => Callback,
       destinationCurrencyChange: Currency => Callback,
       addNextChange: ReactFormEventFromInput => Callback,
       save: Callback,
@@ -57,18 +57,18 @@ object AddForm {
 
   class Backend extends WithFocus[ReactDatePicker.Props, ReactDatePicker.State, ReactDatePicker.Backend] {
     private val refType = Ref.toScalaComponent(dropDownTT.component)
-    private val refAmount = Ref.toScalaComponent(TextInput.component)
+    private val refAmount = Ref.toScalaComponent(MoneyTextBox.component)
     private val refDescription = Ref.toScalaComponent(TextInput.component)
     private val refCategory = Ref.toScalaComponent(dropDownCategoryTree.component)
     private val refMoneyAccount = Ref.toScalaComponent(dropDownMoneyAccount.component)
     private val refCurrency = Ref.toScalaComponent(dropDownCurrency.component)
     private val refDestMoneyAccount = Ref.toScalaComponent(dropDownMoneyAccount.component)
     private val refDestCurrency = Ref.toScalaComponent(dropDownCurrency.component)
-    private val refDestAmount = Ref.toScalaComponent(TextInput.component)
+    private val refDestAmount = Ref.toScalaComponent(MoneyTextBox.component)
     private val refAddNext = Ref.toScalaComponent(SimpleCheckbox.component)
     private val refButtons = Ref.toScalaComponent(ModalButtons.comp)
 
-    def shiftFocus(ref: Ref.WithScalaComponent[_, _, _ <: HasFocus, CtorType.Props]): Callback =
+    private def shiftFocus(ref: Ref.WithScalaComponent[_, _, _ <: HasFocus, CtorType.Props]): Callback =
       ref.foreachCB(_.backend.focus).async.delayMs(50).toCallback
 
     def render(props: Props): VdomTagOf[Form] = {
@@ -116,8 +116,8 @@ object AddForm {
           )
         ),
         <.div(^.cls := "row",
-          TextInput.component.withRef(refAmount)(TextInput.Props(
-            "add-tr-amount", "Amount", props.amount.toString(), props.amountChange, 403, List("col", "s12"), shiftFocus(refDescription)
+          MoneyTextBox.component.withRef(refAmount).apply(MoneyTextBox.Props(
+            "add-tr-amount", "Amount", props.amount, props.amountChange, 403, List("col", "s12"), shiftFocus(refDescription)
           ))
         ),
         <.div(^.cls := "row",
@@ -206,17 +206,10 @@ object AddForm {
           )
         ).when(props.transactionType == TransactionType.Transfer),
         <.div(^.cls := "row",
-          TextInput.component.withRef(refDestAmount)(
-            TextInput.Props(
-              "add-tr-amount-dest",
-              "Destination Amount",
-              props.destAmount.map(_.toString()).getOrElse(""),
-              props.destinationAmountChange,
-              410,
-              List("col", "s12"),
-              shiftFocus(refToLast)
-            )
-          )
+          MoneyTextBox.component.withRef(refDestAmount).apply(MoneyTextBox.Props(
+            "add-tr-amount-dest", "Destination Amount", props.destAmount.getOrElse(BigDecimal(0)),
+            props.destinationAmountChange, 410, List("col", "s12"), shiftFocus(refToLast)
+          )),
         ).when(props.transactionType == TransactionType.Transfer),
         <.div(^.cls := "row",
           SimpleCheckbox.component.withRef(refAddNext)(SimpleCheckbox.Props("Add another", props.addNext, 411, props.addNextChange))

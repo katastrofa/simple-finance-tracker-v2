@@ -68,9 +68,9 @@ class MoneyAccounts[F[_]: Async: Parallel](
     val currenciesData = expandedCurrencies(ma.id).map { currency =>
       CurrencyAndStatus(
         currency.currency,
-        ma.startAmount,
-        calculatedBalances((ma.id, currency.currency.id, start)) + ma.startAmount,
-        calculatedBalances((ma.id, currency.currency.id, end)) + ma.startAmount
+        currency.startAmount,
+        calculatedBalances((ma.id, currency.currency.id, start)) + currency.startAmount,
+        calculatedBalances((ma.id, currency.currency.id, end)) + currency.startAmount
       )
     }
 
@@ -89,7 +89,8 @@ class MoneyAccounts[F[_]: Async: Parallel](
       }
       calculatedBalances = calculateBalances(mas.map(ma => ma.id -> ma), start, end, balances)
       enhancer = enhanceMoneyAccount(calculatedBalances, expandedCurrencies, start, end) _
-    } yield mas.map(enhancer)
+      singleMas = mas.groupBy(_.id).view.mapValues(_.head)
+    } yield singleMas.values.map(enhancer).toList
   }
 
   def listExtendedMoneyAccounts(accountId: Int, start: LocalDate, end: LocalDate): F[Response[F]] = {

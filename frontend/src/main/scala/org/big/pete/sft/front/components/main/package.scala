@@ -2,6 +2,7 @@ package org.big.pete.sft.front.components
 
 import japgolly.scalajs.react.vdom.VdomElement
 import japgolly.scalajs.react.vdom.html_<^._
+import org.big.pete.Mathjs
 import org.big.pete.sft.domain.Currency
 import org.scalajs.dom.html.Element
 
@@ -15,11 +16,20 @@ package object main {
   def formatAmount(currency: String, amount: BigDecimal): String =
     "%s%.2f".format(currency, amount)
 
+  def formatDecimal(amount: BigDecimal): String =
+    "%.2f".format(amount)
+
   def displayCurrency(currency: Currency): String =
     s"${currency.name} (${currency.symbol})"
 
-  def parseAmount(newAmount: String, old: BigDecimal): BigDecimal =
-    Try(BigDecimal(newAmount)).getOrElse(old)
+  def parseAmount(newAmount: String): Option[BigDecimal] = {
+    Try(Mathjs.evaluate(newAmount))
+      .toOption
+      .map { value =>
+        val bd = BigDecimal.decimal(value)
+        bd.setScale(2, BigDecimal.RoundingMode.HALF_EVEN)
+      }
+  }
 
   def tableWrap(
       id: String,

@@ -7,7 +7,7 @@ import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{Callback, CtorType, ReactFormEventFromInput, Ref, Reusability, ScalaComponent}
 import org.big.pete.react.{MICheckbox, MaterialIcon}
 import org.big.pete.sft.domain.{Currency, EnhancedMoneyAccount, TransactionTracking, TransactionType}
-import org.big.pete.sft.front.components.main.{formatAmount, parseAmount, tableWrap}
+import org.big.pete.sft.front.components.main.{formatAmount, tableWrap}
 import org.big.pete.sft.front.domain.{CategoryTree, EnhancedTransaction, Order, SortingColumn}
 import org.big.pete.sft.front.helpers.{AddModal, ModalButtons}
 import org.big.pete.sft.front.state.{AddTransactionSetup, CookieStorage}
@@ -72,9 +72,8 @@ object Page {
     def ttChange(tt: TransactionType): Callback =
       $.modState(_.copy(transactionType = tt))
 
-    def amountChange(event: ReactFormEventFromInput): Callback = $.modState { state =>
-      state.copy(amount = parseAmount(event.target.value, state.amount))
-    }
+    def amountChange(amount: BigDecimal): Callback =
+      $.modState(_.copy(amount = amount))
 
     def descriptionChange(event: ReactFormEventFromInput): Callback =
       $.modState(_.copy(description = event.target.value))
@@ -102,9 +101,8 @@ object Page {
     def destinationCurrencyChange(currency: Currency): Callback =
       $.modState(_.copy(destCurrency = Some(currency.id)))
 
-    def destinationAmountChange(event: ReactFormEventFromInput): Callback = $.modState { state =>
-      state.copy(destAmount = Some(parseAmount(event.target.value, state.destAmount.getOrElse(BigDecimal(0)))))
-    }
+    def destinationAmountChange(amount: BigDecimal): Callback =
+      $.modState(_.copy(destAmount = Some(amount)))
 
     def addNextChange(event: ReactFormEventFromInput): Callback = $.modState { state =>
       state.copy(addNext = event.target.checked)
@@ -121,8 +119,8 @@ object Page {
           state.destMAId, state.destCurrency
         ))
         _ <- props.save(
-          state.id, state.date, state.transactionType, state.amount, state.description, state.categoryId.get,
-          state.moneyAccountId.get, state.currency.get, destAmount, destMA, destCurrency
+          state.id, state.date, state.transactionType, state.amount, state.description,
+          state.categoryId.get, state.moneyAccountId.get, state.currency.get, destAmount, destMA, destCurrency
         )
         _ <- if (state.addNext) openModalAddNew else close
     } yield ()
@@ -130,10 +128,10 @@ object Page {
     def close: Callback =
       $.modState(_.copy(isOpen = false))
 
-    def closeDelete: Callback =
+    private def closeDelete: Callback =
       $.modState(_.copy(deleteIsOpen = false))
 
-    def closeMassEdit: Callback =
+    private def closeMassEdit: Callback =
       $.modState(_.copy(massEditIsOpen = false))
 
 
@@ -151,12 +149,12 @@ object Page {
     }
 
 
-    def openModalAddNew: Callback = $.modState { state =>
+    private def openModalAddNew: Callback = $.modState { state =>
       val setup = CookieStorage.getAddTransactionSetup
       state.copy(
         isOpen = true, id = None, amount = BigDecimal(0), destAmount = Some(BigDecimal(0)), description = "",
         date = setup.date, transactionType = setup.transactionType, categoryId = setup.categoryId,
-        moneyAccountId = setup.moneyAccountId, destMAId = setup.destMAId
+        moneyAccountId = setup.moneyAccountId, destMAId = setup.destMAId, currency = setup.currency, destCurrency = setup.destCurrency
       )
     } >> formRef.foreachCB(_.backend.focus)
 
@@ -164,11 +162,12 @@ object Page {
       state.copy(
         isOpen = true, deleteIsOpen = false, massEditIsOpen = false, visibleDetails = state.visibleDetails,
         Some(trans.id), trans.date, trans.transactionType, trans.amount, trans.destinationAmount, trans.description,
-        Some(trans.categoryId), Some(trans.moneyAccountId), trans.destinationMoneyAccountId
+        Some(trans.categoryId), Some(trans.moneyAccountId), trans.destinationMoneyAccountId, Some(trans.currency.id),
+        trans.destinationCurrency.map(_.id)
       )
     } >> formRef.foreachCB(_.backend.focus)
 
-    def openMassEditModal: Callback = $.modState { state =>
+    private def openMassEditModal: Callback = $.modState { state =>
       state.copy(isOpen = false, deleteIsOpen = false, massEditIsOpen = true, massEditCat = Some(-1), massEditMA = Some(-1))
     }
 
@@ -176,14 +175,14 @@ object Page {
       state.copy(deleteIsOpen = true, toDelete = ids)
     }
 
-    def deleteTransaction(): Callback = for {
+    private def deleteTransaction(): Callback = for {
       props <- $.props
       state <- $.state
       _ <- props.deleteTransactions(state.toDelete)
       _ <- closeDelete
     } yield ()
 
-    def saveMassEdit: Callback = for {
+    private def saveMassEdit: Callback = for {
       props <- $.props
       state <- $.state
       massEditCat = if (state.massEditCat.exists(_ < 0)) None else state.massEditCat
