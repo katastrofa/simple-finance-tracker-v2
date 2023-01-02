@@ -10,7 +10,7 @@ import org.big.pete.react.{MaterialIcon, TextInput}
 import org.big.pete.sft.domain.{Currency, EnhancedMoneyAccount, MoneyAccountOptionalCurrency}
 import org.big.pete.sft.front.SftMain
 import org.big.pete.sft.front.components.main.displayCurrency
-import org.big.pete.sft.front.helpers.ModalButtons
+import org.big.pete.sft.front.helpers.{ModalButtons, MoneyTextBox}
 
 import java.time.LocalDate
 
@@ -25,7 +25,7 @@ object Forms {
       created: LocalDate,
       editCurrencies: Map[Int, MoneyAccountOptionalCurrency],
       changeName: ReactFormEventFromInput => Callback,
-      changeAmount: Int => ReactFormEventFromInput => Callback,
+      changeAmount: Int => BigDecimal => Callback,
       changeCurrency: Int => Currency => Callback,
       changeCreated: LocalDate => CallbackTo[LocalDate],
       addEditCurrency: Callback,
@@ -40,7 +40,7 @@ object Forms {
       hasNextButton: Boolean,
       hasDeleteButton: Boolean,
       tabIndex: Int,
-      changeAmount: ReactFormEventFromInput => Callback,
+      changeAmount: BigDecimal => Callback,
       changeCurrency: Currency => Callback,
       addNext: Callback,
       remove: Callback
@@ -160,16 +160,14 @@ object Forms {
           )
         ),
         <.div(^.cls := "row valign-wrapper",
-          TextInput.component(
-            TextInput.Props(
-              s"add-ma-amount-${props.maCurrency.id}",
-              "Start Amount",
-              props.maCurrency.startAmount.toString(),
-              props.changeAmount,
-              props.tabIndex + 1,
-              List("col", columns)
-            )
-          ),
+          MoneyTextBox.component(MoneyTextBox.Props(
+            s"add-ma-amount-${props.maCurrency.id}",
+            "Start Amount",
+            props.maCurrency.startAmount,
+            props.changeAmount,
+            props.tabIndex + 1,
+            List("col", columns)
+          )),
           MaterialIcon.Icon(MaterialIcon.Props(MaterialIcon.i, MaterialIcon.midMedium, "delete", props.remove, iconClasses)).when(props.hasDeleteButton),
           MaterialIcon.Icon(MaterialIcon.Props(MaterialIcon.i, MaterialIcon.midMedium, "add", props.addNext, iconClasses)).when(props.hasNextButton)
         )

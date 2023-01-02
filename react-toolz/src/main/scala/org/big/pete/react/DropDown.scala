@@ -39,7 +39,7 @@ class DropDown[T: Reusability] {
     def focusIn: Callback =
       inputRef.foreach(_.select()) >> $.modState(_.copy(focus = true))
     def focusOut: Callback =
-      executeWithDelay("focusout", 100, $.modState(_.copy(focus = false)))
+      executeWithDelay("focusout", 150, $.modState(_.copy(focus = false)))
 
     private def dropDownOpen(state: State): Boolean =
       state.focus
@@ -220,6 +220,7 @@ class DropDown[T: Reusability] {
   def component: Component[Props, State, Backend, CtorType.Props] = ScalaComponent.builder[Props]
     .initialStateFromProps(props => State(props.selected.map(props.display).getOrElse(""), focus = false, props.items, props.selected))
     .renderBackend[Backend]
+    .componentWillUnmount(_.backend.cancelExecutions())
     .configure(EventListener.install("focusin", _.backend.focusIn))
     .configure(EventListener.install("focusout", _.backend.focusOut))
     .configure(Reusability.shouldComponentUpdate)

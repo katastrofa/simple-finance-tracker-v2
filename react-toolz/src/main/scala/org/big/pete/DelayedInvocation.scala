@@ -9,9 +9,9 @@ import scala.collection.mutable
 trait DelayedInvocation {
   private val invocations: mutable.Map[String, Int] = mutable.Map.empty[String, Int]
 
-  def executeWithDelay(key: String, timeout: Double, fn: Callback): Callback = Callback {
+  def executeWithDelay(key: String, timeout: Int, fn: Callback): Callback = Callback {
     invocations.get(key).foreach(id => window.clearTimeout(id))
-    invocations += key -> window.setTimeout(() => fn.runNow(), timeout)
+    invocations += key -> window.setTimeout(() => fn.runNow(), timeout.toDouble)
   }
 
   def cancelExecutions(): Callback = Callback {
