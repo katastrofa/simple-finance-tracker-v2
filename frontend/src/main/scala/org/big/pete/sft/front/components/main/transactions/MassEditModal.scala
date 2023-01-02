@@ -32,8 +32,8 @@ object MassEditModal {
     "massEditCatChange", "massEditMAChange", "confirm", "close"
   )
 
-  final val LeaveAsIsCat = CategoryTree(-1, "Leave as is", None, 0, List.empty)
-  final val LeaveAsIsMa = EnhancedMoneyAccount(-1, "Leave as is", LocalDate.now(), List.empty, List.empty, None)
+  final private val LeaveAsIsCat = CategoryTree(-1, "Leave as is", None, 0, None, List.empty)
+  final private val LeaveAsIsMa = EnhancedMoneyAccount(-1, "Leave as is", LocalDate.now(), List.empty, List.empty, None)
 
   class Backend extends WithFocus[dropDownCategoryTree.Props, dropDownCategoryTree.State, dropDownCategoryTree.Backend] {
     def render(props: Props): VdomTagOf[Form] = {

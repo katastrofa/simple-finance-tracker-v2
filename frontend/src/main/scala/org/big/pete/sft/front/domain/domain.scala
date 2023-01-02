@@ -9,7 +9,7 @@ import java.time.LocalDate
 import scala.annotation.tailrec
 
 
-case class CategoryTree(id: Int, name: String, description: Option[String], treeLevel: Int, children: List[CategoryTree]) {
+case class CategoryTree(id: Int, name: String, description: Option[String], treeLevel: Int, parent: Option[Int], children: List[CategoryTree]) {
   override def equals(obj: Any): Boolean = {
     if (!obj.isInstanceOf[CategoryTree])
       false
@@ -31,6 +31,7 @@ object CategoryTree {
         cat.name,
         cat.description,
         level,
+        cat.parent,
         groupedData.getOrElse(Some(cat.id), List.empty[Category])
           .map(childCat => catToTree(childCat, level + 1))
       )

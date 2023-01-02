@@ -33,8 +33,8 @@ object Categories {
       shiftTransactionsTo: Int
   )
   case class CategoryProps(category: CategoryTree, openEditModal: CategoryTree => Callback, openDeleteModal: CategoryTree => Callback)
-  final val TopLevelCat: CategoryTree = CategoryTree(-42, "Top Level", None, 0, List.empty)
-  final val NoShiftTransactions: CategoryTree = CategoryTree(-50, "Delete Transactions", None, 0, List.empty)
+  final private val TopLevelCat: CategoryTree = CategoryTree(-42, "Top Level", None, 0, None, List.empty)
+  final private val NoShiftTransactions: CategoryTree = CategoryTree(-50, "Delete Transactions", None, 0, None, List.empty)
 
   case class FormProps(
       availableParents: List[CategoryTree],
@@ -72,19 +72,19 @@ object Categories {
     def changeName(e: ReactFormEventFromInput): Callback =
       $.modState(_.copy(name = e.target.value))
 
-    def changeDescription(e: ReactFormEventFromInput): Callback =
+    private def changeDescription(e: ReactFormEventFromInput): Callback =
       $.modState(_.copy(description = e.target.value))
 
-    def changeParent(cat: CategoryTree): Callback =
+    private def changeParent(cat: CategoryTree): Callback =
       $.modState(_.copy(parent = cat))
 
-    def changeShiftSubCats(cat: CategoryTree): Callback =
+    private def changeShiftSubCats(cat: CategoryTree): Callback =
       $.modState(_.copy(shiftSubCatsTo = cat.id))
 
     def changeShiftTransactions(cat: CategoryTree): Callback =
       $.modState(_.copy(shiftTransactionsTo = cat.id))
 
-    def saveEdit: Callback = for {
+    private def saveEdit: Callback = for {
       state <- $.state
       props <- $.props
       _ <- closeModal
@@ -110,15 +110,17 @@ object Categories {
       state.copy(isOpen = true, deleteIsOpen = false, None, "", "", TopLevelCat)
     }
 
-    def openEditModal(cat: CategoryTree): Callback = $.modState { state =>
-      state.copy(isOpen = true, deleteIsOpen = false, Some(cat.id), state.name, state.description, state.parent)
+    def openEditModal(cat: CategoryTree): Callback = $.props.flatMap { props =>
+      val linearCats = CategoryTree.linearize(props.categories)
+      val parent = cat.parent.flatMap(id => linearCats.find(_.id == id))
+      $.modState(_.copy(isOpen = true, deleteIsOpen = false, Some(cat.id), cat.name, cat.description.getOrElse(""), parent.getOrElse(TopLevelCat)))
     }
 
     def openDeleteModal(cat: CategoryTree): Callback = $.modState { state =>
       state.copy(deleteIsOpen = true, deleteId = Some(cat.id), shiftSubCatsTo = TopLevelCat.id, shiftTransactionsTo = NoShiftTransactions.id)
     }
 
-    def expandCategories(excludeId: Option[Int])(cat: CategoryTree): List[ScalaFn.Unmounted[CategoryProps]] = {
+    private def expandCategories(excludeId: Option[Int])(cat: CategoryTree): List[ScalaFn.Unmounted[CategoryProps]] = {
       if (!excludeId.contains(cat.id))
         categoryComponent.withKey(s"cat-${cat.id}").apply(CategoryProps(cat, openEditModal, openDeleteModal)) ::
           cat.children.flatMap(expandCategories(excludeId))
@@ -174,7 +176,7 @@ object Categories {
     )
   }
 
-  val categoryComponent: Component[CategoryProps, CtorType.Props] = ScalaFnComponent.apply[CategoryProps] { props =>
+  private val categoryComponent: Component[CategoryProps, CtorType.Props] = ScalaFnComponent.apply[CategoryProps] { props =>
     <.tr(
       <.td(^.cls := "id hide-on-small-only right-align", props.category.id.toString),
       <.td(
@@ -190,7 +192,7 @@ object Categories {
   }
 
 
-  val addCategoryModal: Component[FormProps, CtorType.Props] = ScalaFnComponent.withReuse[FormProps] { props =>
+  private val addCategoryModal: Component[FormProps, CtorType.Props] = ScalaFnComponent.withReuse[FormProps] { props =>
     <.form(
       <.div(
         ^.cls := "row",
@@ -222,7 +224,7 @@ object Categories {
     )
   }
 
-  val deleteCategoryModal: Component[DeleteFormProps, CtorType.Props] = ScalaFnComponent.withReuse[DeleteFormProps] { props =>
+  private val deleteCategoryModal: Component[DeleteFormProps, CtorType.Props] = ScalaFnComponent.withReuse[DeleteFormProps] { props =>
     def shiftSubCatsExpand(cat: CategoryTree): List[CategoryTree] = {
       if (cat.id != props.deleteId)
         cat :: cat.children.flatMap(shiftSubCatsExpand)
