@@ -4,24 +4,25 @@ import org.big.pete.sft.domain.TransactionType
 import org.big.pete.{BPCookie, CookieAttributes}
 
 import java.time.LocalDate
+import scala.collection.mutable
 
 
 object CookieStorage {
   import org.big.pete.sft.front.state.Implicits._
 
-  final val SettingsCookieName = "sft-v2-settings"
-  final val AddTransactionCookieName = "sft-v2-add-transaction"
+  final private val SettingsCookieName = "sft-v2-settings"
+  final private val AddTransactionCookieName = "sft-v2-add-transaction-{account}"
 
   private var browserSettings: BrowserSettings = _
-  private var addTransactionSetup: AddTransactionSetup = _
+  private val addTransactionSetup: mutable.Map[String, AddTransactionSetup] = mutable.Map.empty[String, AddTransactionSetup]
 
-  def defaultSettings: BrowserSettings =
+  private def defaultSettings: BrowserSettings =
     BrowserSettings(
       LocalDate.now().withDayOfMonth(1),
       LocalDate.now().plusMonths(1L).withDayOfMonth(1).minusDays(1L)
     )
 
-  def defaultAddTransactionSetup: AddTransactionSetup =
+  private def defaultAddTransactionSetup: AddTransactionSetup =
     AddTransactionSetup(LocalDate.now(), TransactionType.Expense, None, None, None, None, None)
 
   def getBrowserSettings: BrowserSettings = {
@@ -36,14 +37,17 @@ object CookieStorage {
     BPCookie.setObj(SettingsCookieName, settings, new CookieAttributes(7, "/"))
   }
 
-  def getAddTransactionSetup: AddTransactionSetup = {
-    if (addTransactionSetup == null)
-      addTransactionSetup = BPCookie.getObj[AddTransactionSetup](AddTransactionCookieName).getOrElse(defaultAddTransactionSetup)
-    addTransactionSetup
+  def getAddTransactionSetup(account: String): AddTransactionSetup = {
+    if (!addTransactionSetup.contains(account)) {
+      val setup = BPCookie.getObj[AddTransactionSetup](AddTransactionCookieName.replace("{account}", account))
+        .getOrElse(defaultAddTransactionSetup)
+      addTransactionSetup += account -> setup
+    }
+    addTransactionSetup(account)
   }
 
-  def updateAddTransactionSetup(setup: AddTransactionSetup): String = {
-    addTransactionSetup = setup
-    BPCookie.setObj(AddTransactionCookieName, setup, new CookieAttributes(3, "/"))
+  def updateAddTransactionSetup(account: String, setup: AddTransactionSetup): String = {
+    addTransactionSetup += account -> setup
+    BPCookie.setObj(AddTransactionCookieName.replace("{account}", account), setup, new CookieAttributes(3, "/"))
   }
 }

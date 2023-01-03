@@ -118,6 +118,7 @@ object SftState {
 
         Accounts.Props(state.accounts, props.activePage, props.router, onPageClick, saveAccount),
         transactions.Page.Props(
+          getAccountPermalink(props.activePage).getOrElse(""),
           state.displayTransactions,
           CategoryTree.linearize(state.categoryTree),
           state.moneyAccounts,
