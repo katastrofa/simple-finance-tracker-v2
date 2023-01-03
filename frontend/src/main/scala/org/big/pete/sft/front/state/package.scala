@@ -9,8 +9,8 @@ package object state {
     SortingColumn.Description -> Order.Asc
   )
 
-  final val AddBigDecimals: (BigDecimal, BigDecimal) => BigDecimal = _ + _
-  final val SubtractBigDecimals: (BigDecimal, BigDecimal) => BigDecimal = _ - _
+  final private val AddBigDecimals: (BigDecimal, BigDecimal) => BigDecimal = _ + _
+  final private val SubtractBigDecimals: (BigDecimal, BigDecimal) => BigDecimal = _ - _
   final val MAOperations: Map[MAUpdateAction, Map[MAUpdateOperation, (BigDecimal, BigDecimal) => BigDecimal]] = Map(
     MAUpdateAction.Attach -> Map(
       MAUpdateOperation.Add -> AddBigDecimals,

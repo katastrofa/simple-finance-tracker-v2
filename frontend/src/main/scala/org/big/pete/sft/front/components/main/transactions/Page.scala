@@ -19,6 +19,7 @@ import java.time.LocalDate
 
 object Page {
   case class Props(
+      account: String,
       transactions: List[EnhancedTransaction],
       linearCats: List[CategoryTree],
       moneyAccounts: Map[Int, EnhancedMoneyAccount],
@@ -110,19 +111,19 @@ object Page {
 
     def save: Callback = for {
       props <- $.props
-        state <- $.state
-        destAmount = if (state.transactionType == TransactionType.Transfer) state.destAmount else None
-        destMA = if (state.transactionType == TransactionType.Transfer) state.destMAId else None
-        destCurrency = if (state.transactionType == TransactionType.Transfer) state.destCurrency else None
-        _ = CookieStorage.updateAddTransactionSetup(AddTransactionSetup(
-          state.date, state.transactionType, state.categoryId, state.moneyAccountId, state.currency,
-          state.destMAId, state.destCurrency
-        ))
-        _ <- props.save(
-          state.id, state.date, state.transactionType, state.amount, state.description,
-          state.categoryId.get, state.moneyAccountId.get, state.currency.get, destAmount, destMA, destCurrency
-        )
-        _ <- if (state.addNext) openModalAddNew else close
+      state <- $.state
+      destAmount = if (state.transactionType == TransactionType.Transfer) state.destAmount else None
+      destMA = if (state.transactionType == TransactionType.Transfer) state.destMAId else None
+      destCurrency = if (state.transactionType == TransactionType.Transfer) state.destCurrency else None
+      _ = CookieStorage.updateAddTransactionSetup(props.account, AddTransactionSetup(
+        state.date, state.transactionType, state.categoryId, state.moneyAccountId, state.currency,
+        state.destMAId, state.destCurrency
+      ))
+      _ <- props.save(
+        state.id, state.date, state.transactionType, state.amount, state.description,
+        state.categoryId.get, state.moneyAccountId.get, state.currency.get, destAmount, destMA, destCurrency
+      )
+      _ <- if (state.addNext) openModalAddNew else close
     } yield ()
 
     def close: Callback =
@@ -149,14 +150,17 @@ object Page {
     }
 
 
-    private def openModalAddNew: Callback = $.modState { state =>
-      val setup = CookieStorage.getAddTransactionSetup
-      state.copy(
-        isOpen = true, id = None, amount = BigDecimal(0), destAmount = Some(BigDecimal(0)), description = "",
-        date = setup.date, transactionType = setup.transactionType, categoryId = setup.categoryId,
-        moneyAccountId = setup.moneyAccountId, destMAId = setup.destMAId, currency = setup.currency, destCurrency = setup.destCurrency
-      )
-    } >> formRef.foreachCB(_.backend.focus)
+    private def openModalAddNew: Callback = $.props.flatMap { props =>
+      $.modState { state =>
+        val setup = CookieStorage.getAddTransactionSetup(props.account)
+        state.copy(
+          isOpen = true, id = None, amount = BigDecimal(0), destAmount = Some(BigDecimal(0)), description = "",
+          date = setup.date, transactionType = setup.transactionType, categoryId = setup.categoryId,
+          moneyAccountId = setup.moneyAccountId, destMAId = setup.destMAId, currency = setup.currency,
+          destCurrency = setup.destCurrency
+        )
+      } >> formRef.foreachCB(_.backend.focus)
+    }
 
     def openEditModal(trans: EnhancedTransaction): Callback = $.modState { state =>
       state.copy(
