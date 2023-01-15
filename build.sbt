@@ -19,7 +19,7 @@ scalaVersion := MyScalaVersion
 
 lazy val basicSettings = Seq(
   organization := "org.big.pete",
-  version := "0.3.6",
+  version := "0.4-SNAPSHOT",
   scalaVersion := MyScalaVersion,
   credentials += Credentials(Path.userHome / ".sbt" / ".credentials-github-repo"),
   resolvers += ("scala-toolz-github" at "https://maven.pkg.github.com/katastrofa/scala-toolz/")
@@ -108,6 +108,25 @@ lazy val scalajsToolz = (project in file("scalajs-toolz"))
     )
   )
 
+lazy val chartsJs = (project in file("charts-js"))
+  .enablePlugins(ScalaJSPlugin, ScalaJSWeb, ScalaJSBundlerPlugin)
+  .settings(basicSettings)
+  .settings(
+    name := "charts-js",
+    scalaJSUseMainModuleInitializer := true,
+    scalacOptions += "-Wconf:cat=unused:info",
+
+    // https://mvnrepository.com/artifact/org.scala-js/scalajs-dom
+    libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "2.0.0",
+
+    Compile / npmDependencies ++= Seq(
+      "chart.js" -> "4.1.2"
+    ),
+    webpack / version := "5.75.0",
+    startWebpackDevServer / version := "4.11.1",
+    webpackCliVersion := "5.0.1"
+  )
+
 lazy val reactToolz = (project in file("react-toolz"))
   .enablePlugins(ScalaJSPlugin, ScalaJSWeb, ScalaJSBundlerPlugin)
   .settings(basicSettings)
@@ -116,7 +135,7 @@ lazy val reactToolz = (project in file("react-toolz"))
     scalaJSUseMainModuleInitializer := true,
 
     libraryDependencies += "com.beachape" %%% "enumeratum" % EnumeratumVersion,
-    libraryDependencies +="com.github.japgolly.scalajs-react" %%% "core" % ScalaJsReactVersion,
+    libraryDependencies += "com.github.japgolly.scalajs-react" %%% "core" % ScalaJsReactVersion,
     libraryDependencies += "com.github.japgolly.scalajs-react" %%% "extra" % ScalaJsReactVersion,
 //    libraryDependencies += "com.github.japgolly.scalacss" %%% "ext-react" % "1.0.0",
 
@@ -127,11 +146,14 @@ lazy val reactToolz = (project in file("react-toolz"))
     Compile / npmDependencies ++= Seq(
       "react" -> ReactVersion,
       "react-dom" -> ReactVersion
-    )
+    ),
+    webpack / version := "5.75.0",
+    startWebpackDevServer / version := "4.11.1",
+    webpackCliVersion := "5.0.1"
   )
 
 lazy val frontend = (project in file("frontend"))
-  .dependsOn(sharedJs, reactToolz, scalajsToolz)
+  .dependsOn(sharedJs, reactToolz, scalajsToolz, chartsJs)
   .enablePlugins(ScalaJSPlugin, ScalaJSWeb, ScalaJSBundlerPlugin)
   .settings(basicSettings)
   .settings(
@@ -142,6 +164,9 @@ lazy val frontend = (project in file("frontend"))
       "react" -> ReactVersion,
       "react-dom" -> ReactVersion
     ),
+    webpack / version := "5.75.0",
+    startWebpackDevServer / version := "4.11.1",
+    webpackCliVersion := "5.0.1",
 
     Compile / fastOptJS / webpack := {
       val compiled = (Compile / fastOptJS / webpack).value
@@ -215,4 +240,4 @@ lazy val root = (project in file("."))
 //      "org.typelevel"   %% "munit-cats-effect-3" % MunitCatsEffectVersion % Test,
 //    testFrameworks += new TestFramework("munit.Framework")
   )
-  .aggregate(shared.jvm, shared.js, cache, db, backend, scalajsToolz, reactToolz, frontend)
+  .aggregate(shared.jvm, shared.js, cache, db, backend, scalajsToolz, chartsJs, reactToolz, frontend)

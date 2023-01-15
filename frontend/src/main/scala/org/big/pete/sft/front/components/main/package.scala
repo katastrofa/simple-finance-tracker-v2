@@ -12,6 +12,7 @@ import scala.util.Try
 
 package object main {
   final val DateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+  final val SmallDateFormat = DateTimeFormatter.ofPattern("MM-dd")
 
   def formatAmount(currency: String, amount: BigDecimal): String =
     "%s%.2f".format(currency, amount)

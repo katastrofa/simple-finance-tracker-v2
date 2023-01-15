@@ -121,6 +121,7 @@ object SftState {
           getAccountPermalink(props.activePage).getOrElse(""),
           state.displayTransactions,
           CategoryTree.linearize(state.categoryTree),
+          state.categories,
           state.moneyAccounts,
           state.checkedTransactions,
           state.transactionsSorting,

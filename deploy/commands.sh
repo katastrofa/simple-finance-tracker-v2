@@ -5,6 +5,7 @@ keytool -genkeypair -alias localhost -keyalg RSA -keysize 4096 -storetype PKCS12
 
 scp db/src/main/resources/db/* sft:~/db/
 scp -r target/deployment/* sft:~/sft/
+scp -r target/deployment/static-assets/* sft:~/sft/static-assets/
 scp backend/src/main/resources/prod.conf sft:~/sft/
 scp frontend/src/main/resources/index-prod.html sft:~/sft/static-assets/index-main.html
 

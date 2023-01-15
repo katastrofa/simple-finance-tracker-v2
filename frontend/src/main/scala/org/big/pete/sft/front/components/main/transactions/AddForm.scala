@@ -6,7 +6,7 @@ import japgolly.scalajs.react.{Callback, CtorType, ReactFormEventFromInput, Ref,
 import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.datepicker.ReactDatePicker
 import org.big.pete.react.{HasFocus, TextInput, WithFocus}
-import org.big.pete.sft.domain.{Currency, EnhancedMoneyAccount, TransactionType}
+import org.big.pete.sft.domain.{Category, Currency, EnhancedMoneyAccount, TransactionType}
 import org.big.pete.sft.front.SftMain.{dropDownCategoryTree, dropDownCurrency, dropDownMoneyAccount, dropDownTT}
 import org.big.pete.sft.front.components.main.displayCurrency
 import org.big.pete.sft.front.domain.CategoryTree
@@ -22,6 +22,7 @@ object AddForm {
 
   case class Props(
       linearCats: List[CategoryTree],
+      categories: Map[Int, Category],
       moneyAccounts: Map[Int, EnhancedMoneyAccount],
       id: Option[Int],
       date: LocalDate,
@@ -131,7 +132,7 @@ object AddForm {
               "add-tr-category",
               "Category",
               props.linearCats,
-              CategoryTree.name,
+              CategoryTree.fullName(props.categories),
               cat => s"k-cat-${cat.id}",
               props.categoryChange,
               props.categoryId.flatMap(id => props.linearCats.find(_.id == id)),

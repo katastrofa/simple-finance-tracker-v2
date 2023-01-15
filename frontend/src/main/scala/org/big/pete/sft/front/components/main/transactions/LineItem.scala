@@ -5,7 +5,7 @@ import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{Callback, CtorType, Reusability, ScalaFnComponent}
 import org.big.pete.react.{MICheckbox, MaterialIcon}
 import org.big.pete.sft.domain.{TransactionTracking, TransactionType}
-import org.big.pete.sft.front.components.main.{DateFormat, formatAmount}
+import org.big.pete.sft.front.components.main.{DateFormat, SmallDateFormat, formatAmount}
 import org.big.pete.sft.front.domain.EnhancedTransaction
 import org.big.pete.sft.front.helpers.NiceButton
 
@@ -55,7 +55,10 @@ object LineItem {
         if (props.isChecked) MICheckbox.Status.checkedStatus else MICheckbox.Status.none,
         props.checkTransaction
       )),
-      <.td(^.cls := "date", props.transaction.date.format(DateFormat)),
+      <.td(^.cls := "date",
+        <.div(^.cls := "hide-on-small-only", props.transaction.date.format(DateFormat)),
+        <.div(^.cls := "show-on-small hide-on-med-and-up", props.transaction.date.format(SmallDateFormat))
+      ),
       <.td(
         ^.cls := "description",
         ^.onClick --> props.toggleDetails(props.transaction.id),

@@ -6,11 +6,13 @@ import japgolly.scalajs.react.extra.{EventListener, OnUnmount}
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{Callback, CtorType, ReactFormEventFromInput, Ref, Reusability, ScalaComponent}
 import org.big.pete.react.{MICheckbox, MaterialIcon}
-import org.big.pete.sft.domain.{Currency, EnhancedMoneyAccount, TransactionTracking, TransactionType}
+import org.big.pete.sft.domain.{Category, Currency, EnhancedMoneyAccount, TransactionTracking, TransactionType}
 import org.big.pete.sft.front.components.main.{formatAmount, tableWrap}
 import org.big.pete.sft.front.domain.{CategoryTree, EnhancedTransaction, Order, SortingColumn}
+import org.big.pete.sft.front.helpers.PieChart
 import org.big.pete.sft.front.helpers.{AddModal, ModalButtons}
 import org.big.pete.sft.front.state.{AddTransactionSetup, CookieStorage}
+import org.big.pete.sft.front.utilz.{LegendOptions, TitleOptions}
 import org.scalajs.dom.html.Element
 import org.scalajs.dom.window
 
@@ -22,6 +24,7 @@ object Page {
       account: String,
       transactions: List[EnhancedTransaction],
       linearCats: List[CategoryTree],
+      categories: Map[Int, Category],
       moneyAccounts: Map[Int, EnhancedMoneyAccount],
       checkedTransactions: Set[Int],
       ordering: List[(SortingColumn, Order)],
@@ -211,14 +214,29 @@ object Page {
         ))
       }.toVdomArray
 
-      def getTransactionsSum(ttype: TransactionType): List[(String, BigDecimal)] = {
+//      def getTransactionsSum(ttype: TransactionType): List[(String, BigDecimal)] = {
+//        props.transactions
+//          .filter(trans => props.checkedTransactions.isEmpty || props.checkedTransactions.contains(trans.id))
+//          .filter(_.transactionType == ttype)
+//          .map(trans => trans.currency.symbol -> trans.amount)
+//          .groupBy(_._1)
+//          .view.mapValues(_.map(_._2).sum)
+//          .toList
+//      }
+
+      def getTransactionsPieChartData: List[PieChart.PieChartData] = {
         props.transactions
           .filter(trans => props.checkedTransactions.isEmpty || props.checkedTransactions.contains(trans.id))
-          .filter(_.transactionType == ttype)
-          .map(trans => trans.currency.symbol -> trans.amount)
-          .groupBy(_._1)
-          .view.mapValues(_.map(_._2).sum)
-          .toList
+          .filterNot(_.transactionType == TransactionType.Transfer)
+          .groupBy(trans => (trans.transactionType, trans.currency.id))
+          .map { case ((ttype, _), trans) =>
+            val sum = trans.map(_.amount).sum
+            PieChart.PieChartData(
+              sum.floatValue,
+              s"$ttype - ${formatAmount(trans.head.currency.symbol, sum)}",
+              if (ttype == TransactionType.Expense) "#E53935" else "#43A047"
+            )
+          }.toList
       }
 
       tableWrap(
@@ -226,7 +244,7 @@ object Page {
         List(
           AddModal.component.withKey("add-transaction-modal-key").apply(AddModal.Props("add-transaction-modal"))(
             AddForm.component.withRef(formRef)(AddForm.Props(
-              props.linearCats, props.moneyAccounts,
+              props.linearCats, props.categories, props.moneyAccounts,
               state.id, state.date, state.transactionType, state.amount, state.destAmount, state.description, state.categoryId,
               state.moneyAccountId, state.destMAId, state.currency, state.destCurrency, state.addNext,
               dateChange, ttChange, amountChange, descriptionChange, categoryChange, maChange, currencyChange,
@@ -248,21 +266,36 @@ object Page {
           }.when(state.massEditIsOpen),
 
           <.div(^.cls := "row summary", ^.key := "money-summary-key",
-            <.div(^.cls := "col xl3 l4 m5 s6",
-              <.h6("Income"),
-              <.p(^.cls := "green-text text-darken-1",
-                getTransactionsSum(TransactionType.Income).map(a => <.span(formatAmount(a._1, a._2))).toTagMod
-              )
-            ),
-            <.div(
-              ^.cls := "col xl3 l4 m5 s6",
-              <.h6("Expenses"),
-              <.p(
-                ^.cls := "red-text text-darken-1",
-                getTransactionsSum(TransactionType.Expense).map(a => <.span(formatAmount(a._1, a._2))).toTagMod
-              )
+            <.div(^.cls := "col s12",
+              PieChart.component(PieChart.Props(
+                getTransactionsPieChartData,
+                Some("#777777"),
+                Some("Amount"),
+                Some(LegendOptions(display = true, Some(15), useCustomLabels = false, Some(14))),
+                Some(TitleOptions(Some(true), Some("Transactions Summary"), Some("#EEEEEE"), Some(18))),
+                Some("35%"),
+                useHalf = true,
+                aspectRatio = Some(2),
+                classes = Set("transactions-summary")
+              ))
             )
           )
+//          <.div(^.cls := "row summary", ^.key := "money-summary-key",
+//            <.div(^.cls := "col xl3 l4 m5 s6",
+//              <.h6("Income"),
+//              <.p(^.cls := "green-text text-darken-1",
+//                getTransactionsSum(TransactionType.Income).map(a => <.span(formatAmount(a._1, a._2))).toTagMod
+//              )
+//            ),
+//            <.div(
+//              ^.cls := "col xl3 l4 m5 s6",
+//              <.h6("Expenses"),
+//              <.p(
+//                ^.cls := "red-text text-darken-1",
+//                getTransactionsSum(TransactionType.Expense).map(a => <.span(formatAmount(a._1, a._2))).toTagMod
+//              )
+//            )
+//          )
         ).toTagMod,
         Header.component(
           Header.Props(props.transactions, props.checkedTransactions, props.ordering, props.checkTransaction, props.clickOrdering)
