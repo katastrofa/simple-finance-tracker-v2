@@ -47,6 +47,18 @@ object CategoryTree {
 
   def name(cat: CategoryTree): String =
     "-".repeat(cat.treeLevel) + " " + cat.name
+
+  def fullName(categories: Map[Int, Category])(cat: CategoryTree): String = {
+    val parentCats = parentTree(categories, Some(cat.id))
+    parentCats.map(_.name).mkString(" - ")
+  }
+
+  @tailrec
+  def parentTree(categories: Map[Int, Category], catId: Option[Int], list: List[Category] = List.empty): List[Category] =
+    catId.map(categories.apply) match {
+      case None => list
+      case Some(cat) => parentTree(categories, cat.parent, cat :: list)
+    }
 }
 
 case class EnhancedTransaction(
@@ -76,15 +88,9 @@ object EnhancedTransaction {
   )(
       transaction: Transaction
   ): EnhancedTransaction = {
-    @tailrec
-    def parentTree(catId: Option[Int], list: List[Category]): List[Category] = catId.map(categories.apply) match {
-      case None => list
-      case Some(cat) => parentTree(cat.parent, cat :: list)
-    }
-
     val moneyAccount = moneyAccounts(transaction.moneyAccount)
     val destinationMoneyAccount = transaction.destinationMoneyAccountId.map(moneyAccounts)
-    val parentCats = parentTree(Some(transaction.categoryId), List.empty)
+    val parentCats = CategoryTree.parentTree(categories, Some(transaction.categoryId), List.empty)
 
     EnhancedTransaction(
       transaction.id,
@@ -158,6 +164,8 @@ object Implicits {
   implicit val moneyAccountCurrencyMapReuse: Reusability[Map[Int, MoneyAccountCurrency]] = Reusability.map[Int, MoneyAccountCurrency]
   implicit val moneyAccountOptionalCurrencyReuse: Reusability[MoneyAccountOptionalCurrency] = Reusability.derive[MoneyAccountOptionalCurrency]
   implicit val moneyAccountOptionalCurrencyMapReuse: Reusability[Map[Int, MoneyAccountOptionalCurrency]] = Reusability.map[Int, MoneyAccountOptionalCurrency]
+  implicit val categoryReuse: Reusability[Category] = Reusability.derive[Category]
+  implicit val categoryMapReuse: Reusability[Map[Int, Category]] = Reusability.map[Int, Category]
   implicit val categoryTreeReuse: Reusability[CategoryTree] = Reusability.by_==[CategoryTree]
   implicit val currencyAndStatusReuse: Reusability[CurrencyAndStatus] = Reusability.derive[CurrencyAndStatus]
   implicit val expandedMoneyAccountCurrencyReuse: Reusability[ExpandedMoneyAccountCurrency] = Reusability.derive[ExpandedMoneyAccountCurrency]

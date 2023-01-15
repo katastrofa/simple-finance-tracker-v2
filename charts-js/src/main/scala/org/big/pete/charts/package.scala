@@ -29,7 +29,7 @@ package object charts {
     objectLiteral(cleanAttr.toSeq: _*)
   }
 
-  def labelsWithValues[DS <: Dataset[_]](chart: Chart[DS]): js.Array[LegendItem] = {
+  def labelsWithValues(chart: FullChart): js.Array[LegendItem] = {
     val labels = chart.data.labels.getOrElse(new js.Array[String]()).toList
     chart.data.datasets.zipWithIndex.flatMap { case (dataset, indexDataset) =>
       dataset.data.zipWithIndex.map { case (item, index) =>
@@ -57,22 +57,19 @@ package object charts {
         ).flatten.head
 
         val backgroundColor: Option[Color] = {
-          dataset match {
-            case ds if ds.hasOwnProperty("backgroundColor") =>
-              ds.asInstanceOf[PieDatasetExtra].backgroundColor.toOption.flatMap { bgColor =>
-                (bgColor: Any) match {
-                  case arr if js.Array.isArray(arr) && arr.asInstanceOf[js.Array[Color]].length > index =>
-                    arr.asInstanceOf[js.Array[Color]](index).some
-                  case clr if !js.Array.isArray(clr) =>
-                    clr.asInstanceOf[Color].some
-                  case _ =>
-                    None
-                }
+          if (dataset.hasOwnProperty("backgroundColor"))
+            dataset.backgroundColor.toOption.flatMap { bgColor =>
+              (bgColor: Any) match {
+                case arr if js.Array.isArray(arr) && arr.asInstanceOf[js.Array[Color]].length > index =>
+                  arr.asInstanceOf[js.Array[Color]](index).some
+                case clr if !js.Array.isArray(clr) =>
+                  clr.asInstanceOf[Color].some
+                case _ =>
+                  None
               }
-            case _ =>
-              None
-          }
-
+            }
+          else
+            None
         }
 
         LegendItem(text, datasetIndex = indexDataset.some, index = index.some, fontColor = color.some, fillStyle = backgroundColor)

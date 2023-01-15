@@ -69,28 +69,28 @@ object LegendItem {
 
 
 @js.native
-trait LegendSpec[DS <: Dataset[_]] extends js.Object {
-  @nowarn var display: Boolean = js.native
-  @nowarn var position: String = js.native
-  @nowarn var align: String = js.native
-  @nowarn var maxHeight: Int = js.native
-  @nowarn var maxWidth: Int = js.native
-  @nowarn var fullSize: Boolean = js.native
-  @nowarn var labels: LegendLabelSpec[DS] = js.native
-  @nowarn var title: LegendTitleSpec = js.native
+trait LegendSpec extends js.Object {
+  @nowarn var display: js.UndefOr[Boolean] = js.native
+  @nowarn var position: js.UndefOr[String] = js.native
+  @nowarn var align: js.UndefOr[String] = js.native
+  @nowarn var maxHeight: js.UndefOr[Int] = js.native
+  @nowarn var maxWidth: js.UndefOr[Int] = js.native
+  @nowarn var fullSize: js.UndefOr[Boolean] = js.native
+  @nowarn var labels: js.UndefOr[LegendLabelSpec] = js.native
+  @nowarn var title: js.UndefOr[LegendTitleSpec] = js.native
 }
 
 object LegendSpec {
-  def apply[DS <: Dataset[_]](
+  def apply(
       display: Option[Boolean] = None,
       position: Option[String] = None,
       align: Option[String] = None,
       maxHeight: Option[Int] = None,
       maxWidth: Option[Int] = None,
       fullSize: Option[Boolean] = None,
-      labels: Option[LegendLabelSpec[DS]] = None,
+      labels: Option[LegendLabelSpec] = None,
       title: Option[LegendTitleSpec] = None
-  ): LegendSpec[DS] =
+  ): LegendSpec =
     cleanObject(Map(
       "display" -> display.orUndefined,
       "position" -> position.orUndefined,
@@ -100,29 +100,29 @@ object LegendSpec {
       "fullSize" -> fullSize.orUndefined,
       "labels" -> labels.orUndefined,
       "title" -> title.orUndefined
-    )).asInstanceOf[LegendSpec[DS]]
+    )).asInstanceOf[LegendSpec]
 }
 
 
 @js.native
-trait LegendLabelSpec[DS <: Dataset[_]] extends js.Object {
-  @nowarn var boxWidth: Int = js.native
-  @nowarn var boxHeight: Int = js.native
-  @nowarn var color: Color = js.native
-  @nowarn var font: ChFont = js.native
-  @nowarn var textAlign: String = js.native
-  @nowarn var generateLabels: js.Function1[Chart[DS], js.Array[LegendItem]] = js.native
+trait LegendLabelSpec extends js.Object {
+  @nowarn var boxWidth: js.UndefOr[Int] = js.native
+  @nowarn var boxHeight: js.UndefOr[Int] = js.native
+  @nowarn var color: js.UndefOr[Color] = js.native
+  @nowarn var font: js.UndefOr[ChFont] = js.native
+  @nowarn var textAlign: js.UndefOr[String] = js.native
+  @nowarn var generateLabels: js.UndefOr[js.Function1[FullChart, js.Array[LegendItem]]] = js.native
 }
 
 object LegendLabelSpec {
-  def apply[DS <: Dataset[_]](
+  def apply(
       boxWidth: Option[Int] = None,
       boxHeight: Option[Int] = None,
       color: Option[Color] = None,
       font: Option[ChFont] = None,
       textAlign: Option[String] = None,
-      generateLabels: Option[Chart[DS] => js.Array[LegendItem]] = None
-  ): LegendLabelSpec[DS] =
+      generateLabels: Option[FullChart => js.Array[LegendItem]] = None
+  ): LegendLabelSpec =
     cleanObject(Map(
       "boxWidth" -> boxWidth.orUndefined,
       "boxHeight" -> boxHeight.orUndefined,
@@ -130,7 +130,7 @@ object LegendLabelSpec {
       "font" -> font.orUndefined,
       "textAlign" -> textAlign.orUndefined,
       "generateLabels" -> generateLabels.map(js.Any.fromFunction1(_)).orUndefined
-    )).asInstanceOf[LegendLabelSpec[DS]]
+    )).asInstanceOf[LegendLabelSpec]
 }
 
 

@@ -7,9 +7,10 @@ import scala.scalajs.js.|
 
 
 @js.native
-trait ChartOptions[DS <: Dataset[_]] extends js.Object {
-  @nowarn var plugins: js.UndefOr[OptionsPlugins[DS]] = js.native
+trait ChartOptions extends js.Object {
+  @nowarn var plugins: js.UndefOr[OptionsPlugins] = js.native
   @nowarn var scales: js.UndefOr[ScalesSpec] = js.native
+  @nowarn var maintainAspectRatio: js.UndefOr[Boolean] = js.native
   @nowarn var aspectRatio: ChJsNumber = js.native
   @nowarn var elements: js.UndefOr[ElementsSpec] = js.native
 }
@@ -23,25 +24,33 @@ trait PieChartExtraOptions extends js.Object {
 }
 
 @js.native
-trait PieChartOptions extends ChartOptions[PieDataset] with PieChartExtraOptions
+trait GlobalExtraOptions extends js.Object {
+  @nowarn var color: Color = js.native
+}
+
+@js.native
+trait PieChartOptions extends ChartOptions with PieChartExtraOptions
 
 object ChartOptions {
-  def apply[DS <: Dataset[_]](
-      plugins: Option[OptionsPlugins[DS]] = None,
+  def apply(
+      plugins: Option[OptionsPlugins] = None,
       scales: Option[ScalesSpec] = None,
+      maintainAspectRatio: Option[Boolean] = None,
       aspectRatio: Option[ChJsNumber] = None,
       elements: Option[ElementsSpec] = None
-  ): ChartOptions[DS] =
+  ): ChartOptions =
     cleanObject(Map(
       "plugins" -> plugins.orUndefined,
       "scales" -> scales.orUndefined,
+      "maintainAspectRatio" -> maintainAspectRatio.orUndefined,
       "aspectRatio" -> aspectRatio.orUndefined,
       "elements" -> elements.orUndefined
-    )).asInstanceOf[ChartOptions[DS]]
+    )).asInstanceOf[ChartOptions]
 
   def pie(
-      plugins: Option[OptionsPlugins[PieDataset]] = None,
+      plugins: Option[OptionsPlugins] = None,
       scales: Option[ScalesSpec] = None,
+      maintainAspectRatio: Option[Boolean] = None,
       aspectRatio: Option[ChJsNumber] = None,
       elements: Option[ElementsSpec] = None,
       cutout: Option[Int | String] = None,
@@ -52,6 +61,7 @@ object ChartOptions {
     cleanObject(Map(
       "plugins" -> plugins.orUndefined,
       "scales" -> scales.orUndefined,
+      "maintainAspectRatio" -> maintainAspectRatio.orUndefined,
       "aspectRatio" -> aspectRatio.orUndefined,
       "elements" -> elements.orUndefined,
       "cutout" -> cutout.orUndefined,
@@ -62,18 +72,18 @@ object ChartOptions {
 }
 
 @js.native
-trait OptionsPlugins[DS <: Dataset[_]] extends js.Object {
-  @nowarn var legend: js.UndefOr[LegendSpec[DS]] = js.native
+trait OptionsPlugins extends js.Object {
+  @nowarn var legend: js.UndefOr[LegendSpec] = js.native
   @nowarn var title: js.UndefOr[TitleSpec] = js.native
 }
 
 object OptionsPlugins {
-  def apply[DS <: Dataset[_]](
-      legend: Option[LegendSpec[DS]] = None,
+  def apply(
+      legend: Option[LegendSpec] = None,
       title: Option[TitleSpec] = None
-  ): OptionsPlugins[DS] =
+  ): OptionsPlugins =
     cleanObject(Map(
       "legend" -> legend.orUndefined,
       "title" -> title.orUndefined
-    )).asInstanceOf[OptionsPlugins[DS]]
+    )).asInstanceOf[OptionsPlugins]
 }

@@ -291,6 +291,13 @@ span.category-big {
   display: inline;
 }
 
+.transactions-summary {
+  position: relative;
+  max-height: 200px;
+  max-width: 400px;
+  margin: auto;
+}
+
 @media only screen and (max-width: 1400px) {
   span.category-small {
     display: inline;
@@ -336,6 +343,14 @@ span.category-big {
 
 @media only screen and (max-width: 600px) {
   table.sft td.amount, table.sft th.amount {
-    width: 8rem;
+    width: 7.5rem;
+  }
+
+  table.sft td.date, table.sft th.date {
+    width: 5.5rem;
+  }
+
+  .modal .btn.nice {
+    font-size: 12px;
   }
 }

@@ -11,9 +11,9 @@ object TestMain {
 
   def main(args: Array[String]): Unit = {
 
-    Chart.defaults.plugins.foreach(_.legend.foreach(_.labels.color = "white"))
+    Chart.defaults.plugins.foreach(_.legend.foreach(_.labels.foreach(_.color = "white")))
 
-    val myOptions = ChartOptions[Dataset[Int]](
+    val myOptions = ChartOptions(
       scales = ScalesSpec(
         y = LinearAxisOptions(
           beginAtZero = true.some
@@ -34,12 +34,12 @@ object TestMain {
     ))
 
     val otherOptions = ChartOptions.pie(
-      plugins = OptionsPlugins[PieDataset](
+      plugins = OptionsPlugins(
         legend = LegendSpec(
           display = true.some,
           labels = LegendLabelSpec(
             boxWidth = 10.some,
-            generateLabels = Some(labelsWithValues[PieDataset] _)
+            generateLabels = Some(labelsWithValues)
           ).some
         ).some,
         title = TitleSpec(
@@ -56,7 +56,7 @@ object TestMain {
       rotation = (-90).some
     ).some
 
-    val pieChart = new Chart(document.getElementById("pie-can"), ChConfig(
+    val pieChart = new PieChart(document.getElementById("pie-can"), ChConfig(
       "pie",
       ChartData(
         datasets = Array(Dataset.pie(
