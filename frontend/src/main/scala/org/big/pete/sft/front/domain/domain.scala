@@ -2,7 +2,7 @@ package org.big.pete.sft.front.domain
 
 import enumeratum.{Enum, EnumEntry}
 import japgolly.scalajs.react.Reusability
-import org.big.pete.sft.domain.{Account, Category, Currency, CurrencyAndStatus, EnhancedMoneyAccount, ExpandedMoneyAccountCurrency, MoneyAccountCurrency, MoneyAccountOptionalCurrency, Transaction, TransactionTracking, TransactionType}
+import org.big.pete.sft.domain.{Account, Category, Currency, CurrencyAndStatus, EnhancedMoneyAccount, ExpandedMoneyAccountCurrency, FullAccount, MoneyAccountCurrency, MoneyAccountOptionalCurrency, SimpleUser, Transaction, TransactionTracking, TransactionType}
 import org.big.pete.sft.front.SftMain.SftPages
 
 import java.time.LocalDate
@@ -152,7 +152,10 @@ object Implicits {
 
   implicit val stringIntMapReuse: Reusability[Map[String, Int]] = Reusability.map[String, Int]
 
+  implicit val simpleUserReuse: Reusability[SimpleUser] = Reusability.derive[SimpleUser]
+  implicit val simpleUserMapReuse: Reusability[Map[Int, SimpleUser]] = Reusability.map[Int, SimpleUser]
   implicit val accountReuse: Reusability[Account] = Reusability.derive[Account]
+  implicit val fullAccountReuse: Reusability[FullAccount] = Reusability.derive[FullAccount]
   implicit val sftPagesReuse: Reusability[SftPages] = Reusability.byRefOr_==[SftPages]
   implicit val sortingColumnReuse: Reusability[SortingColumn] = Reusability.byRefOr_==[SortingColumn]
   implicit val orderReuse: Reusability[Order] = Reusability.byRefOr_==[Order]

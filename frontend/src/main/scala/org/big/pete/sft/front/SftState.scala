@@ -3,13 +3,12 @@ package org.big.pete.sft.front
 import japgolly.scalajs.react.{CtorType, ScalaComponent}
 import japgolly.scalajs.react.callback.{AsyncCallback, Callback, CallbackTo}
 import japgolly.scalajs.react.component.Scala.{BackendScope, Component, Unmounted}
-import org.big.pete.sft.domain.{Account, Currency}
 import org.big.pete.sft.front.SftMain.{AccountsSelectionPage, SftPages}
 import org.big.pete.sft.front.components.header.{Sidenav, SidenavFilters, TopHeader}
 import org.big.pete.sft.front.components.main.moneyaccount
 import org.big.pete.sft.front.components.main.{Accounts, Categories}
 import org.big.pete.sft.front.components.main.transactions
-import org.big.pete.sft.front.state.{CookieStorage, DataUpdate, DefaultSorting, Filtering, Props, State, TransactionsProcessing}
+import org.big.pete.sft.front.state.{CookieStorage, DataUpdate, DefaultSorting, Filtering, Props, State, TransactionsProcessing, domain}
 import org.big.pete.sft.front.domain.{CategoryTree, Order, SortingColumn}
 import org.big.pete.sft.front.utilz.getAccountPermalink
 
@@ -17,6 +16,7 @@ import java.time.LocalDate
 
 
 object SftState {
+  import org.big.pete.sft.domain.Implicits._
 
   class Backend(val $: BackendScope[Props, State]) extends DataUpdate with Filtering with TransactionsProcessing {
 
@@ -65,11 +65,13 @@ object SftState {
     def onPageClick(newPage: SftPages, oldPage: Option[SftPages]): Callback = {
       val aCall = (oldPage, newPage) match {
         case (None, AccountsSelectionPage) => for {
-          ajaxData <- AsyncCallback.sequence(List(loadAccounts, loadCurrencies))
+          ajaxData <- loadGeneralData
           _ <- $.modStateAsync(_.copy(
             isMenuOpen = false,
-            accounts = ajaxData.head.asInstanceOf[List[Account]],
-            currencies = ajaxData.last.asInstanceOf[List[Currency]].map(cur => cur.id -> cur).toMap
+            me = ajaxData.me,
+            availablePatrons = ajaxData.patrons,
+            accounts = ajaxData.accounts,
+            currencies = ajaxData.currencies.map(cur => cur.id -> cur).toMap
           ))
         } yield 3
 
@@ -100,7 +102,7 @@ object SftState {
         props.activePage,
         state.isMenuOpen,
         TopHeader.Props(state.from, state.to, setFromDate, setToDate, menuClick),
-        Sidenav.TopProps(props.router, props.activePage, onPageClick),
+        Sidenav.TopProps(state.me, props.router, props.activePage, onPageClick),
         SidenavFilters.Props(
           state.activeFilter,
           setActiveFilter,
@@ -116,7 +118,7 @@ object SftState {
           SidenavFilters.MoneyAccountProps(state.moneyAccountsActiveFilters, setMoneyAccountsFilter, state.moneyAccounts.values.toList)
         ),
 
-        Accounts.Props(state.accounts, props.activePage, props.router, onPageClick, saveAccount),
+        Accounts.Props(state.me, state.availablePatrons, state.accounts, props.activePage, props.router, onPageClick, saveAccount),
         transactions.Page.Props(
           getAccountPermalink(props.activePage).getOrElse(""),
           state.displayTransactions,
@@ -136,14 +138,13 @@ object SftState {
         moneyaccount.Page.Props(state.moneyAccounts.values.toList, state.currencies, saveMoneyAccount, deleteMoneyAccount)
       ))
     }
-
   }
 
   val component: Component[Props, State, Backend, CtorType.Props] = ScalaComponent.builder[Props]
     .initialState(State(
       CookieStorage.getBrowserSettings.from, CookieStorage.getBrowserSettings.to, isMenuOpen = false, None, Set.empty, Set.empty,
-      "", Set.empty, Set.empty, Set.empty, DefaultSorting, List.empty, Map.empty, Map.empty, Map.empty, List.empty, List.empty,
-      List.empty
+      "", Set.empty, Set.empty, Set.empty, DefaultSorting, domain.emptyMe, List.empty, List.empty, Map.empty, Map.empty,
+      Map.empty, List.empty, List.empty, List.empty
     ))
     .renderBackend[Backend]
     .componentDidMount(component => component.backend.onPageClick(component.props.activePage, None))

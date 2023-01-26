@@ -9,7 +9,7 @@ import com.comcast.ip4s.{Host, Hostname, Port}
 import fs2.Stream
 import fs2.io.net.tls.TLSContext
 import org.big.pete.cache.BpCache
-import org.big.pete.sft.domain.{Account, AccountEdit, ApiAction, Category, CategoryDeleteStrategies, DeleteTransactions, MassEditTransactions, MoneyAccount, MoneyAccountDeleteStrategy, TrackingEdit, Transaction}
+import org.big.pete.sft.domain.{AccountEdit, AddAccount, ApiAction, Category, CategoryDeleteStrategies, DeleteTransactions, FullAccount, MassEditTransactions, MoneyAccount, MoneyAccountDeleteStrategy, TrackingEdit, Transaction}
 import org.big.pete.sft.domain.Implicits._
 import org.big.pete.sft.server.api.{Categories, General, MoneyAccounts, Transactions}
 import org.big.pete.sft.server.auth.AuthHelper
@@ -31,7 +31,7 @@ import java.time.format.DateTimeFormatter
 
 
 class SftV2Server[F[_]: Async](
-    accountsCache: BpCache[F, String, Account],
+    accountsCache: BpCache[F, String, FullAccount],
     authHelper: AuthHelper[F],
     accessHelper: AccessHelper[F],
     generalApi: General[F],
@@ -98,14 +98,23 @@ class SftV2Server[F[_]: Async](
     case GET -> Root / "api" as user =>
       Ok(s"api for ${user.db.displayName}")
 
+    case GET -> Root / "api" / "me" as user =>
+      generalApi.me(user.db)
+
+    case GET -> Root / "api" / "general" as user =>
+      accessHelper.verifyAccess(ApiAction.Basic, user)(generalApi.generalDataFetch(user.db))
+
     case GET -> Root / "api" / "currencies" as user =>
       accessHelper.verifyAccess(ApiAction.Basic, user)(generalApi.listCurrencies)
+
+    case GET -> Root / "api" / "patrons" as user =>
+      accessHelper.verifyAccess(ApiAction.Basic, user)(generalApi.listPatrons)
 
     case GET -> Root / "api" / "accounts" as user =>
       accessHelper.verifyAccess(ApiAction.Basic, user)(generalApi.listAccounts(user))
     case request @ PUT -> Root / "api" / "accounts" as user =>
       for {
-        account <- request.req.as[Account]
+        account <- request.req.as[AddAccount]
           .map(_.copy(owner = Some(user.db.id)))
         response <- accessHelper.verifyAccess(ApiAction.ModifyOwnAccount, user)(generalApi.addAccount(user, account))
       } yield response

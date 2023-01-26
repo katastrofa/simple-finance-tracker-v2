@@ -279,6 +279,16 @@ i.edit-icon {
 }
 
 
+.modal .patron {
+  font-size: 15px;
+  color: #6d4c41;
+}
+
+.modal .interaction {
+  font-size: 15px;
+  font-weight: bold;
+}
+
 table.sft td.category, table.sft th.category {
   width: 15rem;
 }

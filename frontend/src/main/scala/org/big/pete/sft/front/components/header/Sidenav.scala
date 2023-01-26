@@ -5,6 +5,7 @@ import japgolly.scalajs.react.component.Scala.Component
 import japgolly.scalajs.react.extra.router.RouterCtl
 import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.react.MaterialIcon
+import org.big.pete.sft.domain.SimpleUser
 import org.big.pete.sft.front.SftMain.{AccountsSelectionPage, CategoriesPage, MoneyAccountsPage, SftPages, TransactionsPage}
 import org.big.pete.sft.front.utilz.getAccountPermalink
 
@@ -14,6 +15,7 @@ import scala.scalajs.js
 object Sidenav {
   case class Props(isMenuOpen: Boolean, top: TopProps, filters: SidenavFilters.Props)
   case class TopProps(
+      me: SimpleUser,
       routerCtl: RouterCtl[SftPages],
       activePage: SftPages,
       onPageChange: (SftPages, Option[SftPages]) => Callback
@@ -36,14 +38,14 @@ object Sidenav {
       )
     }.build
 
-  val sidenavTopComponent: Component[TopProps, Unit, Unit, CtorType.Props] = ScalaComponent.builder[TopProps]
+  private val sidenavTopComponent: Component[TopProps, Unit, Unit, CtorType.Props] = ScalaComponent.builder[TopProps]
     .stateless
     .render_P { props =>
       val accountOpt = getAccountPermalink(props.activePage)
 
       <.ul(^.cls := "collection with-header",
         <.li(^.classSet("collection-header" -> true, "active" -> (props.activePage == AccountsSelectionPage)),
-          props.routerCtl.link(AccountsSelectionPage)(<.h5("Peter Baran", MaterialIcon("account_balance", Set("left"))))
+          props.routerCtl.link(AccountsSelectionPage)(<.h5(props.me.displayName, MaterialIcon("account_balance", Set("left"))))
         ),
 
         accountOpt.map { account =>

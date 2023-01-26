@@ -66,7 +66,7 @@ object SidenavFilters {
       )
     }.build
 
-  val collapsibleHeaderComponent: ScalaFn.Component[CollapsibleHeaderProps, CtorType.Props] =
+  private val collapsibleHeaderComponent: ScalaFn.Component[CollapsibleHeaderProps, CtorType.Props] =
     ScalaFnComponent.withReuse[CollapsibleHeaderProps] { props =>
       val icon = if (props.hasActiveFilters) "toggle_on" else "toggle_off"
       <.a(^.href := "#!", ^.classSet("collapsible-header" -> true, "has-active-items" -> props.hasActiveFilters),
@@ -76,7 +76,7 @@ object SidenavFilters {
       )
     }
 
-  val transactionFiltersComponent: Component[(FiltersOpen => Callback, TransactionsProps), Unit, Unit, CtorType.Props] =
+  private val transactionFiltersComponent: Component[(FiltersOpen => Callback, TransactionsProps), Unit, Unit, CtorType.Props] =
     ScalaComponent.builder[(FiltersOpen => Callback, TransactionsProps)]
       .stateless
       .render_P { case (onOpenFilter, props) =>
@@ -127,7 +127,7 @@ object SidenavFilters {
         )
       }.build
 
-  val categoriesFilterComponent: Component[(FiltersOpen => Callback, CategoriesProps), Unit, Unit, CtorType.Props] =
+  private val categoriesFilterComponent: Component[(FiltersOpen => Callback, CategoriesProps), Unit, Unit, CtorType.Props] =
     ScalaComponent.builder[(FiltersOpen => Callback, CategoriesProps)]
       .stateless
       .render_P { case (onOpenFilter, props) =>
@@ -172,7 +172,7 @@ object SidenavFilters {
         )
       }.build
 
-  val moneyAccountsFilterComponent: Component[(FiltersOpen => Callback, MoneyAccountProps), Unit, Unit, CtorType.Props] =
+  private val moneyAccountsFilterComponent: Component[(FiltersOpen => Callback, MoneyAccountProps), Unit, Unit, CtorType.Props] =
     ScalaComponent.builder[(FiltersOpen => Callback, MoneyAccountProps)]
       .stateless
       .render_P { case (onOpenFilter, props) =>

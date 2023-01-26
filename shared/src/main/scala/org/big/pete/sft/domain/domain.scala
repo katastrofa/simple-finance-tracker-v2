@@ -25,6 +25,15 @@ case object TransactionTracking extends Enum[TransactionTracking] with CirceEnum
   val values: IndexedSeq[TransactionTracking] = findValues
 }
 
+sealed trait TransactionSplitType extends EnumEntry
+case object TransactionSplitType extends Enum[TransactionSplitType] with CirceEnum[TransactionSplitType] {
+  final case object Exact extends TransactionSplitType
+  final case object Percentage extends TransactionSplitType
+  final case object Even extends TransactionSplitType
+
+  val values: IndexedSeq[TransactionSplitType] = findValues
+}
+
 sealed trait ApiAction extends EnumEntry
 case object ApiAction extends Enum[ApiAction] with CirceEnum[ApiAction] {
   final case object Basic extends ApiAction
@@ -49,9 +58,14 @@ case object ApiAction extends Enum[ApiAction] with CirceEnum[ApiAction] {
   val values: IndexedSeq[ApiAction] = findValues
 }
 
+case class SimpleUser(id: Int, displayName: String)
 case class Account(id: Int, name: String, permalink: String, owner: Option[Int])
+case class AddAccount(id: Int, name: String, permalink: String, owner: Option[Int], patrons: List[Int])
+case class FullAccount(id: Int, name: String, permalink: String, owner: Option[Int], patrons: List[SimpleUser])
 
 case class Currency(id: String, name: String, symbol: String)
+
+case class GeneralData(me: SimpleUser, patrons: List[SimpleUser], currencies: List[Currency], accounts: List[FullAccount])
 
 case class MoneyAccountCurrencyInfo(moneyAccount: Int, currency: String, startAmount: BigDecimal)
 case class MoneyAccountOptionalCurrency(id: Int, moneyAccount: Int, currency: Option[String], startAmount: BigDecimal) {
@@ -140,7 +154,7 @@ case class ShiftStrategy(newId: Option[Int])
 case class ShiftStrategyPerCurrency(newId: Option[Int], currency: String)
 case class CategoryDeleteStrategies(shiftSubCats: ShiftStrategy, shiftTransactions: ShiftStrategy)
 case class MoneyAccountDeleteStrategy(shiftTransactions: List[ShiftStrategyPerCurrency])
-case class AccountEdit(oldPermalink: String, id: Int, name: String, permalink: String, owner: Option[Int])
+case class AccountEdit(oldPermalink: String, id: Int, name: String, permalink: String, owner: Option[Int], patrons: List[Int])
 case class NotAllowedResponse(message: String)
 case class TrackingEdit(id: Int, tracking: TransactionTracking)
 case class DeleteTransactions(ids: List[Int])
@@ -148,8 +162,12 @@ case class MassEditTransactions(ids: List[Int], changeCat: ShiftStrategy, change
 
 
 object Implicits {
+  implicit val simpleUserEncoder: Encoder[SimpleUser] = deriveEncoder[SimpleUser]
   implicit val accountEncoder: Encoder[Account] = deriveEncoder[Account]
+  implicit val addAccountEncoder: Encoder[AddAccount] = deriveEncoder[AddAccount]
+  implicit val fullAccountEncoder: Encoder[FullAccount] = deriveEncoder[FullAccount]
   implicit val currencyEncoder: Encoder[Currency] = deriveEncoder[Currency]
+  implicit val generalDataEncoder: Encoder[GeneralData] = deriveEncoder[GeneralData]
   implicit val moneyAccountCurrencyEncoder: Encoder[MoneyAccountCurrency] = deriveEncoder[MoneyAccountCurrency]
   implicit val expandedMoneyAccountCurrencyEncoder: Encoder[ExpandedMoneyAccountCurrency] = deriveEncoder[ExpandedMoneyAccountCurrency]
   implicit val pureMoneyAccountEncoder: Encoder[PureMoneyAccount] = deriveEncoder[PureMoneyAccount]
@@ -161,8 +179,12 @@ object Implicits {
   implicit val accountEditEncoder: Encoder[AccountEdit] = deriveEncoder[AccountEdit]
   implicit val trackingEditEncoder: Encoder[TrackingEdit] = deriveEncoder[TrackingEdit]
 
+  implicit val simpleUserDecoder: Decoder[SimpleUser] = deriveDecoder[SimpleUser]
   implicit val accountDecoder: Decoder[Account] = deriveDecoder[Account]
+  implicit val addAccountDecoder: Decoder[AddAccount] = deriveDecoder[AddAccount]
+  implicit val fullAccountDecoder: Decoder[FullAccount] = deriveDecoder[FullAccount]
   implicit val currencyDecoder: Decoder[Currency] = deriveDecoder[Currency]
+  implicit val generalDataDecoder: Decoder[GeneralData] = deriveDecoder[GeneralData]
   implicit val moneyAccountCurrencyDecoder: Decoder[MoneyAccountCurrency] = deriveDecoder[MoneyAccountCurrency]
   implicit val expandedMoneyAccountCurrencyDecoder: Decoder[ExpandedMoneyAccountCurrency] = deriveDecoder[ExpandedMoneyAccountCurrency]
   implicit val pureMoneyAccountDecoder: Decoder[PureMoneyAccount] = deriveDecoder[PureMoneyAccount]

@@ -5,7 +5,7 @@ val sftFullBuild = taskKey[Unit]("Builds the back-end assembly and front-end and
 val Http4sVersion = "1.0.0-M37"
 val CirceVersion = "0.14.3"
 //val MunitVersion = "0.7.29"
-val LogbackVersion = "1.3.5"
+val LogbackVersion = "1.4.5"
 //val MunitCatsEffectVersion = "1.0.6"
 val EnumeratumVersion = "1.7.0"
 val CatsEffectVersion = "3.3.14"
@@ -19,7 +19,7 @@ scalaVersion := MyScalaVersion
 
 lazy val basicSettings = Seq(
   organization := "org.big.pete",
-  version := "0.4.0",
+  version := "0.5-SNAPSHOT",
   scalaVersion := MyScalaVersion,
   credentials += Credentials(Path.userHome / ".sbt" / ".credentials-github-repo"),
   resolvers += ("scala-toolz-github" at "https://maven.pkg.github.com/katastrofa/scala-toolz/")
@@ -56,7 +56,7 @@ lazy val db = (project in file("db"))
     name := s"$MyProjectName-db",
     libraryDependencies += "org.tpolecat" %% "doobie-core" % DoobieVersion,
     libraryDependencies += "io.circe" %% "circe-jawn" % CirceVersion,
-    libraryDependencies += "org.wvlet.airframe" %% "airframe-log" % "22.11.4"
+    libraryDependencies += "org.wvlet.airframe" %% "airframe-log" % "22.12.6"
   )
 
 lazy val backend = (project in file("backend"))
@@ -65,7 +65,7 @@ lazy val backend = (project in file("backend"))
   .settings(
     name := s"$MyProjectName-backend",
 
-    libraryDependencies += "com.softwaremill.sttp.client3" %% "cats" % "3.8.5",
+    libraryDependencies += "com.softwaremill.sttp.client3" %% "cats" % "3.8.8",
     libraryDependencies += "org.tpolecat" %% "doobie-hikari" % DoobieVersion,
     libraryDependencies += "org.http4s" %% "http4s-ember-server" % Http4sVersion,
     libraryDependencies += "org.http4s" %% "http4s-circe" % Http4sVersion,
@@ -86,12 +86,12 @@ lazy val backend = (project in file("backend"))
     }
   )
 
-lazy val shapeFun = (project in file("shape-fun"))
-  .settings(basicSettings)
-  .settings(
-    name := s"shape-fun",
-    libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.10"
-  )
+//lazy val shapeFun = (project in file("shape-fun"))
+//  .settings(basicSettings)
+//  .settings(
+//    name := s"shape-fun",
+//    libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.10"
+//  )
 
 lazy val scalajsToolz = (project in file("scalajs-toolz"))
   .enablePlugins(ScalaJSPlugin, ScalaJSWeb, ScalaJSBundlerPlugin)

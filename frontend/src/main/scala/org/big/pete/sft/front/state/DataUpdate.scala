@@ -3,7 +3,7 @@ package org.big.pete.sft.front.state
 import japgolly.scalajs.react.callback.Callback
 import org.big.pete.BPJson
 import org.big.pete.datepicker.ReactDatePicker
-import org.big.pete.sft.domain.{Account, AccountEdit, Category, CategoryDeleteStrategies, EnhancedMoneyAccount, MoneyAccount, MoneyAccountCurrency, MoneyAccountDeleteStrategy, ShiftStrategy, ShiftStrategyPerCurrency}
+import org.big.pete.sft.domain.{AccountEdit, AddAccount, Category, CategoryDeleteStrategies, EnhancedMoneyAccount, FullAccount, MoneyAccount, MoneyAccountCurrency, MoneyAccountDeleteStrategy, ShiftStrategy, ShiftStrategyPerCurrency}
 import org.big.pete.sft.front.domain.CategoryTree
 import org.big.pete.sft.front.utilz.getAccountPermalink
 
@@ -13,14 +13,14 @@ import java.time.LocalDate
 trait DataUpdate extends DataLoad {
   import org.big.pete.sft.domain.Implicits._
 
-  def saveAccount(oldPermalink: Option[String], id: Option[Int], name: String, permalink: String): Callback = {
+  def saveAccount(oldPermalink: Option[String], id: Option[Int], name: String, permalink: String, patrons: List[Int]): Callback = {
     val method = if (id.isDefined) "POST" else "PUT"
     val payload = if (id.isDefined)
-      BPJson.write(AccountEdit(oldPermalink.get, id.get, name, permalink, None))
+      BPJson.write(AccountEdit(oldPermalink.get, id.get, name, permalink, None, patrons))
     else
-      BPJson.write(Account(-1, name, permalink, None))
+      BPJson.write(AddAccount(-1, name, permalink, None, patrons))
 
-    ajaxUpdate[Account](
+    ajaxUpdate[FullAccount](
       method,
       "/accounts",
       payload,

@@ -38,11 +38,11 @@ trait Base {
   }
 
   /// TODO: Do this
-  def displayException(ex: AjaxException): Callback =
+  private def displayException(ex: AjaxException): Callback =
     displayExceptionStr(ex.getMessage)
 
   /// TODO: Do this
-  def displayExceptionStr(error: String): Callback =
+  private def displayExceptionStr(error: String): Callback =
     Callback.log(error)
 
   def ajaxUpdate[T: Decoder](method: String, apiPath: String, payload: String, update: T => Callback): Callback = {
@@ -87,7 +87,7 @@ trait Base {
       .sorted(new TransactionsOrdering(transactionsSorting.getOrElse(state.transactionsSorting)))
   }
 
-  def filterContent(content: String)(transaction: Transaction): Boolean = {
+  private def filterContent(content: String)(transaction: Transaction): Boolean = {
     content.trim.split("\\s").filter(_.nonEmpty) match {
       case arr if arr.isEmpty =>
         true
@@ -129,7 +129,7 @@ trait Base {
       mas
   }
 
-  def updateMoneyAccount(
+  private def updateMoneyAccount(
       ma: EnhancedMoneyAccount,
       action: MAUpdateAction,
       op: MAUpdateOperation,

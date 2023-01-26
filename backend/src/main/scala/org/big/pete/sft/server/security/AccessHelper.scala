@@ -5,7 +5,7 @@ import cats.syntax.{FlatMapSyntax, FunctorSyntax}
 import doobie.util.transactor.Transactor
 import io.circe.syntax.EncoderOps
 import org.big.pete.cache.BpCache
-import org.big.pete.sft.domain.{Account, ApiAction, NotAllowedResponse}
+import org.big.pete.sft.domain.{ApiAction, FullAccount, NotAllowedResponse}
 import org.big.pete.sft.domain.Implicits._
 import org.big.pete.sft.server.auth.domain.AuthUser
 import org.http4s.Response
@@ -14,7 +14,7 @@ import org.http4s.dsl.Http4sDsl
 
 
 class AccessHelper[F[_]: Monad](
-    accountsCache: BpCache[F, String, Account],
+    accountsCache: BpCache[F, String, FullAccount],
     dsl: Http4sDsl[F],
     implicit val transactor: Transactor[F]
 ) extends FunctorSyntax

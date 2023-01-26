@@ -22,7 +22,7 @@ object MaterialIcon {
       size: Size,
       icon: String,
       onClick: Callback,
-      additionalClasses: Set[String],
+      additionalClasses: Set[String] = Set.empty,
       stopPropagation: Boolean = false
   )
 

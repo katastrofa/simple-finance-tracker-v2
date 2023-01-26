@@ -2,7 +2,7 @@ package org.big.pete.sft.front
 
 import japgolly.scalajs.react.extra.router.BaseUrl
 import org.big.pete.react.DropDown
-import org.big.pete.sft.domain.{Currency, EnhancedMoneyAccount, TransactionType}
+import org.big.pete.sft.domain.{Currency, EnhancedMoneyAccount, SimpleUser, TransactionType}
 import org.big.pete.sft.front.domain.CategoryTree
 import org.big.pete.sft.front.domain.Implicits._
 import org.scalajs.dom.document
@@ -21,6 +21,7 @@ object SftMain {
   val dropDownCurrency = new DropDown[Currency]
   val dropDownMoneyAccount = new DropDown[EnhancedMoneyAccount]
   val dropDownTT = new DropDown[TransactionType]
+  val dropDownPatron = new DropDown[SimpleUser]
 
   @JSExport
   def main(args: Array[String]): Unit = {

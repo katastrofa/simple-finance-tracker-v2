@@ -5,7 +5,7 @@ import doobie.util.meta.Meta
 import doobie.util.{Get, Put}
 import io.circe.Json
 import io.circe.jawn.parse
-import org.big.pete.sft.domain.{ApiAction, TransactionTracking, TransactionType, UserPermissions}
+import org.big.pete.sft.domain.{ApiAction, SimpleUser, TransactionSplitType, TransactionTracking, TransactionType, UserPermissions}
 import org.big.pete.sft.domain.Implicits._
 import org.big.pete.sft.json.BpJson
 import wvlet.log.LogSupport
@@ -33,7 +33,9 @@ object domain {
     time.format(MySqlDateTimeFormatter)
 
 
-  case class User(id: Int, email: String, displayName: String, permissions: UserPermissions)
+  case class User(id: Int, email: String, displayName: String, permissions: UserPermissions) {
+    def simple: SimpleUser = SimpleUser(id, displayName)
+  }
   case class Login(id: Int, userId: Int, lastAccess: LocalDateTime, accessToken: String, refreshToken: String)
 
   object Implicits extends LogSupport with EitherSyntax with ShowSyntax {
@@ -41,6 +43,8 @@ object domain {
       Meta[String].timap(TransactionType.withName)(_.toString)
     implicit val transactionTrackingMeta: Meta[TransactionTracking] =
       Meta[String].timap(TransactionTracking.withName)(_.toString)
+    implicit val transactionSplitTypeMeta: Meta[TransactionSplitType] =
+      Meta[String].timap(TransactionSplitType.withName)(_.toString)
     implicit val apiActionMeta: Meta[ApiAction] =
       Meta[String].timap(ApiAction.withName)(_.toString)
 

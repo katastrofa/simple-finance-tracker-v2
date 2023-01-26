@@ -10,7 +10,7 @@ import fs2.io.net.tls.TLSContext
 import org.big.pete.cache.{FullBpCache, FullRefreshBpCache}
 import org.big.pete.sft.db.dao.{General, Users}
 import org.big.pete.sft.db.domain.User
-import org.big.pete.sft.domain.{Account, Currency}
+import org.big.pete.sft.domain.{Currency, FullAccount}
 import org.big.pete.sft.server.api.{Categories, MoneyAccounts, Transactions, General => GeneralApi}
 import org.big.pete.sft.server.auth.AuthHelper
 import org.big.pete.sft.server.security.AccessHelper
@@ -89,7 +89,7 @@ object Main extends IOApp with LogSupport with ToConnectionIOOps {
       sttp <- HttpClientCatsBackend.resource[IO]()
       transactor <- HikariTransactor.fromHikariConfig[IO](dbConfig, global)
       tls <- createTLSContext(mainConfig)
-      accountsCache <- Resource.eval(FullBpCache.apply[String, Account](100, General.getAccount(_).transact(transactor)))
+      accountsCache <- Resource.eval(FullBpCache.apply[String, FullAccount](100, General.getFullAccount(_).transact(transactor)))
       usersCache <- Resource.eval(FullBpCache.apply[Int, User](100, Users.getUser(_).transact(transactor)))
       currencyCache <- FullRefreshBpCache[String, Currency](() => General.listCurrencies.transact(transactor).map(_.map(cur => cur.id -> cur)))
     } yield (sttp, transactor, tls, accountsCache, usersCache, currencyCache)
