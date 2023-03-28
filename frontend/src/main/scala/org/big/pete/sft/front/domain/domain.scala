@@ -2,6 +2,8 @@ package org.big.pete.sft.front.domain
 
 import enumeratum.{Enum, EnumEntry}
 import japgolly.scalajs.react.Reusability
+import org.big.pete.domain.DDItem
+import org.big.pete.react.MICheckbox
 import org.big.pete.sft.domain.{Account, Category, Currency, CurrencyAndStatus, EnhancedMoneyAccount, ExpandedMoneyAccountCurrency, FullAccount, MoneyAccountCurrency, MoneyAccountOptionalCurrency, SimpleUser, Transaction, TransactionTracking, TransactionType}
 import org.big.pete.sft.front.SftMain.SftPages
 
@@ -9,7 +11,15 @@ import java.time.LocalDate
 import scala.annotation.tailrec
 
 
-case class CategoryTree(id: Int, name: String, description: Option[String], treeLevel: Int, parent: Option[Int], children: List[CategoryTree]) {
+case class CategoryTree(
+    id: Int,
+    name: String,
+    description: Option[String],
+    expandedDisplayName: String,
+    treeLevel: Int,
+    parent: Option[Int],
+    children: List[CategoryTree]
+) extends DDItem {
   override def equals(obj: Any): Boolean = {
     if (!obj.isInstanceOf[CategoryTree])
       false
@@ -18,6 +28,12 @@ case class CategoryTree(id: Int, name: String, description: Option[String], tree
       id == o.id && name == o.name && description == o.description && treeLevel == o.treeLevel && children == o.children
     }
   }
+
+  def shortDisplayName: String =
+    "-".repeat(treeLevel) + " " + name
+
+  override def ddId: String = id.toString
+  override def ddDisplayName: String = expandedDisplayName
 }
 
 object CategoryTree {
@@ -25,32 +41,25 @@ object CategoryTree {
   def generateTree(categories: List[Category]): List[CategoryTree] = {
     val groupedData = categories.groupBy(_.parent)
 
-    def catToTree(cat: Category, level: Int): CategoryTree = {
+    def catToTree(cat: Category, level: Int, parents: List[Category]): CategoryTree = {
       CategoryTree(
         cat.id,
         cat.name,
         cat.description,
+        parents.map(_.name).mkString(" - ") + " - " + cat.name,
         level,
         cat.parent,
         groupedData.getOrElse(Some(cat.id), List.empty[Category])
-          .map(childCat => catToTree(childCat, level + 1))
+          .map(childCat => catToTree(childCat, level + 1, parents ++ List(cat)))
       )
     }
 
     groupedData.getOrElse(None, List.empty[Category])
-      .map(cat => catToTree(cat, 0))
+      .map(cat => catToTree(cat, 0, List.empty))
   }
 
   def linearize(cats: List[CategoryTree]): List[CategoryTree] = {
     cats.flatMap(cat => cat :: linearize(cat.children))
-  }
-
-  def name(cat: CategoryTree): String =
-    "-".repeat(cat.treeLevel) + " " + cat.name
-
-  def fullName(categories: Map[Int, Category])(cat: CategoryTree): String = {
-    val parentCats = parentTree(categories, Some(cat.id))
-    parentCats.map(_.name).mkString(" - ")
   }
 
   @tailrec
@@ -78,6 +87,11 @@ case class EnhancedTransaction(
     destinationCurrency: Option[Currency],
     destinationMoneyAccountId: Option[Int],
     destinationMoneyAccountName: Option[String]
+)
+
+case class TransactionEntry(
+    transaction: EnhancedTransaction,
+    checked: MICheckbox.Status
 )
 
 object EnhancedTransaction {

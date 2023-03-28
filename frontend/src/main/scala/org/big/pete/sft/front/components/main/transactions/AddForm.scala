@@ -1,14 +1,12 @@
 package org.big.pete.sft.front.components.main.transactions
 
-import japgolly.scalajs.react.callback.CallbackTo
 import japgolly.scalajs.react.component.Scala
+import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.{Callback, CtorType, ReactFormEventFromInput, Ref, Reusability, ScalaComponent}
 import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.datepicker.ReactDatePicker
-import org.big.pete.react.{HasFocus, TextInput, WithFocus}
+import org.big.pete.react.{DropDown, HasFocus, TextInput, WithFocus}
 import org.big.pete.sft.domain.{Category, Currency, EnhancedMoneyAccount, TransactionType}
-import org.big.pete.sft.front.SftMain.{dropDownCategoryTree, dropDownCurrency, dropDownMoneyAccount, dropDownTT}
-import org.big.pete.sft.front.components.main.displayCurrency
 import org.big.pete.sft.front.domain.CategoryTree
 import org.big.pete.sft.front.helpers.{ModalButtons, MoneyTextBox, SimpleCheckbox}
 import org.scalajs.dom.html.Form
@@ -25,23 +23,17 @@ object AddForm {
       categories: Map[Int, Category],
       moneyAccounts: Map[Int, EnhancedMoneyAccount],
       id: Option[Int],
-      date: LocalDate,
-      transactionType: TransactionType,
-      amount: BigDecimal,
-      destAmount: Option[BigDecimal],
-      description: String,
-      categoryId: Option[Int],
-      moneyAccountId: Option[Int],
-      destMAId: Option[Int],
-      currency: Option[String],
-      destCurrency: Option[String],
-      addNext: Boolean,
-      dateChange: LocalDate => CallbackTo[LocalDate],
-      ttChange: TransactionType => Callback,
-      amountChange: BigDecimal => Callback,
-      descriptionChange: ReactFormEventFromInput => Callback,
-      categoryChange: CategoryTree => Callback,
-      maChange: EnhancedMoneyAccount => Callback,
+      date: StateSnapshot[LocalDate],
+      transactionType: StateSnapshot[Option[TransactionType]],
+      amount: StateSnapshot[BigDecimal],
+      destAmount: StateSnapshot[BigDecimal],
+      description: StateSnapshot[String],
+      category: StateSnapshot[Option[CategoryTree]],
+      moneyAccount: StateSnapshot[Option[EnhancedMoneyAccount]],
+      destMoneyAccount: StateSnapshot[Option[EnhancedMoneyAccount]],
+      currency: StateSnapshot[Option[Currency]],
+      destCurrency: StateSnapshot[Option[Currency]],
+      addNext: StateSnapshot[Boolean],
       currencyChange: Currency => Callback,
       destinationMAChange: EnhancedMoneyAccount => Callback,
       destinationAmountChange: BigDecimal => Callback,
@@ -57,14 +49,14 @@ object AddForm {
   )
 
   class Backend extends WithFocus[ReactDatePicker.Props, ReactDatePicker.State, ReactDatePicker.Backend] {
-    private val refType = Ref.toScalaComponent(dropDownTT.component)
+    private val refType = Ref.toScalaComponent(DropDown.component)
     private val refAmount = Ref.toScalaComponent(MoneyTextBox.component)
     private val refDescription = Ref.toScalaComponent(TextInput.component)
-    private val refCategory = Ref.toScalaComponent(dropDownCategoryTree.component)
-    private val refMoneyAccount = Ref.toScalaComponent(dropDownMoneyAccount.component)
-    private val refCurrency = Ref.toScalaComponent(dropDownCurrency.component)
-    private val refDestMoneyAccount = Ref.toScalaComponent(dropDownMoneyAccount.component)
-    private val refDestCurrency = Ref.toScalaComponent(dropDownCurrency.component)
+    private val refCategory = Ref.toScalaComponent(DropDown.component)
+    private val refMoneyAccount = Ref.toScalaComponent(DropDown.component)
+    private val refCurrency = Ref.toScalaComponent(DropDown.component)
+    private val refDestMoneyAccount = Ref.toScalaComponent(DropDown.component)
+    private val refDestCurrency = Ref.toScalaComponent(DropDown.component)
     private val refDestAmount = Ref.toScalaComponent(MoneyTextBox.component)
     private val refAddNext = Ref.toScalaComponent(SimpleCheckbox.component)
     private val refButtons = Ref.toScalaComponent(ModalButtons.comp)
@@ -79,141 +71,99 @@ object AddForm {
 
       val refToLast = (if (props.id.isEmpty) refAddNext else refButtons)
         .asInstanceOf[Ref.WithScalaComponent[Any, Any, _ <: HasFocus, CtorType.Props]]
-      val refToNext = (if (props.transactionType == TransactionType.Transfer) refDestMoneyAccount else refToLast)
+      val refToNext = (if (props.transactionType.value.contains(TransactionType.Transfer)) refDestMoneyAccount else refToLast)
         .asInstanceOf[Ref.WithScalaComponent[Any, Any, _ <: HasFocus, CtorType.Props]]
 
-      val mainAccountCurrencies = getAvailableCurrencies(props.moneyAccountId)
-      val destAccountCurrencies = getAvailableCurrencies(props.destMAId)
+      val mainAccountCurrencies = getAvailableCurrencies(props.moneyAccount.value.map(_.id))
+      val destAccountCurrencies = getAvailableCurrencies(props.destMoneyAccount.value.map(_.id))
 
       <.form(
         <.div(^.cls := "row",
-          ReactDatePicker.DatePicker.withRef(focusRef)(
-            ReactDatePicker.Props(
-              "add-tr-date",
-              "col s12",
-              props.dateChange,
-              props.date,
-              isOpened = false,
-              Some(401),
-              ReactDatePicker.ExtendedKeyBindings,
-              shiftFocus(refType)
-            )
+          ReactDatePicker.withRef(focusRef)("add-tr-date", props.date, Set("col", "s12"), 401, onEnterHit = shiftFocus(refType))
+        ),
+        <.div(^.cls := "row",
+          DropDown.withRef(refType)(
+            "add-tr-tt",
+            "Transaction Type",
+            TransactionType.values.toList,
+            props.transactionType,
+            402,
+            List("col", "s12"),
+            shiftFocus(refAmount)
           )
         ),
         <.div(^.cls := "row",
-          dropDownTT.component.withRef(refType)(
-            dropDownTT.Props(
-              "add-tr-tt",
-              "Transaction Type",
-              TransactionType.values.toList,
-              _.toString,
-              _.toString,
-              props.ttChange,
-              Some(props.transactionType),
-              402,
-              List("col", "s12"),
-              shiftFocus(refAmount)
-            )
+          MoneyTextBox.withRef(refAmount)(
+            "add-tr-amount", "Amount", props.amount, 403, List("col", "s12"), shiftFocus(refDescription)
           )
         ),
         <.div(^.cls := "row",
-          MoneyTextBox.component.withRef(refAmount).apply(MoneyTextBox.Props(
-            "add-tr-amount", "Amount", props.amount, props.amountChange, 403, List("col", "s12"), shiftFocus(refDescription)
-          ))
-        ),
-        <.div(^.cls := "row",
-          TextInput.component.withRef(refDescription)(TextInput.Props(
-            "add-tr-description", "Description", props.description, props.descriptionChange, 404, List("col", "s12"), shiftFocus(refCategory)
-          ))
-        ),
-        <.div(^.cls := "row",
-          dropDownCategoryTree.component.withRef(refCategory)(
-            dropDownCategoryTree.Props(
-              "add-tr-category",
-              "Category",
-              props.linearCats,
-              CategoryTree.fullName(props.categories),
-              cat => s"k-cat-${cat.id}",
-              props.categoryChange,
-              props.categoryId.flatMap(id => props.linearCats.find(_.id == id)),
-              405,
-              List("col", "s12"),
-              shiftFocus(refMoneyAccount)
-            )
+          TextInput.withRef(refDescription)(
+            "add-tr-description", "Description", props.description, 404, List("col", "s12"), shiftFocus(refCategory)
           )
         ),
         <.div(^.cls := "row",
-          dropDownMoneyAccount.component.withRef(refMoneyAccount)(
-            dropDownMoneyAccount.Props(
-              "add-tr-ma",
-              "Money Account",
-              props.moneyAccounts.values.toList,
-              _.name,
-              ma => s"k-ma-${ma.id}",
-              props.maChange,
-              props.moneyAccountId.flatMap(id => props.moneyAccounts.get(id)),
-              406,
-              List("col", "s12"),
-              shiftFocus(refCurrency)
-            )
+          DropDown.withRef(refCategory)(
+            "add-tr-category",
+            "Category",
+            props.linearCats,
+            props.category,
+            405,
+            List("col", "s12"),
+            shiftFocus(refMoneyAccount)
           )
         ),
         <.div(^.cls := "row",
-          dropDownCurrency.component.withRef(refCurrency)(
-            dropDownCurrency.Props(
-              "add-tr-currency",
-              "Currency",
-              mainAccountCurrencies,
-              displayCurrency,
-              cur => s"ck-${cur.id}",
-              props.currencyChange,
-              props.currency.flatMap(currencyId => mainAccountCurrencies.find(_.id == currencyId)),
-              407,
-              List("col", "s12"),
-              shiftFocus(refToNext)
-            )
+          DropDown.withRef(refMoneyAccount)(
+            "add-tr-ma",
+            "Money Account",
+            props.moneyAccounts.values.toList,
+            props.moneyAccount,
+            406,
+            List("col", "s12"),
+            shiftFocus(refCurrency)
           )
         ),
         <.div(^.cls := "row",
-          dropDownMoneyAccount.component.withRef(refDestMoneyAccount)(
-            dropDownMoneyAccount.Props(
-              "add-tr-ma-dest",
-              "Destination Money Account",
-              props.moneyAccounts.values.toList,
-              _.name,
-              ma => s"k-ma-${ma.id}",
-              props.destinationMAChange,
-              props.destMAId.flatMap(id => props.moneyAccounts.get(id)),
-              408,
-              List("col", "s12"),
-              shiftFocus(refDestCurrency)
-            )
+          DropDown.withRef(refCurrency)(
+            "add-tr-currency",
+            "Currency",
+            mainAccountCurrencies,
+            props.currency,
+            407,
+            List("col", "s12"),
+            shiftFocus(refToNext)
           )
-        ).when(props.transactionType == TransactionType.Transfer),
+        ),
         <.div(^.cls := "row",
-          dropDownCurrency.component.withRef(refDestCurrency)(
-            dropDownCurrency.Props(
-              "add-tr-currency-dest",
-              "Destination Currency",
-              destAccountCurrencies,
-              displayCurrency,
-              cur => s"ck-dest-${cur.id}",
-              props.destinationCurrencyChange,
-              props.destCurrency.flatMap(currencyId => destAccountCurrencies.find(_.id == currencyId)),
-              409,
-              List("col", "s12"),
-              shiftFocus(refDestAmount)
-            )
+          DropDown.withRef(refDestMoneyAccount)(
+            "add-tr-ma-dest",
+            "Destination Money Account",
+            props.moneyAccounts.values.toList,
+            props.destMoneyAccount,
+            408,
+            List("col", "s12"),
+            shiftFocus(refDestCurrency)
           )
-        ).when(props.transactionType == TransactionType.Transfer),
+        ).when(props.transactionType.value.contains(TransactionType.Transfer)),
         <.div(^.cls := "row",
-          MoneyTextBox.component.withRef(refDestAmount).apply(MoneyTextBox.Props(
-            "add-tr-amount-dest", "Destination Amount", props.destAmount.getOrElse(BigDecimal(0)),
-            props.destinationAmountChange, 410, List("col", "s12"), shiftFocus(refToLast)
-          )),
-        ).when(props.transactionType == TransactionType.Transfer),
+          DropDown.withRef(refDestCurrency)(
+            "add-tr-currency-dest",
+            "Destination Currency",
+            destAccountCurrencies,
+            props.destCurrency,
+            409,
+            List("col", "s12"),
+            shiftFocus(refDestAmount)
+          )
+        ).when(props.transactionType.value.contains(TransactionType.Transfer)),
         <.div(^.cls := "row",
-          SimpleCheckbox.component.withRef(refAddNext)(SimpleCheckbox.Props("Add another", props.addNext, 411, props.addNextChange))
+          MoneyTextBox.withRef(refDestAmount)(
+            "add-tr-amount-dest", "Destination Amount", props.destAmount, 410, List("col", "s12"), shiftFocus(refToLast)
+          )
+        ).when(props.transactionType.value.contains(TransactionType.Transfer)),
+        <.div(^.cls := "row",
+          SimpleCheckbox.withRef(refAddNext)("Add another", props.addNext, 411)
         ).when(props.id.isEmpty),
         ModalButtons.comp.withRef(refButtons)(
           ModalButtons.Props(props.id.map(_ => "Save").getOrElse("Add"), 412, props.save, props.close)

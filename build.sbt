@@ -129,6 +129,7 @@ lazy val chartsJs = (project in file("charts-js"))
 
 lazy val reactToolz = (project in file("react-toolz"))
   .enablePlugins(ScalaJSPlugin, ScalaJSWeb, ScalaJSBundlerPlugin)
+  .dependsOn(sharedJs)
   .settings(basicSettings)
   .settings(
     name := "react-toolz",
@@ -159,6 +160,8 @@ lazy val frontend = (project in file("frontend"))
   .settings(
     name := s"$MyProjectName-frontend",
     scalaJSUseMainModuleInitializer := true,
+
+    libraryDependencies += "com.github.japgolly.scalajs-react" %%% "extra-ext-monocle3" % ScalaJsReactVersion,
 
     Compile / npmDependencies ++= Seq(
       "react" -> ReactVersion,

@@ -1,8 +1,10 @@
 package org.big.pete.sft.front.components.header
 
-import japgolly.scalajs.react.{Callback, CtorType, ScalaComponent}
+import japgolly.scalajs.react.{Callback, CtorType, ScalaComponent, ScalaFnComponent}
 import japgolly.scalajs.react.component.Scala.Component
+import japgolly.scalajs.react.component.ScalaFn
 import japgolly.scalajs.react.extra.router.RouterCtl
+import japgolly.scalajs.react.feature.ReactFragment
 import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.react.MaterialIcon
 import org.big.pete.sft.domain.SimpleUser
@@ -20,6 +22,15 @@ object Sidenav {
       activePage: SftPages,
       onPageChange: (SftPages, Option[SftPages]) => Callback
   )
+  case class SidenavLinkProps(isActive: Boolean, url: String, linkClick: ^.onClick.Event => Callback, changePage: Callback)
+
+  val topHeader: ScalaFn.Component[Unit, CtorType.Children] = ScalaFnComponent.justChildren { children =>
+    <.div(^.cls := "navbar-fixed",
+      <.nav(^.cls := "navbar",
+        <.div(^.cls := "nav-wrapper center-align center", children)
+      )
+    )
+  }
 
   val component: Component[Props, Unit, Unit, CtorType.Props] = ScalaComponent.builder[Props]
     .stateless
@@ -43,43 +54,44 @@ object Sidenav {
     .render_P { props =>
       val accountOpt = getAccountPermalink(props.activePage)
 
+      def genLinkProps(toPage: SftPages): SidenavLinkProps =
+        SidenavLinkProps(
+          props.activePage == toPage,
+          props.routerCtl.urlFor(toPage).value,
+          props.routerCtl.setEH(toPage),
+          props.onPageChange(toPage, Some(props.activePage))
+        )
+
       <.ul(^.cls := "collection with-header",
         <.li(^.classSet("collection-header" -> true, "active" -> (props.activePage == AccountsSelectionPage)),
           props.routerCtl.link(AccountsSelectionPage)(<.h5(props.me.displayName, MaterialIcon("account_balance", Set("left"))))
         ),
 
         accountOpt.map { account =>
-          VdomArray.apply(
-            <.li(^.key := "top-n-transactions",
-              ^.classSet("collection-item" -> true, "active" -> (props.activePage == TransactionsPage(account))),
-              <.a(
-                ^.href := props.routerCtl.urlFor(TransactionsPage(account)).value,
-                ^.onClick ==> (e => props.routerCtl.setEH(TransactionsPage(account))(e) >> props.onPageChange(TransactionsPage(account), Some(props.activePage))),
-                "Transactions",
-                MaterialIcon("receipt_long", Set("left"))
-              )
-            ),
-            <.li(^.key := "top-n-categories",
-              ^.classSet("collection-item" -> true, "active" -> (props.activePage == CategoriesPage(account))),
-              <.a(
-                ^.href := props.routerCtl.urlFor(CategoriesPage(account)).value,
-                ^.onClick ==> (e => props.routerCtl.setEH(CategoriesPage(account))(e) >> props.onPageChange(CategoriesPage(account), Some(props.activePage))),
-                "Categories",
-                MaterialIcon("category", Set("left"))
-              )
-            ),
-            <.li(^.key := "top-n-money-accounts",
-              ^.classSet("collection-item" -> true, "active" -> (props.activePage == MoneyAccountsPage(account))),
-              <.a(
-                ^.href := props.routerCtl.urlFor(MoneyAccountsPage(account)).value,
-                ^.onClick ==> (e => props.routerCtl.setEH(MoneyAccountsPage(account))(e) >> props.onPageChange(MoneyAccountsPage(account), Some(props.activePage))),
-                "Money Accounts",
-                MaterialIcon("local_atm", Set("left"))
-              )
-            )
+          ReactFragment(
+            sidenavLink(genLinkProps(TransactionsPage(account))) {
+              ReactFragment("Transactions", MaterialIcon("receipt_long", Set("left")))
+            },
+            sidenavLink(genLinkProps(CategoriesPage(account))) {
+              ReactFragment("Categories", MaterialIcon("category", Set("left")))
+            },
+            sidenavLink(genLinkProps(MoneyAccountsPage(account))) {
+              ReactFragment("Money Accounts", MaterialIcon("local_atm", Set("left")))
+            },
           )
         }
       )
     }.build
+
+  private val sidenavLink: ScalaFn.Component[SidenavLinkProps, CtorType.PropsAndChildren] =
+    ScalaFnComponent.withChildren[SidenavLinkProps] { case (props, children) =>
+      def changePage(evt: ^.onClick.Event): Callback =
+        props.linkClick(evt) >> props.changePage
+
+      <.li(
+        ^.classSet("collection-item" -> true, "active" -> props.isActive),
+        <.a(^.href := props.url, ^.onClick ==> changePage, children)
+      )
+    }
 
 }

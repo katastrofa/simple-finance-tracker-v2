@@ -1,9 +1,10 @@
 package org.big.pete.sft.front.components.header
 
 import japgolly.scalajs.react.callback.Callback
-import japgolly.scalajs.react.{CtorType, ReactFormEventFromInput, Reusability, ScalaComponent, ScalaFnComponent}
+import japgolly.scalajs.react.{CtorType, Reusability, ScalaComponent, ScalaFnComponent}
 import japgolly.scalajs.react.component.Scala.Component
 import japgolly.scalajs.react.component.ScalaFn
+import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.react.{MICheckbox, MaterialIcon, TextInput}
 import org.big.pete.react.MICheckbox.Status
@@ -23,20 +24,19 @@ object SidenavFilters {
   case class CollapsibleHeaderProps(hasActiveFilters: Boolean, text: String, section: FiltersOpen, onOpenFilter: FiltersOpen => Callback)
   case class TransactionsProps(
       transactionTypeActiveFilters: Set[TransactionType],
-      onTransactionTypeChange: (Status, String) => Callback,
+      onTransactionTypeChange: TransactionType => (Option[Status], Callback) => Callback,
       trackingActiveFilters: Set[TransactionTracking],
-      onTrackingChange: (Status, String) => Callback,
-      contentFilter: String,
-      onContentFilterChange: ReactFormEventFromInput => Callback
+      onTrackingChange: TransactionTracking => (Option[Status], Callback) => Callback,
+      contentFilter: StateSnapshot[String]
   )
   case class CategoriesProps(
       categoriesActiveFilters: Set[Int],
-      onCategoryFilterChange: (Status, String) => Callback,
+      onCategoryFilterChange: Int => (Option[Status], Callback) => Callback,
       categoryTree: List[CategoryTree]
   )
   case class MoneyAccountProps(
       moneyAccountsActiveFilters: Set[Int],
-      onMoneyAccountFilterChange: (Status, String) => Callback,
+      onMoneyAccountFilterChange: Int => (Option[Status], Callback) => Callback,
       moneyAccounts: List[EnhancedMoneyAccount]
   )
 
@@ -81,29 +81,27 @@ object SidenavFilters {
       .stateless
       .render_P { case (onOpenFilter, props) =>
 
-        def expandTransactionTypes(transactionType: TransactionType) =
-          MICheckbox.component.withKey(s"ttf-${transactionType.toString}").apply(MICheckbox.Props(
-            <.li(_: _*),
-            Map.empty,
+        def expandTransactionTypes(transactionType: TransactionType) = {
+          val status = Status.fromBoolean(props.transactionTypeActiveFilters.contains(transactionType))
+          MICheckbox.li.withKey(s"ttf-${transactionType.toString}")(MICheckbox.Props(
             transactionType.toString,
             transactionType.toString,
-            Status.fromBoolean(props.transactionTypeActiveFilters.contains(transactionType)),
-            props.onTransactionTypeChange
+            StateSnapshot(status)(props.onTransactionTypeChange(transactionType))
           ))
+        }
 
-        def expandTracking(tracking: TransactionTracking) =
-          MICheckbox.component.withKey(s"ttf-${tracking.toString}").apply(MICheckbox.Props(
-            <.li(_: _*),
-            Map.empty,
+        def expandTracking(tracking: TransactionTracking) = {
+          val status = Status.fromBoolean(props.trackingActiveFilters.contains(tracking))
+          MICheckbox.li.withKey(s"ttf-${tracking.toString}")(MICheckbox.Props(
             tracking.toString,
             tracking.toString,
-            Status.fromBoolean(props.trackingActiveFilters.contains(tracking)),
-            props.onTrackingChange
+            StateSnapshot(status)(props.onTrackingChange(tracking))
           ))
+        }
 
         <.div(
           collapsibleHeaderComponent.apply(CollapsibleHeaderProps(
-            props.transactionTypeActiveFilters.nonEmpty || props.trackingActiveFilters.nonEmpty || props.contentFilter.nonEmpty,
+            props.transactionTypeActiveFilters.nonEmpty || props.trackingActiveFilters.nonEmpty || props.contentFilter.value.nonEmpty,
             "Transactions",
             TransactionsFiltersOpen,
             onOpenFilter
@@ -120,7 +118,7 @@ object SidenavFilters {
               ),
               <.li(
                 <.h6("Content"),
-                TextInput("transactions-filter", "Content filter", props.contentFilter, props.onContentFilterChange)
+                TextInput("transactions-filter", "Content filter", props.contentFilter)
               )
             )
           )
@@ -145,16 +143,12 @@ object SidenavFilters {
             Status.none
         }
 
-        def mapCategory(cat: CategoryTree) = {
-          MICheckbox.component.withKey(s"cf-${cat.id}").apply(MICheckbox.Props(
-            <.li(_: _*),
-            Map.empty,
+        def mapCategory(cat: CategoryTree) =
+          MICheckbox.li.withKey(s"cf-${cat.id}")(MICheckbox.Props(
             cat.id.toString,
-            CategoryTree.name(cat),
-            getStatus(cat),
-            props.onCategoryFilterChange
+            cat.shortDisplayName,
+            StateSnapshot(getStatus(cat))(props.onCategoryFilterChange(cat.id))
           ))
-        }
 
         def expandCategory(cat: CategoryTree): List[CategoryTree] =
           cat :: cat.children.flatMap(expandCategory)
@@ -176,15 +170,14 @@ object SidenavFilters {
     ScalaComponent.builder[(FiltersOpen => Callback, MoneyAccountProps)]
       .stateless
       .render_P { case (onOpenFilter, props) =>
-        def expandMoneyAccount(ma: EnhancedMoneyAccount) =
-          MICheckbox.component.withKey(s"maf-${ma.id}").apply(MICheckbox.Props(
-            <.li(_: _*),
-            Map.empty,
+        def expandMoneyAccount(ma: EnhancedMoneyAccount) = {
+          val status = Status.fromBoolean(props.moneyAccountsActiveFilters.contains(ma.id))
+          MICheckbox.li.withKey(s"maf-${ma.id}")(MICheckbox.Props(
             ma.id.toString,
             ma.name,
-            Status.fromBoolean(props.moneyAccountsActiveFilters.contains(ma.id)),
-            props.onMoneyAccountFilterChange
+            StateSnapshot(status)(props.onMoneyAccountFilterChange(ma.id))
           ))
+        }
 
         <.div(
           collapsibleHeaderComponent.apply(CollapsibleHeaderProps(

@@ -2,24 +2,35 @@ package org.big.pete
 
 //import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{Callback, Reusability}
-import japgolly.scalajs.react.callback.CallbackTo
+import japgolly.scalajs.react.extra.StateSnapshot
 import org.big.pete.datepicker.ReactDatePicker
 import org.big.pete.react.DropDown
+import org.big.pete.domain.DDItem
+//import org.big.pete.react.DropDown
 
 import java.time.LocalDate
 //import org.big.pete.react.MICheckbox
-import org.scalajs.dom.{HTMLInputElement, console, document}
+import org.scalajs.dom.{HTMLInputElement, document}
 
 
 object TestMain {
-  case class TestItem(id: Int, name: String, unused: String)
+  case class TestItem(id: Int, name: String, unused: String) extends DDItem {
+    override def ddId: String = id.toString
+    override def ddDisplayName: String = name
+  }
+
   implicit val testItemReuse: Reusability[TestItem] = Reusability.derive[TestItem]
 
   def main(args: Array[String]): Unit = {
+    var ld = LocalDate.now
+    val ssFn: (Option[LocalDate], Callback) => Callback = (dOpt, fn) =>
+      Callback.log(dOpt.getOrElse(LocalDate.now).toString()) >> Callback { ld = dOpt.getOrElse(ld) } >> fn
+
     document.getElementsByClassName("sft-calendar-picker").foreach { el =>
-      ReactDatePicker(el.id, "", ld => CallbackTo { console.log(ld.toString); ld }, LocalDate.now(), isOpened = false, ReactDatePicker.ExtendedKeyBindings)
+      ReactDatePicker(el.id, StateSnapshot(ld)(ssFn))
         .renderIntoDOM(el)
     }
+
     document.getElementsByTagName("INPUT")
       .filter(_.classList.contains("indeterminate"))
       .foreach {
@@ -28,8 +39,7 @@ object TestMain {
         case _ =>
       }
 
-    val ddTestClass = new DropDown[TestItem]
-    val props = ddTestClass.Props(
+    DropDown.apply(
       "test-dropdown",
       "Test Items",
       List(
@@ -41,14 +51,11 @@ object TestMain {
         TestItem(6, "Microsoft", "Billy"),
         TestItem(42, "Big Pete", "jackpot")
       ),
-      (x: TestItem) => x.name,
-      (x: TestItem) => s"id-${x.id}",
-      (x: TestItem) => Callback.log(s"${x.id} - ${x.name} - ${x.unused}"),
-      None,
+      StateSnapshot.apply[Option[TestItem]](None) { (item: Option[Option[TestItem]], fn: Callback) =>
+        Callback.log(s"${item.get.get.id} - ${item.get.get.name} - ${item.get.get.unused}") >> fn
+      },
       15
-    )
-    console.log(ddTestClass)
-    ddTestClass.component.apply(props).renderIntoDOM(document.getElementById("me-dropdown"))
+    ).renderIntoDOM(document.getElementById("me-dropdown"))
 
 //    document.getElementsByClassName("sft-checkbox").map { el =>
 //      val text = el.innerHTML

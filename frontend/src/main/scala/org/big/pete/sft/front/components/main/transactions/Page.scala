@@ -1,14 +1,13 @@
 package org.big.pete.sft.front.components.main.transactions
 
-import japgolly.scalajs.react.callback.CallbackTo
 import japgolly.scalajs.react.component.Scala.{BackendScope, Component}
-import japgolly.scalajs.react.extra.{EventListener, OnUnmount}
+import japgolly.scalajs.react.extra.{EventListener, OnUnmount, StateSnapshot}
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{Callback, CtorType, ReactFormEventFromInput, Ref, Reusability, ScalaComponent}
 import org.big.pete.react.{MICheckbox, MaterialIcon}
 import org.big.pete.sft.domain.{Category, Currency, EnhancedMoneyAccount, TransactionTracking, TransactionType}
 import org.big.pete.sft.front.components.main.{formatAmount, tableWrap}
-import org.big.pete.sft.front.domain.{CategoryTree, EnhancedTransaction, Order, SortingColumn}
+import org.big.pete.sft.front.domain.{CategoryTree, EnhancedTransaction, Order, SortingColumn, TransactionEntry}
 import org.big.pete.sft.front.helpers.PieChart
 import org.big.pete.sft.front.helpers.{AddModal, ModalButtons}
 import org.big.pete.sft.front.state.{AddTransactionSetup, CookieStorage}
@@ -20,16 +19,18 @@ import java.time.LocalDate
 
 
 object Page {
+  import org.big.pete.react.Implicits._
+  import org.big.pete.sft.front.domain.Implicits._
+
   case class Props(
       account: String,
-      transactions: List[EnhancedTransaction],
+      items: List[TransactionEntry],
       linearCats: List[CategoryTree],
       categories: Map[Int, Category],
       moneyAccounts: Map[Int, EnhancedMoneyAccount],
-      checkedTransactions: Set[Int],
       ordering: List[(SortingColumn, Order)],
       clickOrdering: SortingColumn => Callback,
-      checkTransaction: (MICheckbox.Status, String) => Callback,
+      checkTransaction: (MICheckbox.Status, EnhancedTransaction) => Callback,
       trackingChanged: (Int, TransactionTracking) => Callback,
       save: (Option[Int], LocalDate, TransactionType, BigDecimal, String, Int, Int, String, Option[BigDecimal], Option[Int], Option[String]) => Callback,
       deleteTransactions: Set[Int] => Callback,
@@ -69,46 +70,50 @@ object Page {
 
     private val formRef = Ref.toScalaComponent(AddForm.component)
 
-    def dateChange(date: LocalDate): CallbackTo[LocalDate] = $.modState { state =>
-      state.copy(date = date)
-    } >> CallbackTo.pure(date)
 
-    def ttChange(tt: TransactionType): Callback =
-      $.modState(_.copy(transactionType = tt))
+    private def ssChange[T](update: (T, State) => State)(opt: Option[T], fn: Callback): Callback = opt.map { value =>
+      $.modState(state => update(value, state))
+    }.getOrElse(Callback.empty) >> fn
 
-    def amountChange(amount: BigDecimal): Callback =
-      $.modState(_.copy(amount = amount))
+    private def dateChange(dateOpt: Option[LocalDate], fn: Callback): Callback =
+      ssChange[LocalDate]((date, state) => state.copy(date = date))(dateOpt, fn)
 
-    def descriptionChange(event: ReactFormEventFromInput): Callback =
-      $.modState(_.copy(description = event.target.value))
+    private def ttChange(ttOpt: Option[TransactionType], fn: Callback): Callback =
+      ssChange[TransactionType]((tt, state) => state.copy(transactionType = tt))(ttOpt, fn)
 
-    def categoryChange(cat: CategoryTree): Callback =
+    private def amountChange(amountOpt: Option[BigDecimal], fn: Callback): Callback =
+      ssChange[BigDecimal]((amount, state) => state.copy(amount = amount))(amountOpt, fn)
+
+    private def descriptionChange(description: Option[String], fn: Callback): Callback =
+      ssChange[String]((desc, state) => state.copy(description = desc))(description, fn)
+
+    private def categoryChange(cat: CategoryTree): Callback =
       $.modState(_.copy(categoryId = Some(cat.id)))
 
-    def maChange(ma: EnhancedMoneyAccount): Callback = $.modState { state =>
+    private def maChange(ma: EnhancedMoneyAccount): Callback = $.modState { state =>
       val newCurrency = state.currency
         .flatMap(cur => ma.currencies.find(_.currency.id == cur))
         .map(_.currency.id)
       state.copy(moneyAccountId = Some(ma.id), currency = newCurrency)
     }
 
-    def currencyChange(currency: Currency): Callback =
+    private def currencyChange(currency: Currency): Callback =
       $.modState(_.copy(currency = Some(currency.id)))
 
-    def destinationMAChange(ma: EnhancedMoneyAccount): Callback = $.modState { state =>
+    private def destinationMAChange(ma: EnhancedMoneyAccount): Callback = $.modState { state =>
       val newDestCurrency = state.destCurrency
         .flatMap(cur => ma.currencies.find(_.currency.id == cur))
         .map(_.currency.id)
       state.copy(destMAId = Some(ma.id), destCurrency = newDestCurrency)
     }
 
-    def destinationCurrencyChange(currency: Currency): Callback =
+    private def destinationCurrencyChange(currency: Currency): Callback =
       $.modState(_.copy(destCurrency = Some(currency.id)))
 
-    def destinationAmountChange(amount: BigDecimal): Callback =
-      $.modState(_.copy(destAmount = Some(amount)))
+    private def destinationAmountChange(amountOpt: Option[BigDecimal], fn: Callback): Callback =
+      ssChange[BigDecimal]((destAmount, state) => state.copy(destAmount = Some(destAmount)))(amountOpt, fn)
 
-    def addNextChange(event: ReactFormEventFromInput): Callback = $.modState { state =>
+    private def addNextChange(event: ReactFormEventFromInput): Callback = $.modState { state =>
       state.copy(addNext = event.target.checked)
     }
 
@@ -139,17 +144,21 @@ object Page {
       $.modState(_.copy(massEditIsOpen = false))
 
 
-    def massEditCatChange(cat: CategoryTree): Callback = $.modState { state =>
+    private def massEditCatChange(cat: CategoryTree): Callback = $.modState { state =>
       state.copy(massEditCat = Some(cat.id))
     }
 
-    def massEditMAChange(ma: EnhancedMoneyAccount): Callback = $.modState { state =>
+    private def massEditMAChange(ma: EnhancedMoneyAccount): Callback = $.modState { state =>
       state.copy(massEditMA = Some(ma.id))
     }
 
-    def toggleDetails(id: Int): Callback = $.modState { state =>
-      val newVisibleDetails = if (state.visibleDetails.contains(id)) state.visibleDetails - id else state.visibleDetails + id
-      state.copy(visibleDetails = newVisibleDetails)
+    private def toggleDetails(transaction: EnhancedTransaction)(detailsOpt: Option[Boolean], fn: Callback): Callback = {
+      detailsOpt.map { details =>
+        $.modState { state =>
+          val newVisibleDetails = if (details) state.visibleDetails + transaction.id else state.visibleDetails - transaction.id
+          state.copy(visibleDetails = newVisibleDetails)
+        }
+      }.getOrElse(Callback.empty) >> fn
     }
 
 
@@ -194,46 +203,51 @@ object Page {
       state <- $.state
       massEditCat = if (state.massEditCat.exists(_ < 0)) None else state.massEditCat
       massEditMA = if (state.massEditMA.exists(_ < 0)) None else state.massEditMA
-      _ <- props.massEditSave(props.checkedTransactions, massEditCat, massEditMA)
+      checkedItems = props.items
+        .filter(_.checked == MICheckbox.Status.checkedStatus)
+        .map(_.transaction.id)
+        .toSet
+      _ <- props.massEditSave(checkedItems, massEditCat, massEditMA)
       _ <- closeMassEdit
     } yield ()
 
+    /**
+      *
+      * def toggleDetails(id: Int): Callback = $.modState { state =>
+      * val newVisibleDetails = if (state.visibleDetails.contains(id)) state.visibleDetails - id else state.visibleDetails + id
+      * state.copy(visibleDetails = newVisibleDetails)
+      * }
+      *
+      * */
+
     def render(props: Props, state: State): VdomTagOf[Element] = {
+      def checkedChange(transaction: EnhancedTransaction)(statusOpt: Option[MICheckbox.Status], fn: Callback): Callback =
+        statusOpt.map(status => props.checkTransaction(status, transaction)).getOrElse(Callback.empty) >> fn
+
       val colSpan = calculateColSpan
-      val reactTransactions = props.transactions.map { transaction =>
-        LineItem.component.withKey(s"t-${transaction.id}").apply(LineItem.Props(
-          transaction,
-          props.checkedTransactions.contains(transaction.id),
-          state.visibleDetails.contains(transaction.id),
-          props.checkTransaction,
+      val reactTransactions = props.items.map { item =>
+        LineItem.withKey(s"t-${item.transaction.id}")(
+          item.transaction,
+          StateSnapshot.withReuse.prepare(checkedChange(item.transaction)).apply(item.checked),
+          StateSnapshot.withReuse.prepare(toggleDetails(item.transaction)).apply(state.visibleDetails.contains(item.transaction.id)),
           props.trackingChanged,
           openEditModal,
           openDeleteModal,
-          toggleDetails,
           colSpan
-        ))
+        )
       }.toVdomArray
 
-//      def getTransactionsSum(ttype: TransactionType): List[(String, BigDecimal)] = {
-//        props.transactions
-//          .filter(trans => props.checkedTransactions.isEmpty || props.checkedTransactions.contains(trans.id))
-//          .filter(_.transactionType == ttype)
-//          .map(trans => trans.currency.symbol -> trans.amount)
-//          .groupBy(_._1)
-//          .view.mapValues(_.map(_._2).sum)
-//          .toList
-//      }
-
       def getTransactionsPieChartData: List[PieChart.PieChartData] = {
-        props.transactions
-          .filter(trans => props.checkedTransactions.isEmpty || props.checkedTransactions.contains(trans.id))
-          .filterNot(_.transactionType == TransactionType.Transfer)
-          .groupBy(trans => (trans.transactionType, trans.currency.id))
-          .map { case ((ttype, _), trans) =>
-            val sum = trans.map(_.amount).sum
+        val checked = props.items.filter(_.checked == MICheckbox.Status.checkedStatus)
+        props.items
+          .filter(item => checked.isEmpty || item.checked == MICheckbox.Status.checkedStatus)
+          .filterNot(_.transaction.transactionType == TransactionType.Transfer)
+          .groupBy(item => (item.transaction.transactionType, item.transaction.currency.id))
+          .map { case ((ttype, _), items) =>
+            val sum = items.map(_.transaction.amount).sum
             PieChart.PieChartData(
               sum.floatValue,
-              s"$ttype - ${formatAmount(trans.head.currency.symbol, sum)}",
+              s"$ttype - ${formatAmount(items.head.transaction.currency.symbol, sum)}",
               if (ttype == TransactionType.Expense) "#E53935" else "#43A047"
             )
           }.toList
@@ -244,8 +258,13 @@ object Page {
         List(
           AddModal.component.withKey("add-transaction-modal-key").apply(AddModal.Props("add-transaction-modal"))(
             AddForm.component.withRef(formRef)(AddForm.Props(
-              props.linearCats, props.categories, props.moneyAccounts,
-              state.id, state.date, state.transactionType, state.amount, state.destAmount, state.description, state.categoryId,
+              props.linearCats, props.categories, props.moneyAccounts, state.id,
+              StateSnapshot.withReuse.prepare(dateChange).apply(state.date),
+              StateSnapshot.withReuse.prepare(ttChange).apply(state.transactionType),
+              StateSnapshot.withReuse.prepare(amountChange).apply(state.amount),
+              StateSnapshot.withReuse.prepare(destinationAmountChange).apply(state.destAmount.getOrElse(BigDecimal(0))),
+              StateSnapshot.withReuse.prepare(descriptionChange).apply(state.description),
+              state.categoryId,
               state.moneyAccountId, state.destMAId, state.currency, state.destCurrency, state.addNext,
               dateChange, ttChange, amountChange, descriptionChange, categoryChange, maChange, currencyChange,
               destinationMAChange, destinationAmountChange, destinationCurrencyChange, addNextChange,

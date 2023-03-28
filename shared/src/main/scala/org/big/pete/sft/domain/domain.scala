@@ -3,11 +3,15 @@ package org.big.pete.sft.domain
 import enumeratum.{CirceEnum, Enum, EnumEntry}
 import io.circe.{Decoder, Encoder}
 import io.circe.generic.semiauto._
+import org.big.pete.domain.DDItem
 
 import java.time.LocalDate
 
 
-sealed trait TransactionType extends EnumEntry
+sealed trait TransactionType extends EnumEntry with DDItem {
+  override def ddId: String = toString
+  override def ddDisplayName: String = toString
+}
 case object TransactionType extends Enum[TransactionType] with CirceEnum[TransactionType] {
   final case object Income extends TransactionType
   final case object Expense extends TransactionType
@@ -58,12 +62,20 @@ case object ApiAction extends Enum[ApiAction] with CirceEnum[ApiAction] {
   val values: IndexedSeq[ApiAction] = findValues
 }
 
-case class SimpleUser(id: Int, displayName: String)
+
+
+case class SimpleUser(id: Int, displayName: String) extends DDItem {
+  override def ddId: String = id.toString
+  override def ddDisplayName: String = displayName
+}
 case class Account(id: Int, name: String, permalink: String, owner: Option[Int])
 case class AddAccount(id: Int, name: String, permalink: String, owner: Option[Int], patrons: List[Int])
 case class FullAccount(id: Int, name: String, permalink: String, owner: Option[Int], patrons: List[SimpleUser])
 
-case class Currency(id: String, name: String, symbol: String)
+case class Currency(id: String, name: String, symbol: String) extends DDItem {
+  override def ddId: String = id
+  override def ddDisplayName: String = s"$name ($symbol)"
+}
 
 case class GeneralData(me: SimpleUser, patrons: List[SimpleUser], currencies: List[Currency], accounts: List[FullAccount])
 
@@ -144,7 +156,10 @@ case class EnhancedMoneyAccount(
     currencies: List[ExpandedMoneyAccountCurrency],
     status: List[CurrencyAndStatus],
     owner: Option[Int]
-)
+) extends DDItem {
+  override def ddId: String = id.toString
+  override def ddDisplayName: String = name
+}
 case class CurrencyAndStatus(currency: Currency, startAmount: BigDecimal, start: BigDecimal, end: BigDecimal)
 
 case class UserPermissions(global: Set[ApiAction], perAccount: Map[Int, Set[ApiAction]], default: Set[ApiAction])

@@ -1,6 +1,7 @@
 package org.big.pete.sft.front.components.main.transactions
 
-import japgolly.scalajs.react.component.ScalaFn.Component
+import japgolly.scalajs.react.component.ScalaFn.{Component, Unmounted}
+import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{Callback, CtorType, Reusability, ScalaFnComponent}
 import org.big.pete.react.{MICheckbox, MaterialIcon}
@@ -13,7 +14,7 @@ import org.big.pete.sft.front.helpers.NiceButton
 object LineItem {
   import org.big.pete.sft.front.domain.Implicits._
 
-  final val trackingToIcon = Map[TransactionTracking, String](
+  private final val trackingToIcon = Map[TransactionTracking, String](
     TransactionTracking.None -> "horizontal_rule",
     TransactionTracking.Auto -> "blur_circular",
     TransactionTracking.Verified -> "check_circle"
@@ -21,18 +22,16 @@ object LineItem {
 
   case class Props(
       transaction: EnhancedTransaction,
-      isChecked: Boolean,
-      isDetailsVisible: Boolean,
-      checkTransaction: (MICheckbox.Status, String) => Callback,
+      checked: StateSnapshot[MICheckbox.Status],
+      details: StateSnapshot[Boolean],
       trackingChanged: (Int, TransactionTracking) => Callback,
       openEditModal: EnhancedTransaction => Callback,
       openDeleteModal: Set[Int] => Callback,
-      toggleDetails: Int => Callback,
       colSpan: Int
   )
 
-  implicit val propsReuse: Reusability[Props] = Reusability.caseClassExcept[Props](
-    "checkTransaction", "trackingChanged", "openEditModal", "openDeleteModal", "toggleDetails", "colSpan"
+  implicit val lineItemPropsReuse: Reusability[Props] = Reusability.caseClassExcept[Props](
+    "trackingChanged", "openEditModal", "openDeleteModal", "colSpan"
   )
 
   val component: Component[Props, CtorType.Props] = ScalaFnComponent.withReuse[Props] { props =>
@@ -47,21 +46,19 @@ object LineItem {
     val additionalMoneyAccount = props.transaction.destinationMoneyAccountName.map(name => s" -> $name").getOrElse("")
 
     val mainTr = <.tr(^.cls := "show-hoverable", ^.key := s"line-${props.transaction.id}",
-      MICheckbox.component(MICheckbox.Props(
-        <.td(_: _*),
-        Map("check" -> true, "hide-on-med-and-down" -> true, "center-align" -> true),
+      MICheckbox.td(
         props.transaction.id.toString,
         "",
-        if (props.isChecked) MICheckbox.Status.checkedStatus else MICheckbox.Status.none,
-        props.checkTransaction
-      )),
+        props.checked,
+        Map("check" -> true, "hide-on-med-and-down" -> true, "center-align" -> true)
+      ),
       <.td(^.cls := "date",
         <.div(^.cls := "hide-on-small-only", props.transaction.date.format(DateFormat)),
         <.div(^.cls := "show-on-small hide-on-med-and-up", props.transaction.date.format(SmallDateFormat))
       ),
       <.td(
         ^.cls := "description",
-        ^.onClick --> props.toggleDetails(props.transaction.id),
+        ^.onClick --> props.details.modState(state => !state),
         MaterialIcon.Icon(MaterialIcon.Props(
           MaterialIcon.i, MaterialIcon.small, "edit", props.openEditModal(props.transaction),
           Set("show-on-hover pointer pad-right hide-on-med-and-down"), stopPropagation = true
@@ -100,7 +97,7 @@ object LineItem {
       )
     )
 
-    val detailsTr = if (!props.isDetailsVisible) EmptyVdom else <.tr(^.cls := "details", ^.key := s"line-details-${props.transaction.id}",
+    val detailsTr = if (!props.details.value) EmptyVdom else <.tr(^.cls := "details", ^.key := s"line-details-${props.transaction.id}",
       <.td(^.cls := "details-col", ^.colSpan := props.colSpan,
         <.div(^.cls := "details-item row",
           <.strong(^.cls := "col l2 s3", "Date:"),
@@ -143,4 +140,17 @@ object LineItem {
 
     List(mainTr, detailsTr).toVdomArray
   }
+
+  def withKey(key: String)(
+      transaction: EnhancedTransaction,
+      checked: StateSnapshot[MICheckbox.Status],
+      details: StateSnapshot[Boolean],
+      trackingChanged: (Int, TransactionTracking) => Callback,
+      openEditModal: EnhancedTransaction => Callback,
+      openDeleteModal: Set[Int] => Callback,
+      colSpan: Int
+  ): Unmounted[Props] =
+    component.withKey(key).apply(
+      Props(transaction, checked, details, trackingChanged, openEditModal, openDeleteModal, colSpan)
+    )
 }

@@ -1,7 +1,8 @@
 package org.big.pete.datepicker.parts
 
-import japgolly.scalajs.react.{Callback, CtorType, ReactMouseEventFromHtml, ScalaFnComponent}
-import japgolly.scalajs.react.component.ScalaFn.Component
+import japgolly.scalajs.react.{CtorType, Reusability, ScalaFnComponent}
+import japgolly.scalajs.react.component.ScalaFn.{Component, Unmounted}
+import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^._
 import org.scalajs.dom.html.TableCell
 
@@ -9,10 +10,7 @@ import java.time.{DayOfWeek, LocalDate}
 
 
 object CalendarTable {
-  final val YearAttr = VdomAttr[Int]("data-year")
-  final val MonthAttr = VdomAttr[Int]("data-month")
-  final val DayAttr = VdomAttr[Int]("data-day")
-  final val Days = Seq(
+  private final val Days = Seq(
     (DayOfWeek.SUNDAY, "Sunday", "S"),
     (DayOfWeek.MONDAY, "Monday", "M"),
     (DayOfWeek.TUESDAY, "Tuesday", "T"),
@@ -22,30 +20,32 @@ object CalendarTable {
     (DayOfWeek.SATURDAY, "Saturday", "S")
   )
 
-  case class LineProps(start: LocalDate, selected: Int, onSelectDate: ReactMouseEventFromHtml => Callback)
-  case class Props(id: String, selected: LocalDate, onSelectDate: ReactMouseEventFromHtml => Callback)
+  case class LineProps(start: LocalDate, selected: StateSnapshot[LocalDate])
+  case class Props(id: String, selected: StateSnapshot[LocalDate])
 
-  val CalendarTableHeader: Component[Unit, CtorType.Nullary] = ScalaFnComponent.apply[Unit] { _ =>
+  implicit val calendarLinePropsReuse: Reusability[LineProps] = Reusability.derive[LineProps]
+  implicit val calendarTablePropsReuse: Reusability[Props] = Reusability.derive[Props]
+
+
+  private val CalendarTableHeader: Component[Unit, CtorType.Nullary] = ScalaFnComponent.withReuse[Unit] { _ =>
     def expandHeader(day: (DayOfWeek, String, String)): VdomTagOf[TableCell] =
       <.th(^.key := s"ch-${day._1.getValue}", ^.scope := "col", <.abbr(^.title := day._2, day._3))
 
     <.thead(<.tr(^.key := "header-line", Days.map(expandHeader).toVdomArray))
   }
 
-  val CalendarWeekLine: Component[LineProps, CtorType.Props] = ScalaFnComponent.apply[LineProps] { prop =>
-    def buttonGen(date: LocalDate) =
-      <.button(^.cls := "datepicker-day-button", ^.`type` := "button",
-        YearAttr := date.getYear, MonthAttr := date.getMonthValue, DayAttr := date.getDayOfMonth,
-        ^.onClick ==> prop.onSelectDate,
-        date.getDayOfMonth.toString
-      )
-
+  private val CalendarWeekLine: Component[LineProps, CtorType.Props] = ScalaFnComponent.withReuse[LineProps] { prop =>
     def tdGen(date: LocalDate, isToday: Boolean) =
       <.td(
         ^.key := s"day-${date.getDayOfMonth}",
-        ^.aria.selected := (date.getDayOfMonth == prop.selected),
-        ^.classSet("is-today" -> isToday, "is-selected" -> (date.getDayOfMonth == prop.selected)),
-        buttonGen(date)
+        ^.aria.selected := (date == prop.selected.value),
+        ^.classSet("is-today" -> isToday, "is-selected" -> (date == prop.selected.value)),
+        <.button(
+          ^.cls := "datepicker-day-button",
+          ^.`type` := "button",
+          ^.onClick --> prop.selected.setState(date),
+          date.getDayOfMonth.toString
+        )
       )
     def emptyDay(i: Int) =
       <.td(^.key := s"empty-day-$i", ^.cls := s"is-empty empty-day-$i")
@@ -60,9 +60,9 @@ object CalendarTable {
     <.tr(^.cls := s"datepicker-row", days)
   }
 
-  val CalendarTable: Component[Props, CtorType.Props] = ScalaFnComponent.apply[Props] { prop =>
-    def generateCalendar(selected: LocalDate): VdomArray = {
-      val start = LocalDate.of(selected.getYear, selected.getMonthValue, 1)
+  val CalendarTable: Component[Props, CtorType.Props] = ScalaFnComponent.withReuse[Props] { prop =>
+    def generateCalendar(selected: StateSnapshot[LocalDate]): VdomArray = {
+      val start = LocalDate.of(selected.value.getYear, selected.value.getMonthValue, 1)
 
       Iterator.iterate(start) { date =>
         if (date.getDayOfWeek == DayOfWeek.SUNDAY)
@@ -70,10 +70,7 @@ object CalendarTable {
         else
           date.plusDays(7L - date.getDayOfWeek.getValue)
       }.takeWhile(_.getMonthValue == start.getMonthValue)
-        .map { date =>
-          CalendarWeekLine.withKey(s"lk-${date.getDayOfYear}")
-            .apply(LineProps(date, selected.getDayOfMonth, prop.onSelectDate))
-        }.toVdomArray
+        .map { date =>CalendarWeekLine.withKey(s"lk-${date.getDayOfYear}")(LineProps(date, selected))}.toVdomArray
     }
 
     <.div(^.cls := "datepicker-table-wrapper",
@@ -83,4 +80,7 @@ object CalendarTable {
       )
     )
   }
+
+  def apply(id: String, selected: StateSnapshot[LocalDate]): Unmounted[Props] =
+    CalendarTable(Props(id, selected))
 }

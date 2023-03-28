@@ -1,10 +1,11 @@
 package org.big.pete.sft.front.components.main.transactions
 
 import japgolly.scalajs.react.component.ScalaFn.Component
+import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{Callback, CtorType, Reusability, ScalaFnComponent}
 import org.big.pete.react.{MICheckbox, MaterialIcon}
-import org.big.pete.sft.front.domain.{EnhancedTransaction, Order, SortingColumn}
+import org.big.pete.sft.front.domain.{Order, SortingColumn}
 import org.big.pete.sft.front.state.CheckAllId
 
 
@@ -12,10 +13,8 @@ object Header {
   import org.big.pete.sft.front.domain.Implicits._
 
   case class Props(
-      transactions: List[EnhancedTransaction],
-      checkedTransactions: Set[Int],
+      checkAll: StateSnapshot[MICheckbox.Status],
       ordering: List[(SortingColumn, Order)],
-      checkTransaction: (MICheckbox.Status, String) => Callback,
       clickOrdering: SortingColumn => Callback
   )
 
@@ -31,25 +30,8 @@ object Header {
       }
     }
 
-    val checkedStatus =
-      if (props.transactions.map(_.id).toSet == props.checkedTransactions)
-        MICheckbox.Status.checkedStatus
-      else if (props.checkedTransactions.isEmpty)
-        MICheckbox.Status.none
-      else
-        MICheckbox.Status.indeterminate
-
     <.tr(
-      MICheckbox.component(
-        MICheckbox.Props(
-          <.th(_: _*),
-          Map("check" -> true, "hide-on-med-and-down" -> true, "center-align" -> true),
-          CheckAllId,
-          "",
-          checkedStatus,
-          props.checkTransaction
-        )
-      ),
+      MICheckbox.th(CheckAllId, "", props.checkAll, Map("check" -> true, "hide-on-med-and-down" -> true, "center-align" -> true)),
       <.th(^.cls := "date", "Date",
         MaterialIcon(
           MaterialIcon.i, MaterialIcon.small, orderingIcon(SortingColumn.Date), props.clickOrdering(SortingColumn.Date)

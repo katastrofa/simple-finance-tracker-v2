@@ -8,3 +8,4 @@ backend/src/main/resources/prod.conf
 ignore/
 frontend/package-lock.json
 charts-js/package-lock.json
+react-toolz/package-lock.json

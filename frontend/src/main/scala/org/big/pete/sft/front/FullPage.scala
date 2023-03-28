@@ -1,23 +1,32 @@
 package org.big.pete.sft.front
 
-import japgolly.scalajs.react.{CtorType, ScalaComponent}
+import japgolly.scalajs.react.{Callback, CallbackTo, CtorType, ScalaComponent}
 import japgolly.scalajs.react.component.Scala.Component
+import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.feature.ReactFragment
 import japgolly.scalajs.react.util.EffectSyntax
 import japgolly.scalajs.react.vdom.html_<^._
+import org.big.pete.datepicker.ReactDatePicker
+import org.big.pete.react.MaterialIcon
 import org.big.pete.sft.front.SftMain.SftPages
-import org.big.pete.sft.front.components.header.{Sidenav, SidenavFilters, TopHeader}
+import org.big.pete.sft.front.components.header.{Sidenav, SidenavFilters}
 import org.big.pete.sft.front.components.main.moneyaccount
 import org.big.pete.sft.front.components.main.transactions.Page
 import org.big.pete.sft.front.components.main.{Accounts, Categories}
+
+import java.time.LocalDate
 
 
 object FullPage extends EffectSyntax {
   case class Props(
       activePage: SftPages,
-      isMenuOpen: Boolean,
+      isMenuOpen: StateSnapshot[Boolean],
 
-      topHeader: TopHeader.Props,
+      from: LocalDate,
+      to: LocalDate,
+      onFromDateChange: LocalDate => CallbackTo[LocalDate],
+      onToDateChange: LocalDate => CallbackTo[LocalDate],
+
       sidenavTop: Sidenav.TopProps,
       sidenavFilters: SidenavFilters.Props,
 
@@ -43,8 +52,45 @@ object FullPage extends EffectSyntax {
 
       ReactFragment(
         <.header(
-          TopHeader.component(props.topHeader),
-          Sidenav.component(Sidenav.Props(props.isMenuOpen, props.sidenavTop, props.sidenavFilters))
+          Sidenav.topHeader.apply {
+            ReactFragment(
+              /// Menu Icon
+              MaterialIcon.Icon.withKey("key-menu-icon").apply(
+                MaterialIcon.Props(
+                  MaterialIcon.span,
+                  MaterialIcon.medium,
+                  "menu",
+                  props.isMenuOpen.modState(s => !s),
+                  Set("right hide-on-large-only padme")
+                )
+              ),
+
+              /// Date range pickers
+              ReactDatePicker.DatePicker.withKey("key-date-select-from").apply(
+                ReactDatePicker.Props(
+                  "date-select-from",
+                  "date-select date-select-from",
+                  props.onFromDateChange,
+                  props.from,
+                  isOpened = false,
+                  Some(42),
+                  ReactDatePicker.ExtendedKeyBindings
+                )
+              ),
+              ReactDatePicker.DatePicker.withKey("key-date-select-to").apply(
+                ReactDatePicker.Props(
+                  "date-select-to",
+                  "date-select date-select-to",
+                  props.onToDateChange,
+                  props.to,
+                  isOpened = false,
+                  Some(43),
+                  ReactDatePicker.ExtendedKeyBindings
+                )
+              )
+            )
+          },
+          Sidenav.component(Sidenav.Props(props.isMenuOpen.value, props.sidenavTop, props.sidenavFilters))
         ),
         mainPage
       )

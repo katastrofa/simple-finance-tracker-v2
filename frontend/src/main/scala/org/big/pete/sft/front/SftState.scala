@@ -4,7 +4,7 @@ import japgolly.scalajs.react.{CtorType, ScalaComponent}
 import japgolly.scalajs.react.callback.{AsyncCallback, Callback, CallbackTo}
 import japgolly.scalajs.react.component.Scala.{BackendScope, Component, Unmounted}
 import org.big.pete.sft.front.SftMain.{AccountsSelectionPage, SftPages}
-import org.big.pete.sft.front.components.header.{Sidenav, SidenavFilters, TopHeader}
+import org.big.pete.sft.front.components.header.{Sidenav, SidenavFilters}
 import org.big.pete.sft.front.components.main.moneyaccount
 import org.big.pete.sft.front.components.main.{Accounts, Categories}
 import org.big.pete.sft.front.components.main.transactions

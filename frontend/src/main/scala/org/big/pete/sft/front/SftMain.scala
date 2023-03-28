@@ -17,11 +17,6 @@ object SftMain {
   case class CategoriesPage(account: String) extends SftPages
   case class MoneyAccountsPage(account: String) extends SftPages
 
-  val dropDownCategoryTree = new DropDown[CategoryTree]
-  val dropDownCurrency = new DropDown[Currency]
-  val dropDownMoneyAccount = new DropDown[EnhancedMoneyAccount]
-  val dropDownTT = new DropDown[TransactionType]
-  val dropDownPatron = new DropDown[SimpleUser]
 
   @JSExport
   def main(args: Array[String]): Unit = {
