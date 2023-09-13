@@ -2,15 +2,15 @@ import java.nio.file.StandardCopyOption
 
 val sftFullBuild = taskKey[Unit]("Builds the back-end assembly and front-end and pushes it into the back-end target folder")
 
-val Http4sVersion = "1.0.0-M37"
-val CirceVersion = "0.14.3"
+val Http4sVersion = "1.0.0-M40"
+val CirceVersion = "0.14.6"
 //val MunitVersion = "0.7.29"
-val LogbackVersion = "1.4.5"
+val LogbackVersion = "1.4.7"
 //val MunitCatsEffectVersion = "1.0.6"
 val EnumeratumVersion = "1.7.0"
-val CatsEffectVersion = "3.3.14"
-val MyScalaVersion = "2.13.7"
-val DoobieVersion = "1.0.0-RC2"
+val CatsEffectVersion = "3.5.1"
+val MyScalaVersion = "2.13.11"
+val DoobieVersion = "1.0.0-RC4"
 val ScalaJsReactVersion = "2.1.1"
 val ReactVersion = "17.0.2"
 val MyProjectName = "simple-finance-tracker-v2"
@@ -56,7 +56,7 @@ lazy val db = (project in file("db"))
     name := s"$MyProjectName-db",
     libraryDependencies += "org.tpolecat" %% "doobie-core" % DoobieVersion,
     libraryDependencies += "io.circe" %% "circe-jawn" % CirceVersion,
-    libraryDependencies += "org.wvlet.airframe" %% "airframe-log" % "22.12.6"
+    libraryDependencies += "org.wvlet.airframe" %% "airframe-log" % "23.9.0"
   )
 
 lazy val backend = (project in file("backend"))
@@ -65,7 +65,7 @@ lazy val backend = (project in file("backend"))
   .settings(
     name := s"$MyProjectName-backend",
 
-    libraryDependencies += "com.softwaremill.sttp.client3" %% "cats" % "3.8.8",
+    libraryDependencies += "com.softwaremill.sttp.client3" %% "cats" % "3.9.0",
     libraryDependencies += "org.tpolecat" %% "doobie-hikari" % DoobieVersion,
     libraryDependencies += "org.http4s" %% "http4s-ember-server" % Http4sVersion,
     libraryDependencies += "org.http4s" %% "http4s-circe" % Http4sVersion,
@@ -73,7 +73,7 @@ lazy val backend = (project in file("backend"))
     libraryDependencies += "ch.qos.logback" % "logback-classic" % LogbackVersion,
     libraryDependencies += "org.scalameta" %% "svm-subs" % "20.2.0",
     libraryDependencies += "com.typesafe" % "config" % "1.4.2",
-    libraryDependencies += "mysql" % "mysql-connector-java" % "8.0.30",
+    libraryDependencies += "mysql" % "mysql-connector-java" % "8.0.33",
 
     addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.13.2" cross CrossVersion.full),
     addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"),
