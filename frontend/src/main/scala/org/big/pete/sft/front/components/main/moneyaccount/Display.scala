@@ -4,7 +4,7 @@ import japgolly.scalajs.react.component.ScalaFn.Component
 import japgolly.scalajs.react.{Callback, CtorType, Reusability, ScalaFnComponent}
 import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.react.MaterialIcon
-import org.big.pete.sft.domain.EnhancedMoneyAccount
+import org.big.pete.sft.domain.EnhancedAccount
 import org.big.pete.sft.front.components.main.{DateFormat, formatAmount}
 
 
@@ -12,9 +12,9 @@ object Display {
   import org.big.pete.sft.front.domain.Implicits._
 
   case class Props(
-      account: EnhancedMoneyAccount,
-      openEditModal: EnhancedMoneyAccount => Callback,
-      openDeleteModal: EnhancedMoneyAccount => Callback
+      account: EnhancedAccount,
+      openEditModal: EnhancedAccount => Callback,
+      openDeleteModal: EnhancedAccount => Callback
   )
 
   implicit val maDisplayPropsReuse: Reusability[Props] =

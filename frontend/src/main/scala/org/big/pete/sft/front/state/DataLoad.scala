@@ -2,7 +2,7 @@ package org.big.pete.sft.front.state
 
 import japgolly.scalajs.react.callback.AsyncCallback
 import org.big.pete.datepicker.ReactDatePicker
-import org.big.pete.sft.domain.{Category, EnhancedMoneyAccount, GeneralData, Transaction}
+import org.big.pete.sft.domain.{Category, EnhancedAccount, GeneralData, Transaction}
 import org.big.pete.sft.front.domain.CategoryTree
 
 import java.time.LocalDate
@@ -30,11 +30,11 @@ trait DataLoad extends Base {
     ajaxCall[List[Transaction]]("GET", apiPath, None, List.empty)
   }
 
-  private def loadMoneyAccounts(accountPermalink: String, start: LocalDate, end: LocalDate): AsyncCallback[Map[Int, EnhancedMoneyAccount]] = {
+  private def loadMoneyAccounts(accountPermalink: String, start: LocalDate, end: LocalDate): AsyncCallback[Map[Int, EnhancedAccount]] = {
     val apiPath = "/" + accountPermalink + "/money-accounts?" +
       "start=" + start.format(ReactDatePicker.DateFormat) +
       "&end=" + end.format(ReactDatePicker.DateFormat)
-    ajaxCall[List[EnhancedMoneyAccount]]("GET", apiPath, None, List.empty)
+    ajaxCall[List[EnhancedAccount]]("GET", apiPath, None, List.empty)
       .map(_.map(ma => ma.id -> ma).toMap)
   }
 
@@ -61,7 +61,7 @@ trait DataLoad extends Base {
         val generalData = dataList.head.asInstanceOf[GeneralData]
         val currencies = generalData.currencies.map(cur => cur.id -> cur).toMap
         val cats = dataList(2).asInstanceOf[Map[Int, Category]]
-        val moneyAccounts = dataList(3).asInstanceOf[Map[Int, EnhancedMoneyAccount]]
+        val moneyAccounts = dataList(3).asInstanceOf[Map[Int, EnhancedAccount]]
         val transactions = dataList(4).asInstanceOf[List[Transaction]]
 
         $.modStateAsync { s =>

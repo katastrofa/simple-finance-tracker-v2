@@ -9,7 +9,7 @@ import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.react.{MaterialIcon, TextInput}
 import org.big.pete.sft.front.SftMain
 import org.big.pete.sft.front.domain.CategoryTree
-import org.big.pete.sft.front.helpers.{AddModal, ModalButtons}
+import org.big.pete.sft.front.helpers.{FormModal, ModalButtons}
 import org.scalajs.dom.html.Element
 
 
@@ -134,14 +134,14 @@ object Categories {
       tableWrap(
         "categories-table",
         List(
-          AddModal.component(AddModal.Props("add-category-modal")) {
+          FormModal.component(FormModal.Props("add-category-modal")) {
             addCategoryModal.apply(FormProps(
               CategoryTree.linearize(props.categories),
               state.id, state.name, state.description, state.parent,
               changeName, changeDescription, changeParent, saveEdit, closeModal
             ))
           }.when(state.isOpen),
-          AddModal.component(AddModal.Props("delete-category-modal")) {
+          FormModal.component(FormModal.Props("delete-category-modal")) {
             deleteCategoryModal.apply(DeleteFormProps(
               props.categories, state.deleteId.getOrElse(-1), state.shiftSubCatsTo, state.shiftTransactionsTo,
               changeShiftSubCats, changeShiftTransactions, deleteCategory(), closeDeleteModal

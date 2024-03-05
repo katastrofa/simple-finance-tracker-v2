@@ -18,8 +18,7 @@ object Header {
       clickOrdering: SortingColumn => Callback
   )
 
-  implicit val propsReuse: Reusability[Props] =
-    Reusability.caseClassExcept[Props]("checkTransaction", "clickOrdering")
+  implicit val propsReuse: Reusability[Props] = Reusability.caseClassExcept[Props]("clickOrdering")
 
   val component: Component[Props, CtorType.Props] = ScalaFnComponent.withReuse[Props] { props =>
     def orderingIcon(column: SortingColumn): String = {

@@ -19,10 +19,10 @@ object domain {
       date: LocalDate,
       transactionType: TransactionType,
       amount: BigDecimal,
-      moneyAccount: Int,
+      account: Int,
       currency: String,
       destinationAmount: Option[BigDecimal],
-      destinationMoneyAccountId: Option[Int],
+      destinationAccountId: Option[Int],
       destinationCurrency: Option[String]
   )
 

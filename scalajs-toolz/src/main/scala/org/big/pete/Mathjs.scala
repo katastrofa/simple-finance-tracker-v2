@@ -1,6 +1,6 @@
 package org.big.pete
 
-import scala.annotation.nowarn
+//import scala.annotation.nowarn
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSImport
 
@@ -10,6 +10,6 @@ import scala.scalajs.js.annotation.JSImport
 @JSImport("mathjs", JSImport.Default)
 object Mathjs extends js.Object {
 
-  @nowarn
+//  @nowarn
   def evaluate(expr: String): Double = js.native
 }

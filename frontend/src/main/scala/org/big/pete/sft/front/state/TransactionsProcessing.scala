@@ -4,8 +4,8 @@ import japgolly.scalajs.react.Callback
 import org.big.pete.BPJson
 import org.big.pete.react.MICheckbox
 import org.big.pete.react.MICheckbox.Status
-import org.big.pete.sft.domain.{DeleteTransactions, EnhancedMoneyAccount, MassEditTransactions, ShiftStrategy, TrackingEdit, Transaction, TransactionTracking, TransactionType}
-import org.big.pete.sft.front.domain.MAUpdateAction
+import org.big.pete.sft.domain.{DeleteTransactions, EnhancedAccount, MassEditTransactions, ShiftStrategy, TrackingEdit, Transaction, TransactionTracking, TransactionType}
+import org.big.pete.sft.front.domain.AccountUpdateAction
 import org.big.pete.sft.front.utilz.getAccountPermalink
 
 import java.time.LocalDate
@@ -56,11 +56,11 @@ trait TransactionsProcessing extends DataLoad {
             if (id.isDefined) {
               val oldTransaction = state.transactions.find(_.id == id.get).get
               val removedTransactionMAs = updateMoneyAccountsWithTransaction(
-                oldTransaction, state.from, state.to, state.moneyAccounts, MAUpdateAction.Reverse
+                oldTransaction, state.from, state.to, state.moneyAccounts, AccountUpdateAction.Reverse
               )
-              updateMoneyAccountsWithTransaction(transaction, state.from, state.to, removedTransactionMAs, MAUpdateAction.Attach)
+              updateMoneyAccountsWithTransaction(transaction, state.from, state.to, removedTransactionMAs, AccountUpdateAction.Attach)
             } else
-              updateMoneyAccountsWithTransaction(transaction, state.from, state.to, state.moneyAccounts, MAUpdateAction.Attach)
+              updateMoneyAccountsWithTransaction(transaction, state.from, state.to, state.moneyAccounts, AccountUpdateAction.Attach)
           }
           updateStateWithTransaction(state, state.transactions.filter(_.id != transaction.id) ++ List(transaction), updatedMA)
         }
@@ -98,7 +98,7 @@ trait TransactionsProcessing extends DataLoad {
         _ => $.modState { state =>
           val removedTransaction = state.transactions.find(_.id == id).get
           val updatedMA = updateMoneyAccountsWithTransaction(
-            removedTransaction, state.from, state.to, state.moneyAccounts, MAUpdateAction.Reverse
+            removedTransaction, state.from, state.to, state.moneyAccounts, AccountUpdateAction.Reverse
           )
           updateStateWithTransaction(state, state.transactions.filter(_.id != id), updatedMA)
         }
@@ -133,7 +133,7 @@ trait TransactionsProcessing extends DataLoad {
   private def updateStateWithTransaction(
       state: State,
       newTransactions: List[Transaction],
-      updatedMoneyAccounts: Map[Int, EnhancedMoneyAccount]
+      updatedMoneyAccounts: Map[Int, EnhancedAccount]
   ): State = {
     state.copy(
       moneyAccounts = updatedMoneyAccounts,

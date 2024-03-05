@@ -1,6 +1,6 @@
 package org.big.pete.sft.front
 
-import org.big.pete.sft.front.domain.{MAUpdateAction, MAUpdateOperation, Order, SortingColumn}
+import org.big.pete.sft.front.domain.{AccountUpdateAction, AccountUpdateOperation, Order, SortingColumn}
 
 
 package object state {
@@ -11,14 +11,14 @@ package object state {
 
   final private val AddBigDecimals: (BigDecimal, BigDecimal) => BigDecimal = _ + _
   final private val SubtractBigDecimals: (BigDecimal, BigDecimal) => BigDecimal = _ - _
-  final val MAOperations: Map[MAUpdateAction, Map[MAUpdateOperation, (BigDecimal, BigDecimal) => BigDecimal]] = Map(
-    MAUpdateAction.Attach -> Map(
-      MAUpdateOperation.Add -> AddBigDecimals,
-      MAUpdateOperation.Remove -> SubtractBigDecimals
+  final val MAOperations: Map[AccountUpdateAction, Map[AccountUpdateOperation, (BigDecimal, BigDecimal) => BigDecimal]] = Map(
+    AccountUpdateAction.Attach -> Map(
+      AccountUpdateOperation.Add -> AddBigDecimals,
+      AccountUpdateOperation.Remove -> SubtractBigDecimals
     ),
-    MAUpdateAction.Reverse -> Map(
-      MAUpdateOperation.Add -> SubtractBigDecimals,
-      MAUpdateOperation.Remove -> AddBigDecimals
+    AccountUpdateAction.Reverse -> Map(
+      AccountUpdateOperation.Add -> SubtractBigDecimals,
+      AccountUpdateOperation.Remove -> AddBigDecimals
     ),
   )
 

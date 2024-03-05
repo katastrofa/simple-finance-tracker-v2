@@ -5,7 +5,7 @@ import japgolly.scalajs.react.{CtorType, PropsChildren, ScalaComponent}
 import japgolly.scalajs.react.vdom.html_<^._
 import org.scalajs.dom.html
 
-object AddModal {
+object FormModal {
   case class Props(id: String)
 
   class Backend {

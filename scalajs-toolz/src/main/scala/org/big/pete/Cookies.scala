@@ -1,6 +1,6 @@
 package org.big.pete
 
-import scala.annotation.nowarn
+//import scala.annotation.nowarn
 import scalajs.js
 import scalajs.js.|
 import scalajs.js.annotation.JSImport
@@ -12,17 +12,17 @@ import scalajs.js.annotation.JSImport
 object Cookies extends js.Object {
 
   def get(): js.Dictionary[String] = js.native
-  @nowarn
+//  @nowarn
   def get(name: String): js.UndefOr[String] = js.native
 
-  @nowarn
+//  @nowarn
   def set(name: String, value: String): String = js.native
-  @nowarn
+//  @nowarn
   def set(name: String, value: String, attributes: CookieAttributes): String = js.native
 
-  @nowarn
+//  @nowarn
   def remove(name: String): Unit = js.native
-  @nowarn
+//  @nowarn
   def remove(name: String, attributes: CookieAttributes): Unit = js.native
 }
 

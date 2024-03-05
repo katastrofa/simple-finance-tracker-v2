@@ -5,43 +5,43 @@ import doobie.{ConnectionIO, Update}
 import doobie.implicits._
 import doobie.Fragments.in
 import org.big.pete.sft.db.domain.User
-import org.big.pete.sft.domain.{Account, AccountEdit, AddAccount, Currency, FullAccount, SimpleUser}
+import org.big.pete.sft.domain.{Wallet, WalletEdit, AddWallet, Currency, FullWallet, SimpleUser}
 
 
 object General {
-  def getFullAccount(id: Int): ConnectionIO[Option[FullAccount]] = {
-    sql"""SELECT a.*, u.id, u.display_name FROM accounts AS a
+  def getFullWallet(id: Int): ConnectionIO[Option[FullWallet]] = {
+    sql"""SELECT a.*, u.id, u.display_name FROM wallets AS a
             LEFT JOIN patrons AS p ON a.id = p.account
             LEFT JOIN users AS u ON p.user = u.id
             WHERE a.id = $id
     """.query[(Int, String, String, Option[Int], Option[Int], Option[String])].to[List]
-      .map(parseFullAccount)
+      .map(parseFullWallet)
       .map(_.headOption)
   }
 
-  def getFullAccount(permalink: String): ConnectionIO[Option[FullAccount]] = {
-    sql"""SELECT a.*, u.id, u.display_name FROM accounts AS a
+  def getFullWallet(permalink: String): ConnectionIO[Option[FullWallet]] = {
+    sql"""SELECT a.*, u.id, u.display_name FROM wallets AS a
             LEFT JOIN patrons AS p ON a.id = p.account
             LEFT JOIN users AS u ON p.user = u.id
             WHERE a.permalink = $permalink
     """.query[(Int, String, String, Option[Int], Option[Int], Option[String])].to[List]
-      .map(parseFullAccount)
+      .map(parseFullWallet)
       .map(_.headOption)
   }
 
-  def listFullAccounts(user: User): ConnectionIO[List[FullAccount]] = {
-    val accounts = user.permissions.perAccount.keySet
-    val condition = if (accounts.isEmpty) fr"1 = 2" else in(fr"a.id", NonEmptyList(accounts.head, accounts.tail.toList))
+  def listFullWallets(user: User): ConnectionIO[List[FullWallet]] = {
+    val wallets = user.permissions.perWallet.keySet
+    val condition = if (wallets.isEmpty) fr"1 = 2" else in(fr"a.id", NonEmptyList(wallets.head, wallets.tail.toList))
     (
-      sql"""SELECT a.*, u.id, u.display_name FROM accounts AS a
-              LEFT JOIN patrons AS p ON a.id = p.account
+      sql"""SELECT a.*, u.id, u.display_name FROM wallets AS a
+              LEFT JOIN patrons AS p ON a.id = p.wallet
               LEFT JOIN users AS u ON p.user = u.id
               WHERE """ ++ condition
     ).query[(Int, String, String, Option[Int], Option[Int], Option[String])].to[List]
-      .map(parseFullAccount)
+      .map(parseFullWallet)
   }
 
-  private def parseFullAccount(rows: List[(Int, String, String, Option[Int], Option[Int], Option[String])]): List[FullAccount] = {
+  private def parseFullWallet(rows: List[(Int, String, String, Option[Int], Option[Int], Option[String])]): List[FullWallet] = {
     rows.groupBy(_._1)
       .map { case (id, data) =>
         val patrons = data.flatMap { case (_, _, _, _, idOpt, nameOpt) =>
@@ -50,56 +50,56 @@ object General {
           }}
         }
         val headItem = data.head
-        FullAccount(id, headItem._2, headItem._3, headItem._4, patrons)
+        FullWallet(id, headItem._2, headItem._3, headItem._4, patrons)
       }.toList
   }
 
-  def listAccounts(user: User): ConnectionIO[List[Account]] = {
-    val accounts = user.permissions.perAccount.keySet
-    val condition = if (accounts.isEmpty) fr"1 = 2" else in(fr"id", NonEmptyList(accounts.head, accounts.tail.toList))
-    (fr"SELECT * FROM accounts WHERE " ++ condition).query[Account].to[List]
+  def listWallets(user: User): ConnectionIO[List[Wallet]] = {
+    val wallets = user.permissions.perWallet.keySet
+    val condition = if (wallets.isEmpty) fr"1 = 2" else in(fr"id", NonEmptyList(wallets.head, wallets.tail.toList))
+    (fr"SELECT * FROM wallets WHERE " ++ condition).query[Wallet].to[List]
   }
 
-  def addAccount(account: AddAccount): ConnectionIO[Int] = {
-    val permalink = cleanPermalink(account.permalink)
-    sql"INSERT INTO accounts (name, permalink, owner) VALUE (${account.name}, $permalink, ${account.owner})".update
+  def addWallet(wallet: AddWallet): ConnectionIO[Int] = {
+    val permalink = cleanPermalink(wallet.permalink)
+    sql"INSERT INTO wallets (name, permalink, owner) VALUE (${wallet.name}, $permalink, ${wallet.owner})".update
       .withUniqueGeneratedKeys[Int]("id")
   }
 
   def listPatrons: ConnectionIO[List[SimpleUser]] =
     sql"SELECT id, display_name FROM users".query[SimpleUser].to[List]
 
-  def addPatrons(users: Set[Int], account: Int): ConnectionIO[Int] = {
+  def addPatrons(users: Set[Int], wallet: Int): ConnectionIO[Int] = {
     if (users.nonEmpty) {
       val insert = "INSERT INTO patrons (user, account) VALUES (?, ?)"
-      val data = users.map(_ -> account).toList
+      val data = users.map(_ -> wallet).toList
       Update[(Int, Int)](insert).updateMany(data)
     } else
       doobie.free.connection.pure(0)
   }
 
-  def removePatrons(users: Set[Int], account: Int): ConnectionIO[Int] = {
+  def removePatrons(users: Set[Int], wallet: Int): ConnectionIO[Int] = {
     if (users.nonEmpty) {
-      (fr"DELETE FROM patrons WHERE account = $account AND" ++ in(fr"user", NonEmptyList.fromListUnsafe(users.toList))).update.run
+      (fr"DELETE FROM patrons WHERE wallet = $wallet AND" ++ in(fr"user", NonEmptyList.fromListUnsafe(users.toList))).update.run
     } else
       doobie.free.connection.pure(0)
   }
 
-  def editAccount(account: AccountEdit): ConnectionIO[Int] = {
-    val permalink = cleanPermalink(account.permalink)
-    sql"UPDATE accounts SET permalink = $permalink, name = ${account.name} WHERE id = ${account.id}".update.run
+  def editWallet(wallet: WalletEdit): ConnectionIO[Int] = {
+    val permalink = cleanPermalink(wallet.permalink)
+    sql"UPDATE wallets SET permalink = $permalink, name = ${wallet.name} WHERE id = ${wallet.id}".update.run
   }
 
-  def deleteAccount(id: Int): List[ConnectionIO[Int]] = {
-    val removePatronsQuery = sql"DELETE FROM patrons WHERE account = $id".update.run
-    val deleteAccountQuery = sql"DELETE FROM accounts WHERE id = $id".update.run
-    val accountSelector = "$.perAccount"
+  def deleteWallet(id: Int): List[ConnectionIO[Int]] = {
+    val removePatronsQuery = sql"DELETE FROM patrons WHERE wallet = $id".update.run
+    val deleteWalletQuery = sql"DELETE FROM wallets WHERE id = $id".update.run
+    val walletSelector = "$.perWallet"
     val idSelector = "$.\"" + id + "\""
     val updateUsersQuery =
       sql"""UPDATE users SET
-           permissions = JSON_REPLACE(permissions, $accountSelector, JSON_REMOVE(JSON_EXTRACT(permissions, $accountSelector), $idSelector))
+           permissions = JSON_REPLACE(permissions, $walletSelector, JSON_REMOVE(JSON_EXTRACT(permissions, $walletSelector), $idSelector))
            WHERE id = $id""".update.run
-    List(removePatronsQuery, deleteAccountQuery, updateUsersQuery)
+    List(removePatronsQuery, deleteWalletQuery, updateUsersQuery)
   }
 
   private def cleanPermalink(permalink: String): String =

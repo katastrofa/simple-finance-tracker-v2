@@ -5,7 +5,7 @@ import japgolly.scalajs.react.component.ScalaFn.{Component, Unmounted}
 import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.react.DropDown
-import org.big.pete.sft.domain.{Currency, EnhancedMoneyAccount}
+import org.big.pete.sft.domain.{Currency, EnhancedAccount}
 import org.big.pete.sft.front.components.main.displayCurrency
 import org.big.pete.sft.front.helpers.ModalButtons
 
@@ -14,25 +14,25 @@ import java.time.LocalDate
 
 object DeleteForm {
   case class DeleteMoneyAccountProps(
-      accounts: List[EnhancedMoneyAccount],
-      toDelete: Option[EnhancedMoneyAccount],
-      shiftTransactionsTo: Map[String, StateSnapshot[Option[EnhancedMoneyAccount]]],
+      accounts: List[EnhancedAccount],
+      toDelete: Option[EnhancedAccount],
+      shiftTransactionsTo: Map[String, StateSnapshot[Option[EnhancedAccount]]],
       deleteMoneyAccount: Callback,
       closeDeleteModal: Callback
   )
   case class SingleShiftTransactionsProps(
-      availableAccounts: List[EnhancedMoneyAccount],
-      shift: StateSnapshot[Option[EnhancedMoneyAccount]],
+      availableAccounts: List[EnhancedAccount],
+      shift: StateSnapshot[Option[EnhancedAccount]],
       currency: Currency,
       tabIndex: Int
   )
 
   final val NoShiftMoneyAccount =
-    EnhancedMoneyAccount(-42, "Do not shift - delete", LocalDate.now(), List.empty, List.empty, None)
+    EnhancedAccount(-42, "Do not shift - delete", LocalDate.now(), List.empty, List.empty, None)
 
 
-  implicit val stringMoneyAccountMap: Reusability[Map[String, StateSnapshot[Option[EnhancedMoneyAccount]]]] =
-    Reusability.map[String, StateSnapshot[Option[EnhancedMoneyAccount]]]
+  implicit val stringMoneyAccountMap: Reusability[Map[String, StateSnapshot[Option[EnhancedAccount]]]] =
+    Reusability.map[String, StateSnapshot[Option[EnhancedAccount]]]
   implicit val deleteMoneyAccountPropsReuse: Reusability[DeleteMoneyAccountProps] =
     Reusability.caseClassExcept[DeleteMoneyAccountProps]("deleteMoneyAccount", "closeDeleteModal")
   implicit val singleShiftTransactionsPropsReuse: Reusability[SingleShiftTransactionsProps] =
@@ -68,9 +68,9 @@ object DeleteForm {
   }
 
   def apply(
-      accounts: List[EnhancedMoneyAccount],
-      toDelete: Option[EnhancedMoneyAccount],
-      shiftTransactionsTo: Map[String, StateSnapshot[Option[EnhancedMoneyAccount]]],
+      accounts: List[EnhancedAccount],
+      toDelete: Option[EnhancedAccount],
+      shiftTransactionsTo: Map[String, StateSnapshot[Option[EnhancedAccount]]],
       deleteMoneyAccount: Callback,
       closeDeleteModal: Callback
   ): Unmounted[DeleteMoneyAccountProps] =

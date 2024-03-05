@@ -4,8 +4,8 @@ import japgolly.scalajs.react.{BackendScope, Reusability}
 import japgolly.scalajs.react.callback.Callback
 import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^._
+import org.big.pete.react.DropDown
 import org.big.pete.sft.domain.Category
-import org.big.pete.sft.front.SftMain.dropDownCategoryTree
 import org.big.pete.sft.front.domain.CategoryTree
 
 
@@ -25,23 +25,18 @@ object CategorySelection {
   final class Backend($: BackendScope[Props, Unit]) {
     def render(props: Props) = {
       <.div(^.cls := "row",
-        dropDownCategoryTree.component(
-          dropDownCategoryTree.Props(
-            s"${props.idPrefix}-category",
-            props.label,
-            props.cats,
-            CategoryTree.fullName(props.categoryMap),
-            item => s"${props.idPrefix}-key-${item.id}",
-            item => props.selected.setState(Some(item)),
-            props.selected.value,
-            props.tabIndex,
-            List("col", "s12"),
-            props.onEnterHit
-          )
+        DropDown(
+          s"${props.idPrefix}-category",
+          props.label,
+          props.cats,
+          props.selected,
+          props.tabIndex,
+          List("col", "s12"),
+          props.onEnterHit
         )
       )
     }
   }
 
-  val component =
+//  val component =
 }

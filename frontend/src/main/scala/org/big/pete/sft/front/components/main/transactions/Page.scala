@@ -5,11 +5,11 @@ import japgolly.scalajs.react.extra.{EventListener, OnUnmount, StateSnapshot}
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{Callback, CtorType, ReactFormEventFromInput, Ref, Reusability, ScalaComponent}
 import org.big.pete.react.{MICheckbox, MaterialIcon}
-import org.big.pete.sft.domain.{Category, Currency, EnhancedMoneyAccount, TransactionTracking, TransactionType}
+import org.big.pete.sft.domain.{Category, Currency, EnhancedAccount, TransactionTracking, TransactionType}
 import org.big.pete.sft.front.components.main.{formatAmount, tableWrap}
 import org.big.pete.sft.front.domain.{CategoryTree, EnhancedTransaction, Order, SortingColumn, TransactionEntry}
 import org.big.pete.sft.front.helpers.PieChart
-import org.big.pete.sft.front.helpers.{AddModal, ModalButtons}
+import org.big.pete.sft.front.helpers.{FormModal, ModalButtons}
 import org.big.pete.sft.front.state.{AddTransactionSetup, CookieStorage}
 import org.big.pete.sft.front.utilz.{LegendOptions, TitleOptions}
 import org.scalajs.dom.html.Element
@@ -27,7 +27,7 @@ object Page {
       items: List[TransactionEntry],
       linearCats: List[CategoryTree],
       categories: Map[Int, Category],
-      moneyAccounts: Map[Int, EnhancedMoneyAccount],
+      moneyAccounts: Map[Int, EnhancedAccount],
       ordering: List[(SortingColumn, Order)],
       clickOrdering: SortingColumn => Callback,
       checkTransaction: (MICheckbox.Status, EnhancedTransaction) => Callback,
@@ -48,11 +48,11 @@ object Page {
       amount: BigDecimal,
       destAmount: Option[BigDecimal],
       description: String,
-      categoryId: Option[Int],
-      moneyAccountId: Option[Int],
-      destMAId: Option[Int],
-      currency: Option[String],
-      destCurrency: Option[String],
+      category: Option[CategoryTree],
+      moneyAccount: Option[EnhancedAccount],
+      destMA: Option[EnhancedAccount],
+      currency: Option[Currency],
+      destCurrency: Option[Currency],
       addNext: Boolean,
       toDelete: Set[Int],
       massEditCat: Option[Int],
@@ -68,7 +68,7 @@ object Page {
 
   class Backend($: BackendScope[Props, State]) extends Utilz with OnUnmount {
 
-    private val formRef = Ref.toScalaComponent(AddForm.component)
+    private val formRef = Ref.toScalaComponent(EditForm.component)
 
 
     private def ssChange[T](update: (T, State) => State)(opt: Option[T], fn: Callback): Callback = opt.map { value =>
@@ -87,20 +87,21 @@ object Page {
     private def descriptionChange(description: Option[String], fn: Callback): Callback =
       ssChange[String]((desc, state) => state.copy(description = desc))(description, fn)
 
-    private def categoryChange(cat: CategoryTree): Callback =
-      $.modState(_.copy(categoryId = Some(cat.id)))
+    private def categoryChange(cat: Option[CategoryTree], fn: Callback): Callback =
+      ssChange[CategoryTree]((cat, state) => state.copy(category = Some(cat)))(cat, fn)
 
-    private def maChange(ma: EnhancedMoneyAccount): Callback = $.modState { state =>
-      val newCurrency = state.currency
-        .flatMap(cur => ma.currencies.find(_.currency.id == cur))
-        .map(_.currency.id)
-      state.copy(moneyAccountId = Some(ma.id), currency = newCurrency)
-    }
+    private def accountChange(ma: Option[EnhancedAccount], fn: Callback): Callback =
+      ssChange[EnhancedAccount]((ma, state) => {
+        val newCurrency = state.currency
+          .flatMap(cur => ma.currencies.find(_.currency.id == cur.id))
+          .map(_.currency)
+        state.copy(moneyAccount = Some(ma), currency = newCurrency)
+      })(ma, fn)
 
     private def currencyChange(currency: Currency): Callback =
       $.modState(_.copy(currency = Some(currency.id)))
 
-    private def destinationMAChange(ma: EnhancedMoneyAccount): Callback = $.modState { state =>
+    private def destinationMAChange(ma: EnhancedAccount): Callback = $.modState { state =>
       val newDestCurrency = state.destCurrency
         .flatMap(cur => ma.currencies.find(_.currency.id == cur))
         .map(_.currency.id)
@@ -124,12 +125,12 @@ object Page {
       destMA = if (state.transactionType == TransactionType.Transfer) state.destMAId else None
       destCurrency = if (state.transactionType == TransactionType.Transfer) state.destCurrency else None
       _ = CookieStorage.updateAddTransactionSetup(props.account, AddTransactionSetup(
-        state.date, state.transactionType, state.categoryId, state.moneyAccountId, state.currency,
+        state.date, state.transactionType, state.category.map(_.id), state.moneyAccountId, state.currency,
         state.destMAId, state.destCurrency
       ))
       _ <- props.save(
         state.id, state.date, state.transactionType, state.amount, state.description,
-        state.categoryId.get, state.moneyAccountId.get, state.currency.get, destAmount, destMA, destCurrency
+        state.category.map(_.id).get, state.moneyAccountId.get, state.currency.get, destAmount, destMA, destCurrency
       )
       _ <- if (state.addNext) openModalAddNew else close
     } yield ()
@@ -148,7 +149,7 @@ object Page {
       state.copy(massEditCat = Some(cat.id))
     }
 
-    private def massEditMAChange(ma: EnhancedMoneyAccount): Callback = $.modState { state =>
+    private def massEditMAChange(ma: EnhancedAccount): Callback = $.modState { state =>
       state.copy(massEditMA = Some(ma.id))
     }
 
@@ -167,20 +168,23 @@ object Page {
         val setup = CookieStorage.getAddTransactionSetup(props.account)
         state.copy(
           isOpen = true, id = None, amount = BigDecimal(0), destAmount = Some(BigDecimal(0)), description = "",
-          date = setup.date, transactionType = setup.transactionType, categoryId = setup.categoryId,
+          date = setup.date, transactionType = setup.transactionType,
+          category = setup.categoryId.flatMap(id => props.linearCats.find(_.id == id)),
           moneyAccountId = setup.moneyAccountId, destMAId = setup.destMAId, currency = setup.currency,
           destCurrency = setup.destCurrency
         )
       } >> formRef.foreachCB(_.backend.focus)
     }
 
-    def openEditModal(trans: EnhancedTransaction): Callback = $.modState { state =>
-      state.copy(
-        isOpen = true, deleteIsOpen = false, massEditIsOpen = false, visibleDetails = state.visibleDetails,
-        Some(trans.id), trans.date, trans.transactionType, trans.amount, trans.destinationAmount, trans.description,
-        Some(trans.categoryId), Some(trans.moneyAccountId), trans.destinationMoneyAccountId, Some(trans.currency.id),
-        trans.destinationCurrency.map(_.id)
-      )
+    def openEditModal(trans: EnhancedTransaction): Callback = $.props.flatMap { props =>
+      $.modState { state =>
+        state.copy(
+          isOpen = true, deleteIsOpen = false, massEditIsOpen = false, visibleDetails = state.visibleDetails,
+          Some(trans.id), trans.date, trans.transactionType, trans.amount, trans.destinationAmount, trans.description,
+          props.linearCats.find(_.id == trans.categoryId), Some(trans.moneyAccountId), trans.destinationMoneyAccountId,
+          Some(trans.currency.id), trans.destinationCurrency.map(_.id)
+        )
+      }
     } >> formRef.foreachCB(_.backend.focus)
 
     private def openMassEditModal: Callback = $.modState { state =>
@@ -256,14 +260,15 @@ object Page {
       tableWrap(
         "transactions-table",
         List(
-          AddModal.component.withKey("add-transaction-modal-key").apply(AddModal.Props("add-transaction-modal"))(
-            AddForm.component.withRef(formRef)(AddForm.Props(
+          FormModal.component.withKey("add-transaction-modal-key").apply(FormModal.Props("add-transaction-modal"))(
+            EditForm.component.withRef(formRef)(EditForm.Props(
               props.linearCats, props.categories, props.moneyAccounts, state.id,
               StateSnapshot.withReuse.prepare(dateChange).apply(state.date),
               StateSnapshot.withReuse.prepare(ttChange).apply(state.transactionType),
               StateSnapshot.withReuse.prepare(amountChange).apply(state.amount),
               StateSnapshot.withReuse.prepare(destinationAmountChange).apply(state.destAmount.getOrElse(BigDecimal(0))),
               StateSnapshot.withReuse.prepare(descriptionChange).apply(state.description),
+              StateSnapshot.withReuse.prepare(categoryChange).apply(state.categoryId.flatMap(id => props.categories.get(id))),
               state.categoryId,
               state.moneyAccountId, state.destMAId, state.currency, state.destCurrency, state.addNext,
               dateChange, ttChange, amountChange, descriptionChange, categoryChange, maChange, currencyChange,
@@ -272,11 +277,11 @@ object Page {
             ))
           ).when(state.isOpen),
 
-          AddModal.component.withKey("delete-transaction-modal-key").apply(AddModal.Props("delete-transaction-modal")) {
+          FormModal.component.withKey("delete-transaction-modal-key").apply(FormModal.Props("delete-transaction-modal")) {
             ModalButtons("Delete", 450, deleteTransaction(), closeDelete)
           }.when(state.deleteIsOpen),
 
-          AddModal.component.withKey("mass-edit-transaction-modal-key").apply(AddModal.Props("mass-edit-transactions-modal")) {
+          FormModal.component.withKey("mass-edit-transaction-modal-key").apply(FormModal.Props("mass-edit-transactions-modal")) {
             MassEditModal.component(MassEditModal.Props(
               props.transactions.filter(t => props.checkedTransactions.contains(t.id)),
               props.linearCats, props.moneyAccounts, state.massEditCat, state.massEditMA,

@@ -3,7 +3,7 @@ package org.big.pete.sft.front.state
 import io.circe.{Decoder, Encoder}
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 import japgolly.scalajs.react.extra.router.RouterCtl
-import org.big.pete.sft.domain.{Category, Currency, EnhancedMoneyAccount, FullAccount, SimpleUser, Transaction, TransactionTracking, TransactionType}
+import org.big.pete.sft.domain.{Category, Currency, EnhancedAccount, FullWallet, SimpleUser, Transaction, TransactionTracking, TransactionType}
 import org.big.pete.sft.front.SftMain.SftPages
 import org.big.pete.sft.front.components.header.SidenavFilters.FiltersOpen
 import org.big.pete.sft.front.domain.{CategoryTree, EnhancedTransaction, Order, SortingColumn}
@@ -33,10 +33,10 @@ case class State(
 
     me: SimpleUser,
     availablePatrons: List[SimpleUser],
-    accounts: List[FullAccount],
+    accounts: List[FullWallet],
     currencies: Map[String, Currency],
     categories: Map[Int, Category],
-    moneyAccounts: Map[Int, EnhancedMoneyAccount],
+    moneyAccounts: Map[Int, EnhancedAccount],
     transactions: List[Transaction],
 
     categoryTree: List[CategoryTree],

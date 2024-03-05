@@ -7,8 +7,8 @@ import japgolly.scalajs.react.extra.Ajax
 import japgolly.scalajs.react.extra.internal.AjaxException
 import org.big.pete.BPJson
 import org.big.pete.react.MICheckbox
-import org.big.pete.sft.domain.{Category, Currency, EnhancedMoneyAccount, Transaction, TransactionTracking, TransactionType}
-import org.big.pete.sft.front.domain.{EnhancedTransaction, MAUpdateAction, MAUpdateOperation, Order, SortingColumn}
+import org.big.pete.sft.domain.{Category, Currency, EnhancedAccount, Transaction, TransactionTracking, TransactionType}
+import org.big.pete.sft.front.domain.{EnhancedTransaction, AccountUpdateAction, AccountUpdateOperation, Order, SortingColumn}
 import org.big.pete.sft.front.utilz.TransactionsOrdering
 
 import java.time.LocalDate
@@ -64,7 +64,7 @@ trait Base {
       state: State,
       transactions: Option[List[Transaction]] = None,
       categories: Option[Map[Int, Category]] = None,
-      moneyAccounts: Option[Map[Int, EnhancedMoneyAccount]] = None,
+      moneyAccounts: Option[Map[Int, EnhancedAccount]] = None,
       transactionTypeActiveFilters: Option[Set[TransactionType]] = None,
       trackingActiveFilters: Option[Set[TransactionTracking]] = None,
       contentFilter: Option[String] = None,
@@ -76,8 +76,8 @@ trait Base {
     transactions.getOrElse(state.transactions)
       .filterNonEmpty(transactionTypeActiveFilters.getOrElse(state.transactionTypeActiveFilters), _.transactionType)
       .filterNonEmpty(trackingActiveFilters.getOrElse(state.trackingActiveFilters), _.tracking)
-      .filterNonEmpty(categoriesActiveFilters.getOrElse(state.categoriesActiveFilters), _.categoryId)
-      .filterNonEmpty(moneyAccountsActiveFilters.getOrElse(state.moneyAccountsActiveFilters), _.moneyAccount)
+      .filterNonEmpty(categoriesActiveFilters.getOrElse(state.categoriesActiveFilters), _.category)
+      .filterNonEmpty(moneyAccountsActiveFilters.getOrElse(state.moneyAccountsActiveFilters), _.account)
       .filter(filterContent(contentFilter.getOrElse(state.contentFilter)))
       .map(EnhancedTransaction.enhance(
         categories.getOrElse(state.categories),
@@ -106,23 +106,23 @@ trait Base {
       trans: Transaction,
       from: LocalDate,
       to: LocalDate,
-      mas: Map[Int, EnhancedMoneyAccount],
-      action: MAUpdateAction
-  ): Map[Int, EnhancedMoneyAccount] = {
+      mas: Map[Int, EnhancedAccount],
+      action: AccountUpdateAction
+  ): Map[Int, EnhancedAccount] = {
     if (trans.date.isBefore(to.asInstanceOf[ChronoLocalDate])) {
       trans.transactionType match {
         case TransactionType.Income =>
-          mas + (trans.moneyAccount -> updateMoneyAccount(mas(trans.moneyAccount), action, MAUpdateOperation.Add, trans, from))
+          mas + (trans.account -> updateMoneyAccount(mas(trans.account), action, AccountUpdateOperation.Add, trans, from))
         case TransactionType.Expense =>
-          mas + (trans.moneyAccount -> updateMoneyAccount(
-            mas(trans.moneyAccount), action, MAUpdateOperation.Remove, trans, from
+          mas + (trans.account -> updateMoneyAccount(
+            mas(trans.account), action, AccountUpdateOperation.Remove, trans, from
           ))
         case TransactionType.Transfer =>
-          val updated = mas + (trans.moneyAccount -> updateMoneyAccount(
-            mas(trans.moneyAccount), action, MAUpdateOperation.Remove, trans, from
+          val updated = mas + (trans.account -> updateMoneyAccount(
+            mas(trans.account), action, AccountUpdateOperation.Remove, trans, from
           ))
-          updated + (trans.destinationMoneyAccountId.get -> updateMoneyAccount(
-            mas(trans.destinationMoneyAccountId.get), action, MAUpdateOperation.Add, trans, from
+          updated + (trans.destinationAccount.get -> updateMoneyAccount(
+            mas(trans.destinationAccount.get), action, AccountUpdateOperation.Add, trans, from
           ))
       }
     } else
@@ -130,12 +130,12 @@ trait Base {
   }
 
   private def updateMoneyAccount(
-      ma: EnhancedMoneyAccount,
-      action: MAUpdateAction,
-      op: MAUpdateOperation,
+      ma: EnhancedAccount,
+      action: AccountUpdateAction,
+      op: AccountUpdateOperation,
       trans: Transaction,
       from: LocalDate
-  ): EnhancedMoneyAccount = {
+  ): EnhancedAccount = {
     val realOp = MAOperations(action)(op)
     if (trans.date.isAfter(from.asInstanceOf[ChronoLocalDate])) {
       val newStatus = ma.status.filter(_.currency.id != trans.currency) ++

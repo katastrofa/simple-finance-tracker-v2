@@ -8,9 +8,9 @@ import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{Callback, CtorType, ScalaComponent}
 import monocle.Lens
 import org.big.pete.react.MaterialIcon
-import org.big.pete.sft.domain.{Currency, EnhancedMoneyAccount, MoneyAccountCurrency, ShiftStrategyPerCurrency}
+import org.big.pete.sft.domain.{Currency, EnhancedAccount, AccountCurrency, ShiftStrategyPerCurrency}
 import org.big.pete.sft.front.components.main.tableWrap
-import org.big.pete.sft.front.helpers.AddModal
+import org.big.pete.sft.front.helpers.FormModal
 import org.scalajs.dom.html.Element
 
 import java.time.LocalDate
@@ -20,15 +20,15 @@ object Page {
   import org.big.pete.sft.front.domain.Implicits._
 
   case class Props(
-      accounts: List[EnhancedMoneyAccount],
+      accounts: List[EnhancedAccount],
       currencies: Map[String, Currency],
-      save: (Option[Int], String, LocalDate, List[MoneyAccountCurrency]) => Callback,
+      save: (Option[Int], String, LocalDate, List[AccountCurrency]) => Callback,
       delete: (Int, List[ShiftStrategyPerCurrency]) => Callback
   )
 
   case class CurrencyAmount(currency: Option[Currency], amount: BigDecimal) {
-    def toDbObj(maId: Option[Int]): MoneyAccountCurrency =
-      MoneyAccountCurrency(0, maId.getOrElse(0), currency.map(_.id).get, amount)
+    def toDbObj(maId: Option[Int]): AccountCurrency =
+      AccountCurrency(0, maId.getOrElse(0), currency.map(_.id).get, amount)
   }
   object CurrencyAmount {
     val currency: Lens[CurrencyAmount, Option[Currency]] =
@@ -44,7 +44,7 @@ object Page {
       name: String,
       created: LocalDate,
       currencyAmounts: Map[Int, CurrencyAmount],
-      shiftTransactions: Map[String, Option[EnhancedMoneyAccount]],
+      shiftTransactions: Map[String, Option[EnhancedAccount]],
       toDelete: Option[Int]
   )
 
@@ -106,7 +106,7 @@ object Page {
     }
 
 
-    def changeShiftTransactions(currency: String)(emaOpt: Option[Option[EnhancedMoneyAccount]], fn: Callback): Callback = emaOpt.map { ema =>
+    def changeShiftTransactions(currency: String)(emaOpt: Option[Option[EnhancedAccount]], fn: Callback): Callback = emaOpt.map { ema =>
       $.modState { state =>
         val realEma = if (ema.isDefined && ema.get.id == DeleteForm.NoShiftMoneyAccount.id) None else ema
         state.copy(shiftTransactions = state.shiftTransactions + (currency -> realEma))
@@ -133,7 +133,7 @@ object Page {
       isOpen = true, deleteIsOpen = false, None, "", LocalDate.now(), Map(1 -> initialCurrencyAmount), Map.empty, None
     ))
 
-    def openEditModal(account: EnhancedMoneyAccount): Callback = $.modState { state =>
+    def openEditModal(account: EnhancedAccount): Callback = $.modState { state =>
       state.copy(
         isOpen = true, deleteIsOpen = false, Some(account.id), account.name, account.created,
         account.currencies.map(cur => cur.id -> CurrencyAmount(Some(cur.currency), cur.startAmount)).toMap,
@@ -141,7 +141,7 @@ object Page {
       )
     }
 
-    def openDeleteModal(account: EnhancedMoneyAccount): Callback = $.modState { state =>
+    def openDeleteModal(account: EnhancedAccount): Callback = $.modState { state =>
       val newShift = account.currencies.map(_.currency.id -> Some(DeleteForm.NoShiftMoneyAccount)).toMap
       state.copy(deleteIsOpen = true, shiftTransactions = newShift, toDelete = Some(account.id))
     }
@@ -173,13 +173,13 @@ object Page {
       tableWrap(
         "money-accounts-table",
         List(
-          AddModal.component(AddModal.Props("add-money-account-modal")) {
+          FormModal.component(FormModal.Props("add-money-account-modal")) {
             EditForm(
               props.currencies, state.id, nameSnap(state.name), createdSnap(state.created), currencyAmounts,
               addCurrency(), removeCurrency, saveModal, closeModal
             )
           }.when(state.isOpen),
-          AddModal.component(AddModal.Props("delete-money-account-modal")) {
+          FormModal.component(FormModal.Props("delete-money-account-modal")) {
             DeleteForm(
               props.accounts, state.toDelete.flatMap(id => props.accounts.find(_.id == id)), shiftTransactions,
               deleteMoneyAccount(), closeDeleteModal

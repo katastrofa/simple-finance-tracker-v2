@@ -8,9 +8,9 @@ import japgolly.scalajs.react.vdom.html_<^
 import japgolly.scalajs.react.{Callback, CtorType, ReactFormEventFromInput, Reusability, ScalaComponent, ScalaFnComponent}
 import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.react.{MaterialIcon, TextInput}
-import org.big.pete.sft.domain.{FullAccount, SimpleUser}
+import org.big.pete.sft.domain.{FullWallet, SimpleUser}
 import org.big.pete.sft.front.SftMain.{AccountsSelectionPage, SftPages, TransactionsPage, dropDownPatron}
-import org.big.pete.sft.front.helpers.{AddModal, ModalButtons}
+import org.big.pete.sft.front.helpers.{FormModal, ModalButtons}
 import org.big.pete.sft.front.utilz
 import org.scalajs.dom.html.Element
 
@@ -21,7 +21,7 @@ object Accounts {
   case class Props(
       me: SimpleUser,
       patrons: List[SimpleUser],
-      accounts: List[FullAccount],
+      accounts: List[FullWallet],
       activePage: SftPages,
       router: RouterCtl[SftPages],
       onPageChange: (SftPages, Option[SftPages]) => Callback,
@@ -38,7 +38,7 @@ object Accounts {
       activePage: SftPages,
       router: RouterCtl[SftPages],
       onPageChange: (SftPages, Option[SftPages]) => Callback,
-      openEditModal: FullAccount => Callback
+      openEditModal: FullWallet => Callback
   )
 
   case class FormProps(
@@ -118,7 +118,7 @@ object Accounts {
     def openAddNew: Callback =
       $.modState(_.copy(isEditModalOpen = true, None, "", "", Map.empty))
 
-    def openEditModal(account: FullAccount): Callback = $.props.flatMap { props =>
+    def openEditModal(account: FullWallet): Callback = $.props.flatMap { props =>
       $.modState(_.copy(
         isEditModalOpen = true,
         Some(account.id),
@@ -136,7 +136,7 @@ object Accounts {
 
       tableWrap(
         "accounts-table",
-        AddModal.component(AddModal.Props("add-account-modal"))(
+        FormModal.component(FormModal.Props("add-account-modal"))(
           addModal.apply(FormProps(
             state.id, state.name, state.permalink,
             props.me, props.patrons, state.patrons,
@@ -171,7 +171,7 @@ object Accounts {
     )
   }
 
-  private val accountComponent: Component[(FullAccount, AccountProps), CtorType.Props] = ScalaFnComponent.withReuse[(FullAccount, AccountProps)] { case (account, props) =>
+  private val accountComponent: Component[(FullWallet, AccountProps), CtorType.Props] = ScalaFnComponent.withReuse[(FullWallet, AccountProps)] { case (account, props) =>
     <.tr(
       <.td(^.cls := "hide-on-small-only id right-align", account.id.toString),
       <.td(^.cls := "name",

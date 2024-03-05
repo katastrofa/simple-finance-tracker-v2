@@ -6,7 +6,7 @@ import japgolly.scalajs.react.{Callback, CtorType, ReactFormEventFromInput, Ref,
 import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.datepicker.ReactDatePicker
 import org.big.pete.react.{DropDown, HasFocus, TextInput, WithFocus}
-import org.big.pete.sft.domain.{Category, Currency, EnhancedMoneyAccount, TransactionType}
+import org.big.pete.sft.domain.{Category, Currency, EnhancedAccount, TransactionType}
 import org.big.pete.sft.front.domain.CategoryTree
 import org.big.pete.sft.front.helpers.{ModalButtons, MoneyTextBox, SimpleCheckbox}
 import org.scalajs.dom.html.Form
@@ -14,14 +14,14 @@ import org.scalajs.dom.html.Form
 import java.time.LocalDate
 
 
-object AddForm {
-  import org.big.pete.react.Implicits.bigDecimalReuse
+object EditForm {
+  import org.big.pete.react.Implicits._
   import org.big.pete.sft.front.domain.Implicits._
 
   case class Props(
       linearCats: List[CategoryTree],
       categories: Map[Int, Category],
-      moneyAccounts: Map[Int, EnhancedMoneyAccount],
+      moneyAccounts: Map[Int, EnhancedAccount],
       id: Option[Int],
       date: StateSnapshot[LocalDate],
       transactionType: StateSnapshot[Option[TransactionType]],
@@ -29,24 +29,16 @@ object AddForm {
       destAmount: StateSnapshot[BigDecimal],
       description: StateSnapshot[String],
       category: StateSnapshot[Option[CategoryTree]],
-      moneyAccount: StateSnapshot[Option[EnhancedMoneyAccount]],
-      destMoneyAccount: StateSnapshot[Option[EnhancedMoneyAccount]],
+      moneyAccount: StateSnapshot[Option[EnhancedAccount]],
+      destMoneyAccount: StateSnapshot[Option[EnhancedAccount]],
       currency: StateSnapshot[Option[Currency]],
       destCurrency: StateSnapshot[Option[Currency]],
       addNext: StateSnapshot[Boolean],
-      currencyChange: Currency => Callback,
-      destinationMAChange: EnhancedMoneyAccount => Callback,
-      destinationAmountChange: BigDecimal => Callback,
-      destinationCurrencyChange: Currency => Callback,
-      addNextChange: ReactFormEventFromInput => Callback,
       save: Callback,
       close: Callback
   )
 
-  implicit val formPropsReuse: Reusability[Props] = Reusability.caseClassExcept[Props](
-    "dateChange", "ttChange", "amountChange", "descriptionChange", "categoryChange", "maChange", "currencyChange",
-    "destinationMAChange", "destinationAmountChange", "destinationCurrencyChange", "addNextChange", "save", "close"
-  )
+  implicit val formPropsReuse: Reusability[Props] = Reusability.caseClassExcept[Props]("save", "close")
 
   class Backend extends WithFocus[ReactDatePicker.Props, ReactDatePicker.State, ReactDatePicker.Backend] {
     private val refType = Ref.toScalaComponent(DropDown.component)

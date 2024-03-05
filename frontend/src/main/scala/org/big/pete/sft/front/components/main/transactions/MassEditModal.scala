@@ -6,7 +6,7 @@ import japgolly.scalajs.react.{Callback, CtorType, Reusability, ScalaComponent}
 import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.react.DropDown
 import org.big.pete.react.WithFocus
-import org.big.pete.sft.domain.EnhancedMoneyAccount
+import org.big.pete.sft.domain.EnhancedAccount
 import org.big.pete.sft.front.domain.{CategoryTree, EnhancedTransaction}
 import org.big.pete.sft.front.helpers.ModalButtons
 import org.scalajs.dom.html.Form
@@ -20,19 +20,17 @@ object MassEditModal {
   case class Props(
       selectedTransactions: List[EnhancedTransaction],
       linearCats: List[CategoryTree],
-      moneyAccounts: Map[Int, EnhancedMoneyAccount],
+      moneyAccounts: Map[Int, EnhancedAccount],
       selectedCat: StateSnapshot[Option[CategoryTree]],
-      selectedMA: StateSnapshot[Option[EnhancedMoneyAccount]],
+      selectedMA: StateSnapshot[Option[EnhancedAccount]],
       confirm: Callback,
       close: Callback
   )
 
-  implicit val propsReuse: Reusability[Props] = Reusability.caseClassExcept[Props](
-    "massEditCatChange", "massEditMAChange", "confirm", "close"
-  )
+  implicit val propsReuse: Reusability[Props] = Reusability.caseClassExcept[Props]("confirm", "close")
 
   final private val LeaveAsIsCat = CategoryTree(-1, "Leave as is", None, "Leave as is", 0, None, List.empty)
-  final private val LeaveAsIsMa = EnhancedMoneyAccount(-1, "Leave as is", LocalDate.now(), List.empty, List.empty, None)
+  final private val LeaveAsIsMa = EnhancedAccount(-1, "Leave as is", LocalDate.now(), List.empty, List.empty, None)
 
   class Backend extends WithFocus[DropDown.Props, DropDown.State, DropDown.Backend] {
     def render(props: Props): VdomTagOf[Form] = {

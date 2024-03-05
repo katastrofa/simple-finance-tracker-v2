@@ -9,9 +9,9 @@ import cats.implicits._
 import doobie.util.transactor.Transactor
 import io.circe.syntax.EncoderOps
 import org.big.pete.cache.FullRefreshBpCache
-import org.big.pete.sft.db.dao.{MoneyAccounts => DBMA, Transactions => DBT}
+import org.big.pete.sft.db.dao.{Accounts => DBMA, Transactions => DBT}
 import org.big.pete.sft.db.domain.Balance
-import org.big.pete.sft.domain.{Currency, CurrencyAndStatus, EnhancedMoneyAccount, ExpandedMoneyAccountCurrency, MoneyAccount, MoneyAccountWithCurrency, ShiftStrategyPerCurrency, TransactionType}
+import org.big.pete.sft.domain.{Currency, CurrencyAndStatus, EnhancedAccount, ExpandedAccountCurrency, Account, AccountWithCurrency, ShiftStrategyPerCurrency, TransactionType}
 import org.big.pete.sft.domain.Implicits._
 import org.http4s.Response
 import org.http4s.dsl.Http4sDsl
@@ -28,7 +28,7 @@ class MoneyAccounts[F[_]: Async: Parallel](
   import dsl._
 
   private def calculateBalances(
-      mas: List[(Int, MoneyAccountWithCurrency)],
+      mas: List[(Int, AccountWithCurrency)],
       start: LocalDate,
       end: LocalDate,
       balances: List[Balance]
@@ -38,7 +38,7 @@ class MoneyAccounts[F[_]: Async: Parallel](
 
     balances.foreach { balance =>
       val date = if (balance.date.isBefore(start)) start else end
-      val primaryKey = (balance.moneyAccount, balance.currency, date)
+      val primaryKey = (balance.account, balance.currency, date)
 
       balance.transactionType match {
         case TransactionType.Income =>
@@ -46,7 +46,7 @@ class MoneyAccounts[F[_]: Async: Parallel](
         case TransactionType.Expense =>
           calculatedBalances(primaryKey) = calculatedBalances(primaryKey) - balance.amount
         case TransactionType.Transfer =>
-          val otherKey = (balance.destinationMoneyAccountId.get, balance.destinationCurrency.get, date)
+          val otherKey = (balance.destinationAccountId.get, balance.destinationCurrency.get, date)
           if (calculatedBalances.contains(primaryKey))
             calculatedBalances(primaryKey) = calculatedBalances(primaryKey) - balance.amount
           if (calculatedBalances.contains(otherKey))
@@ -59,12 +59,12 @@ class MoneyAccounts[F[_]: Async: Parallel](
 
   private def enhanceMoneyAccount(
       calculatedBalances: Map[(Int, String, LocalDate), BigDecimal],
-      expandedCurrencies: Map[Int, List[ExpandedMoneyAccountCurrency]],
+      expandedCurrencies: Map[Int, List[ExpandedAccountCurrency]],
       start: LocalDate,
       end: LocalDate
   )(
-      ma: MoneyAccountWithCurrency
-  ): EnhancedMoneyAccount = {
+      ma: AccountWithCurrency
+  ): EnhancedAccount = {
     val currenciesData = expandedCurrencies(ma.id).map { currency =>
       CurrencyAndStatus(
         currency.currency,
@@ -74,10 +74,10 @@ class MoneyAccounts[F[_]: Async: Parallel](
       )
     }
 
-    EnhancedMoneyAccount(ma.id, ma.name, ma.created, expandedCurrencies(ma.id), currenciesData, ma.owner)
+    EnhancedAccount(ma.id, ma.name, ma.created, expandedCurrencies(ma.id), currenciesData, ma.owner)
   }
 
-  private def enhanceMoneyAccounts(mas: List[MoneyAccountWithCurrency], start: LocalDate, end: LocalDate): F[List[EnhancedMoneyAccount]] = {
+  private def enhanceMoneyAccounts(mas: List[AccountWithCurrency], start: LocalDate, end: LocalDate): F[List[EnhancedAccount]] = {
     for {
       currencies <- currencyCache.getValues
       balances <- NonEmptyList.fromList(mas.map(_.id).distinct).map { ids =>
@@ -95,25 +95,25 @@ class MoneyAccounts[F[_]: Async: Parallel](
 
   def listExtendedMoneyAccounts(accountId: Int, start: LocalDate, end: LocalDate): F[Response[F]] = {
     for {
-      mas <- DBMA.listMoneyAccounts(accountId).transact(transactor)
+      mas <- DBMA.listAccounts(accountId).transact(transactor)
       enhanced <- enhanceMoneyAccounts(mas, start, end)
       response <- Ok(enhanced.asJson)
     } yield response
   }
 
-  def addMoneyAccount(ma: MoneyAccount, start: LocalDate, end: LocalDate): F[Response[F]] = {
+  def addMoneyAccount(ma: Account, start: LocalDate, end: LocalDate): F[Response[F]] = {
     for {
-      newId <- DBMA.addMoneyAccount(ma).transact(transactor)
-      _ <- DBMA.addCurrencies(ma.currencies.map(_.copy(moneyAccount = newId))).transact(transactor)
-      newMoneyAccount <- DBMA.getMoneyAccount(newId).transact(transactor)
+      newId <- DBMA.addAccount(ma).transact(transactor)
+      _ <- DBMA.addCurrencies(ma.currencies.map(_.copy(account = newId))).transact(transactor)
+      newMoneyAccount <- DBMA.getAccount(newId).transact(transactor)
       enhanced <- enhanceMoneyAccounts(newMoneyAccount, start, end)
       response <- Ok(enhanced.head.asJson)
     } yield response
   }
 
-  def editMoneyAccount(ma: MoneyAccount, start: LocalDate, end: LocalDate): F[Response[F]] = {
+  def editMoneyAccount(ma: Account, start: LocalDate, end: LocalDate): F[Response[F]] = {
     for {
-      (_, existingCurrencies) <- (DBMA.editMoneyAccount(ma).transact(transactor), DBMA.listCurrenciesForMoneyAccount(ma.id).transact(transactor)).parTupled
+      (_, existingCurrencies) <- (DBMA.editAccount(ma).transact(transactor), DBMA.listCurrenciesForAccount(ma.id).transact(transactor)).parTupled
 
       mapped = existingCurrencies.map(cur => cur.currency -> cur).toMap
       newMapped = ma.currencies.map(cur => cur.currency -> cur).toMap
@@ -127,7 +127,7 @@ class MoneyAccounts[F[_]: Async: Parallel](
         toEdit.map(cur => DBMA.updateStartAmount(cur.id, cur.startAmount).transact(transactor)).parSequence
       ).parTupled
 
-      newMa <- DBMA.getMoneyAccount(ma.id).transact(transactor)
+      newMa <- DBMA.getAccount(ma.id).transact(transactor)
       enhanced <- enhanceMoneyAccounts(newMa, start, end)
       response <- Ok(enhanced.head.asJson)
     } yield response
@@ -136,9 +136,9 @@ class MoneyAccounts[F[_]: Async: Parallel](
   def deleteMoneyAccount(id: Int, shiftStrategies: List[ShiftStrategyPerCurrency]): F[Response[F]] = {
     for {
       _ <- shiftStrategies.flatMap { strategy =>
-        DBT.changeMoneyAccount(strategy.currency, id, strategy.newId)
+        DBT.changeAccount(strategy.currency, id, strategy.newId)
       }.map(_.transact(transactor)).parSequence
-      _ <- DBMA.deleteMoneyAccount(id).transact(transactor)
+      _ <- DBMA.deleteAccount(id).transact(transactor)
       response <- Ok("")
     } yield response
   }

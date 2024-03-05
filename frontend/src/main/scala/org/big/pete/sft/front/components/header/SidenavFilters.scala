@@ -8,7 +8,7 @@ import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.react.{MICheckbox, MaterialIcon, TextInput}
 import org.big.pete.react.MICheckbox.Status
-import org.big.pete.sft.domain.{EnhancedMoneyAccount, TransactionTracking, TransactionType}
+import org.big.pete.sft.domain.{EnhancedAccount, TransactionTracking, TransactionType}
 import org.big.pete.sft.front.domain.CategoryTree
 
 
@@ -37,7 +37,7 @@ object SidenavFilters {
   case class MoneyAccountProps(
       moneyAccountsActiveFilters: Set[Int],
       onMoneyAccountFilterChange: Int => (Option[Status], Callback) => Callback,
-      moneyAccounts: List[EnhancedMoneyAccount]
+      moneyAccounts: List[EnhancedAccount]
   )
 
   sealed trait FiltersOpen
@@ -170,7 +170,7 @@ object SidenavFilters {
     ScalaComponent.builder[(FiltersOpen => Callback, MoneyAccountProps)]
       .stateless
       .render_P { case (onOpenFilter, props) =>
-        def expandMoneyAccount(ma: EnhancedMoneyAccount) = {
+        def expandMoneyAccount(ma: EnhancedAccount) = {
           val status = Status.fromBoolean(props.moneyAccountsActiveFilters.contains(ma.id))
           MICheckbox.li.withKey(s"maf-${ma.id}")(MICheckbox.Props(
             ma.id.toString,

@@ -9,7 +9,7 @@ import com.comcast.ip4s.{Host, Hostname, Port}
 import fs2.Stream
 import fs2.io.net.tls.TLSContext
 import org.big.pete.cache.BpCache
-import org.big.pete.sft.domain.{AccountEdit, AddAccount, ApiAction, Category, CategoryDeleteStrategies, DeleteTransactions, FullAccount, MassEditTransactions, MoneyAccount, MoneyAccountDeleteStrategy, TrackingEdit, Transaction}
+import org.big.pete.sft.domain.{WalletEdit, AddWallet, ApiAction, Category, CategoryDeleteStrategies, DeleteTransactions, FullWallet, MassEditTransactions, Account, AccountDeleteStrategy, TrackingEdit, Transaction}
 import org.big.pete.sft.domain.Implicits._
 import org.big.pete.sft.server.api.{Categories, General, MoneyAccounts, Transactions}
 import org.big.pete.sft.server.auth.AuthHelper
@@ -31,7 +31,7 @@ import java.time.format.DateTimeFormatter
 
 
 class SftV2Server[F[_]: Async](
-    accountsCache: BpCache[F, String, FullAccount],
+    accountsCache: BpCache[F, String, FullWallet],
     authHelper: AuthHelper[F],
     accessHelper: AccessHelper[F],
     generalApi: General[F],
@@ -111,24 +111,24 @@ class SftV2Server[F[_]: Async](
       accessHelper.verifyAccess(ApiAction.Basic, user)(generalApi.listPatrons)
 
     case GET -> Root / "api" / "accounts" as user =>
-      accessHelper.verifyAccess(ApiAction.Basic, user)(generalApi.listAccounts(user))
+      accessHelper.verifyAccess(ApiAction.Basic, user)(generalApi.listWallets(user))
     case request @ PUT -> Root / "api" / "accounts" as user =>
       for {
-        account <- request.req.as[AddAccount]
+        account <- request.req.as[AddWallet]
           .map(_.copy(owner = Some(user.db.id)))
-        response <- accessHelper.verifyAccess(ApiAction.ModifyOwnAccount, user)(generalApi.addAccount(user, account))
+        response <- accessHelper.verifyAccess(ApiAction.ModifyOwnWallet, user)(generalApi.addAccount(user, account))
       } yield response
     case request @ POST -> Root / "api" / "accounts" as user =>
       for {
-        accountEdit <- request.req.as[AccountEdit]
+        accountEdit <- request.req.as[WalletEdit]
         owner <- accountsCache.get(accountEdit.oldPermalink).map(_.get.owner)
-        apiAction = if (owner.contains(user.db.id)) ApiAction.ModifyOwnAccount else ApiAction.ModifyAccount
+        apiAction = if (owner.contains(user.db.id)) ApiAction.ModifyOwnWallet else ApiAction.ModifyWallet
         response <- accessHelper.verifyAccess(apiAction, user)(generalApi.editAccount(accountEdit))
       } yield response
     case DELETE -> Root / "api" / "accounts" / permalink as user =>
       for {
         account <- accountsCache.get(permalink).map(_.get)
-        apiAction = if (account.owner.contains(user.db.id)) ApiAction.DeleteOwnAccount else ApiAction.DeleteAccount
+        apiAction = if (account.owner.contains(user.db.id)) ApiAction.DeleteOwnWallet else ApiAction.DeleteWallet
         response <- accessHelper.verifyAccess(apiAction, user)(generalApi.deleteAccount(account.id, permalink))
       } yield response
 
@@ -141,7 +141,7 @@ class SftV2Server[F[_]: Async](
       for {
         account <- accountsCache.get(permalink).map(_.get)
         cat <- request.req.as[Category]
-          .map(_.copy(owner = Some(user.db.id), accountId = account.id))
+          .map(_.copy(owner = Some(user.db.id), wallet = account.id))
         response <- accessHelper.verifyAccess(permalink, ApiAction.ModifyOwnCategory, user)(categoriesApi.addCategory(cat))
       } yield response
     case request @ POST -> Root / "api" / permalink / "categories" as user =>
@@ -170,25 +170,25 @@ class SftV2Server[F[_]: Async](
     case request @ PUT -> Root / "api" / permalink / "money-accounts" :? StartDateParamMatcher(start) +& EndDateParamMatcher(end) as user =>
       for {
         account <- accountsCache.get(permalink).map(_.get)
-        ma <- request.req.as[MoneyAccount]
-          .map(_.copy(owner = Some(user.db.id), accountId = account.id))
-        response <- accessHelper.verifyAccess(permalink, ApiAction.ModifyOwnMoneyAccount, user)(
+        ma <- request.req.as[Account]
+          .map(_.copy(owner = Some(user.db.id), wallet = account.id))
+        response <- accessHelper.verifyAccess(permalink, ApiAction.ModifyOwnAccount, user)(
           moneyAccountsApi.addMoneyAccount(ma, start, end)
         )
       } yield response
     case request @ POST -> Root / "api" / permalink / "money-accounts" :? StartDateParamMatcher(start) +& EndDateParamMatcher(end) as user =>
       for {
         account <- accountsCache.get(permalink).map(_.get)
-        ma <- request.req.as[MoneyAccount].map(_.copy(accountId = account.id))
-        apiAction = if (ma.owner.contains(user.db.id)) ApiAction.ModifyOwnMoneyAccount else ApiAction.ModifyMoneyAccount
+        ma <- request.req.as[Account].map(_.copy(wallet = account.id))
+        apiAction = if (ma.owner.contains(user.db.id)) ApiAction.ModifyOwnAccount else ApiAction.ModifyAccount
         response <- accessHelper.verifyAccess(permalink, apiAction, user)(
           moneyAccountsApi.editMoneyAccount(ma, start, end)
         )
       } yield response
     case request @ DELETE -> Root / "api" / permalink / "money-accounts" / IntVar(maId) as user =>
       for {
-        strategy <- request.req.as[MoneyAccountDeleteStrategy]
-        response <- accessHelper.verifyAccess(permalink, ApiAction.DeleteMoneyAccount, user) {
+        strategy <- request.req.as[AccountDeleteStrategy]
+        response <- accessHelper.verifyAccess(permalink, ApiAction.DeleteAccount, user) {
           moneyAccountsApi.deleteMoneyAccount(maId, strategy.shiftTransactions)
         }
       } yield response
@@ -212,7 +212,7 @@ class SftV2Server[F[_]: Async](
       for {
         massEditData <- request.req.as[MassEditTransactions]
           response <- accessHelper.verifyAccess(permalink, ApiAction.ModifyOwnTransactions, user)(
-            transactionsApi.massEditTransactions(massEditData.ids, massEditData.changeCat, massEditData.changeMoneyAccount)
+            transactionsApi.massEditTransactions(massEditData.ids, massEditData.changeCat, massEditData.changeAccount)
           )
       } yield response
     case request @ POST -> Root / "api" / permalink / "transactions" as user =>

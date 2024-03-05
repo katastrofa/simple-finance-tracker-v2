@@ -5,7 +5,7 @@ import cats.syntax.{FlatMapSyntax, FunctorSyntax}
 import doobie.util.transactor.Transactor
 import io.circe.syntax.EncoderOps
 import org.big.pete.cache.BpCache
-import org.big.pete.sft.domain.{ApiAction, FullAccount, NotAllowedResponse}
+import org.big.pete.sft.domain.{ApiAction, FullWallet, NotAllowedResponse}
 import org.big.pete.sft.domain.Implicits._
 import org.big.pete.sft.server.auth.domain.AuthUser
 import org.http4s.Response
@@ -14,7 +14,7 @@ import org.http4s.dsl.Http4sDsl
 
 
 class AccessHelper[F[_]: Monad](
-    accountsCache: BpCache[F, String, FullAccount],
+    accountsCache: BpCache[F, String, FullWallet],
     dsl: Http4sDsl[F],
     implicit val transactor: Transactor[F]
 ) extends FunctorSyntax
@@ -33,7 +33,7 @@ class AccessHelper[F[_]: Monad](
 
   def verifyAccess(permalink: String, apiAction: ApiAction, authUser: AuthUser)(response: => F[Response[F]]): F[Response[F]] = {
     accountsCache.get(permalink).flatMap {
-      case Some(account) if authUser.db.permissions.perAccount.get(account.id).exists(_.contains(apiAction)) =>
+      case Some(account) if authUser.db.permissions.perWallet.get(account.id).exists(_.contains(apiAction)) =>
         response
       case _ =>
         notAllowedResponse
