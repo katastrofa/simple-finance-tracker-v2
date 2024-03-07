@@ -3,14 +3,14 @@ package org.big.pete.sft.front
 import japgolly.scalajs.react.{CtorType, ScalaComponent}
 import japgolly.scalajs.react.callback.{AsyncCallback, Callback, CallbackTo}
 import japgolly.scalajs.react.component.Scala.{BackendScope, Component, Unmounted}
-import org.big.pete.sft.front.SftMain.{AccountsSelectionPage, SftPages}
+import org.big.pete.sft.front.SftMain.{WalletSelectionPage, SftPages}
 import org.big.pete.sft.front.components.header.{Sidenav, SidenavFilters}
 import org.big.pete.sft.front.components.main.moneyaccount
 import org.big.pete.sft.front.components.main.{Accounts, Categories}
 import org.big.pete.sft.front.components.main.transactions
 import org.big.pete.sft.front.state.{CookieStorage, DataUpdate, DefaultSorting, Filtering, Props, State, TransactionsProcessing, domain}
 import org.big.pete.sft.front.domain.{CategoryTree, Order, SortingColumn}
-import org.big.pete.sft.front.utilz.getAccountPermalink
+import org.big.pete.sft.front.utilz.getWalletPermalink
 
 import java.time.LocalDate
 
@@ -33,8 +33,8 @@ object SftState {
         props <- $.props
         from <- updateFrom(state)
         _ = CookieStorage.updateBrowserSettings(CookieStorage.getBrowserSettings.copy(from = from))
-        account = getAccountPermalink(props.activePage)
-        _ <- if (account.isDefined) refreshAccount(account.get).toCallback else Callback.empty
+        account = getWalletPermalink(props.activePage)
+        _ <- if (account.isDefined) refreshWallet(account.get).toCallback else Callback.empty
       } yield from
     }
 
@@ -44,8 +44,8 @@ object SftState {
         props <- $.props
         to <- if (newTo.isAfter(state.from)) $.setState(state.copy(to = newTo)) >> CallbackTo.pure(newTo) else CallbackTo.pure(state.to)
         _ = CookieStorage.updateBrowserSettings(CookieStorage.getBrowserSettings.copy(to = to))
-        account = getAccountPermalink(props.activePage)
-        _ <- if (account.isDefined) refreshAccount(account.get).toCallback else Callback.empty
+        account = getWalletPermalink(props.activePage)
+        _ <- if (account.isDefined) refreshWallet(account.get).toCallback else Callback.empty
       } yield to
     }
 
@@ -64,27 +64,27 @@ object SftState {
 
     def onPageClick(newPage: SftPages, oldPage: Option[SftPages]): Callback = {
       val aCall = (oldPage, newPage) match {
-        case (None, AccountsSelectionPage) => for {
+        case (None, WalletSelectionPage) => for {
           ajaxData <- loadGeneralData
           _ <- $.modStateAsync(_.copy(
             isMenuOpen = false,
             me = ajaxData.me,
             availablePatrons = ajaxData.patrons,
-            accounts = ajaxData.accounts,
+            accounts = ajaxData.wallets,
             currencies = ajaxData.currencies.map(cur => cur.id -> cur).toMap
           ))
         } yield 3
 
-        case (None, page) if getAccountPermalink(page).nonEmpty =>
-          val account = getAccountPermalink(page)
-          $.modStateAsync(_.copy(isMenuOpen = false)) >> refreshAccount(account.get).map(_ => 10)
+        case (None, page) if getWalletPermalink(page).nonEmpty =>
+          val account = getWalletPermalink(page)
+          $.modStateAsync(_.copy(isMenuOpen = false)) >> refreshWallet(account.get).map(_ => 10)
 
-        case (Some(_), AccountsSelectionPage) =>
+        case (Some(_), WalletSelectionPage) =>
           $.modStateAsync(_.copy(isMenuOpen = false)) >> AsyncCallback.pure(1)
 
-        case (Some(old), page) if getAccountPermalink(old) != getAccountPermalink(page) =>
-          val account = getAccountPermalink(page)
-          $.modStateAsync(_.copy(isMenuOpen = false)) >> refreshAccount(account.get).map(_ => 15)
+        case (Some(old), page) if getWalletPermalink(old) != getWalletPermalink(page) =>
+          val account = getWalletPermalink(page)
+          $.modStateAsync(_.copy(isMenuOpen = false)) >> refreshWallet(account.get).map(_ => 15)
 
         case _ =>
           $.modStateAsync(_.copy(isMenuOpen = false)) >> AsyncCallback.pure(999)
@@ -115,12 +115,12 @@ object SftState {
             setContentFilter
           ),
           SidenavFilters.CategoriesProps(state.categoriesActiveFilters, setCategoriesFilter, state.categoryTree),
-          SidenavFilters.MoneyAccountProps(state.moneyAccountsActiveFilters, setMoneyAccountsFilter, state.moneyAccounts.values.toList)
+          SidenavFilters.MoneyAccountProps(state.accountsActiveFilters, setMoneyAccountsFilter, state.moneyAccounts.values.toList)
         ),
 
         Accounts.Props(state.me, state.availablePatrons, state.accounts, props.activePage, props.router, onPageClick, saveAccount),
         transactions.Page.Props(
-          getAccountPermalink(props.activePage).getOrElse(""),
+          getWalletPermalink(props.activePage).getOrElse(""),
           state.displayTransactions,
           CategoryTree.linearize(state.categoryTree),
           state.categories,

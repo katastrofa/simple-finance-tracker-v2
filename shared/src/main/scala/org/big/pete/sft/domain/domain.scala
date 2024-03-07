@@ -77,7 +77,7 @@ case class Currency(id: String, name: String, symbol: String) extends DDItem {
   override def ddDisplayName: String = s"$name ($symbol)"
 }
 
-case class GeneralData(me: SimpleUser, patrons: List[SimpleUser], currencies: List[Currency], accounts: List[FullWallet])
+case class GeneralData(me: SimpleUser, patrons: List[SimpleUser], currencies: List[Currency], wallets: List[FullWallet])
 
 case class AccountCurrencyInfo(account: Int, currency: String, startAmount: BigDecimal)
 case class AccountOptionalCurrency(id: Int, account: Int, currency: Option[String], startAmount: BigDecimal) {

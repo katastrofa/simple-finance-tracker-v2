@@ -64,12 +64,12 @@ trait Base {
       state: State,
       transactions: Option[List[Transaction]] = None,
       categories: Option[Map[Int, Category]] = None,
-      moneyAccounts: Option[Map[Int, EnhancedAccount]] = None,
+      accounts: Option[Map[Int, EnhancedAccount]] = None,
       transactionTypeActiveFilters: Option[Set[TransactionType]] = None,
       trackingActiveFilters: Option[Set[TransactionTracking]] = None,
       contentFilter: Option[String] = None,
       categoriesActiveFilters: Option[Set[Int]] = None,
-      moneyAccountsActiveFilters: Option[Set[Int]] = None,
+      accountsActiveFilters: Option[Set[Int]] = None,
       transactionsSorting: Option[List[(SortingColumn, Order)]] = None,
       currencies: Option[Map[String, Currency]] = None
   ): List[EnhancedTransaction] = {
@@ -77,11 +77,11 @@ trait Base {
       .filterNonEmpty(transactionTypeActiveFilters.getOrElse(state.transactionTypeActiveFilters), _.transactionType)
       .filterNonEmpty(trackingActiveFilters.getOrElse(state.trackingActiveFilters), _.tracking)
       .filterNonEmpty(categoriesActiveFilters.getOrElse(state.categoriesActiveFilters), _.category)
-      .filterNonEmpty(moneyAccountsActiveFilters.getOrElse(state.moneyAccountsActiveFilters), _.account)
+      .filterNonEmpty(accountsActiveFilters.getOrElse(state.accountsActiveFilters), _.account)
       .filter(filterContent(contentFilter.getOrElse(state.contentFilter)))
       .map(EnhancedTransaction.enhance(
         categories.getOrElse(state.categories),
-        moneyAccounts.getOrElse(state.moneyAccounts),
+        accounts.getOrElse(state.moneyAccounts),
         currencies.getOrElse(state.currencies)
       ))
       .sorted(new TransactionsOrdering(transactionsSorting.getOrElse(state.transactionsSorting)))
@@ -102,53 +102,53 @@ trait Base {
   }
 
 
-  def updateMoneyAccountsWithTransaction(
+  def updateAccountsWithTransaction(
       trans: Transaction,
       from: LocalDate,
       to: LocalDate,
-      mas: Map[Int, EnhancedAccount],
+      accounts: Map[Int, EnhancedAccount],
       action: AccountUpdateAction
   ): Map[Int, EnhancedAccount] = {
     if (trans.date.isBefore(to.asInstanceOf[ChronoLocalDate])) {
       trans.transactionType match {
         case TransactionType.Income =>
-          mas + (trans.account -> updateMoneyAccount(mas(trans.account), action, AccountUpdateOperation.Add, trans, from))
+          accounts + (trans.account -> updateAccount(accounts(trans.account), action, AccountUpdateOperation.Add, trans, from))
         case TransactionType.Expense =>
-          mas + (trans.account -> updateMoneyAccount(
-            mas(trans.account), action, AccountUpdateOperation.Remove, trans, from
+          accounts + (trans.account -> updateAccount(
+            accounts(trans.account), action, AccountUpdateOperation.Remove, trans, from
           ))
         case TransactionType.Transfer =>
-          val updated = mas + (trans.account -> updateMoneyAccount(
-            mas(trans.account), action, AccountUpdateOperation.Remove, trans, from
+          val updated = accounts + (trans.account -> updateAccount(
+            accounts(trans.account), action, AccountUpdateOperation.Remove, trans, from
           ))
-          updated + (trans.destinationAccount.get -> updateMoneyAccount(
-            mas(trans.destinationAccount.get), action, AccountUpdateOperation.Add, trans, from
+          updated + (trans.destinationAccount.get -> updateAccount(
+            accounts(trans.destinationAccount.get), action, AccountUpdateOperation.Add, trans, from
           ))
       }
     } else
-      mas
+      accounts
   }
 
-  private def updateMoneyAccount(
-      ma: EnhancedAccount,
+  private def updateAccount(
+      account: EnhancedAccount,
       action: AccountUpdateAction,
       op: AccountUpdateOperation,
       trans: Transaction,
       from: LocalDate
   ): EnhancedAccount = {
-    val realOp = MAOperations(action)(op)
+    val realOp = AccountOperations(action)(op)
     if (trans.date.isAfter(from.asInstanceOf[ChronoLocalDate])) {
-      val newStatus = ma.status.filter(_.currency.id != trans.currency) ++
-        ma.status.find(_.currency.id == trans.currency).map { status =>
+      val newStatus = account.status.filter(_.currency.id != trans.currency) ++
+        account.status.find(_.currency.id == trans.currency).map { status =>
           status.copy(end = realOp(status.end, trans.amount))
         }.toList
-      ma.copy(status = newStatus)
+      account.copy(status = newStatus)
     } else {
-      val newStatus = ma.status.filter(_.currency.id != trans.currency) ++
-        ma.status.find(_.currency.id == trans.currency).map { status =>
+      val newStatus = account.status.filter(_.currency.id != trans.currency) ++
+        account.status.find(_.currency.id == trans.currency).map { status =>
           status.copy(start = realOp(status.start, trans.amount), end = realOp(status.end, trans.amount))
         }
-      ma.copy(status = newStatus)
+      account.copy(status = newStatus)
     }
   }
 }

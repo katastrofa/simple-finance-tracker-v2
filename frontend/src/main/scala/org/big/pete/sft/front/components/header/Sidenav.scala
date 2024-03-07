@@ -8,8 +8,8 @@ import japgolly.scalajs.react.feature.ReactFragment
 import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.react.MaterialIcon
 import org.big.pete.sft.domain.SimpleUser
-import org.big.pete.sft.front.SftMain.{AccountsSelectionPage, CategoriesPage, MoneyAccountsPage, SftPages, TransactionsPage}
-import org.big.pete.sft.front.utilz.getAccountPermalink
+import org.big.pete.sft.front.SftMain.{WalletSelectionPage, CategoriesPage, AccountsPage, SftPages, TransactionsPage}
+import org.big.pete.sft.front.utilz.getWalletPermalink
 
 import scala.scalajs.js
 
@@ -36,7 +36,7 @@ object Sidenav {
     .stateless
     .render_P { props =>
       val filters: js.UndefOr[VdomNode] = props.top.activePage match {
-        case page if getAccountPermalink(page).isDefined =>
+        case page if getWalletPermalink(page).isDefined =>
           <.li(^.id := "filters", SidenavFilters.component(props.filters))
         case _ =>
           js.undefined
@@ -52,7 +52,7 @@ object Sidenav {
   private val sidenavTopComponent: Component[TopProps, Unit, Unit, CtorType.Props] = ScalaComponent.builder[TopProps]
     .stateless
     .render_P { props =>
-      val accountOpt = getAccountPermalink(props.activePage)
+      val accountOpt = getWalletPermalink(props.activePage)
 
       def genLinkProps(toPage: SftPages): SidenavLinkProps =
         SidenavLinkProps(
@@ -63,8 +63,8 @@ object Sidenav {
         )
 
       <.ul(^.cls := "collection with-header",
-        <.li(^.classSet("collection-header" -> true, "active" -> (props.activePage == AccountsSelectionPage)),
-          props.routerCtl.link(AccountsSelectionPage)(<.h5(props.me.displayName, MaterialIcon("account_balance", Set("left"))))
+        <.li(^.classSet("collection-header" -> true, "active" -> (props.activePage == WalletSelectionPage)),
+          props.routerCtl.link(WalletSelectionPage)(<.h5(props.me.displayName, MaterialIcon("account_balance", Set("left"))))
         ),
 
         accountOpt.map { account =>
@@ -75,8 +75,8 @@ object Sidenav {
             sidenavLink(genLinkProps(CategoriesPage(account))) {
               ReactFragment("Categories", MaterialIcon("category", Set("left")))
             },
-            sidenavLink(genLinkProps(MoneyAccountsPage(account))) {
-              ReactFragment("Money Accounts", MaterialIcon("local_atm", Set("left")))
+            sidenavLink(genLinkProps(AccountsPage(account))) {
+              ReactFragment("Accounts", MaterialIcon("local_atm", Set("left")))
             },
           )
         }

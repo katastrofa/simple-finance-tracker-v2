@@ -170,7 +170,7 @@ object Page {
           isOpen = true, id = None, amount = BigDecimal(0), destAmount = Some(BigDecimal(0)), description = "",
           date = setup.date, transactionType = setup.transactionType,
           category = setup.categoryId.flatMap(id => props.linearCats.find(_.id == id)),
-          moneyAccountId = setup.moneyAccountId, destMAId = setup.destMAId, currency = setup.currency,
+          moneyAccountId = setup.accountId, destMAId = setup.destAccountId, currency = setup.currency,
           destCurrency = setup.destCurrency
         )
       } >> formRef.foreachCB(_.backend.focus)
@@ -181,7 +181,7 @@ object Page {
         state.copy(
           isOpen = true, deleteIsOpen = false, massEditIsOpen = false, visibleDetails = state.visibleDetails,
           Some(trans.id), trans.date, trans.transactionType, trans.amount, trans.destinationAmount, trans.description,
-          props.linearCats.find(_.id == trans.categoryId), Some(trans.moneyAccountId), trans.destinationMoneyAccountId,
+          props.linearCats.find(_.id == trans.categoryId), Some(trans.accountId), trans.destinationAccountId,
           Some(trans.currency.id), trans.destinationCurrency.map(_.id)
         )
       }

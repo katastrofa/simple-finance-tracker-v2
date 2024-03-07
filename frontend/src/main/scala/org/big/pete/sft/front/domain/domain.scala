@@ -80,13 +80,13 @@ case class EnhancedTransaction(
     categoryId: Int,
     categoryName: String,
     categoryFullName: String,
-    moneyAccountId: Int,
-    moneyAccountName: String,
+    accountId: Int,
+    accountName: String,
     tracking: TransactionTracking,
     destinationAmount: Option[BigDecimal],
     destinationCurrency: Option[Currency],
-    destinationMoneyAccountId: Option[Int],
-    destinationMoneyAccountName: Option[String]
+    destinationAccountId: Option[Int],
+    destinationAccountName: Option[String]
 )
 
 case class TransactionEntry(
@@ -97,13 +97,13 @@ case class TransactionEntry(
 object EnhancedTransaction {
   def enhance(
       categories: Map[Int, Category],
-      moneyAccounts: Map[Int, EnhancedAccount],
+      accounts: Map[Int, EnhancedAccount],
       currencies: Map[String, Currency]
   )(
       transaction: Transaction
   ): EnhancedTransaction = {
-    val moneyAccount = moneyAccounts(transaction.account)
-    val destinationMoneyAccount = transaction.destinationAccount.map(moneyAccounts)
+    val account = accounts(transaction.account)
+    val destinationAccount = transaction.destinationAccount.map(accounts)
     val parentCats = CategoryTree.parentTree(categories, Some(transaction.category), List.empty)
 
     EnhancedTransaction(
@@ -117,12 +117,12 @@ object EnhancedTransaction {
       Range(0, parentCats.length - 1).map(_ => "--").mkString("") + " " + categories(transaction.category).name,
       parentCats.map(_.name).mkString(" - "),
       transaction.account,
-      moneyAccount.name,
+      account.name,
       transaction.tracking,
       transaction.destinationAmount,
       transaction.destinationCurrency.map(currencies),
       transaction.destinationAccount,
-      destinationMoneyAccount.map(_.name)
+      destinationAccount.map(_.name)
     )
   }
 }
@@ -168,8 +168,8 @@ object Implicits {
 
   implicit val simpleUserReuse: Reusability[SimpleUser] = Reusability.derive[SimpleUser]
   implicit val simpleUserMapReuse: Reusability[Map[Int, SimpleUser]] = Reusability.map[Int, SimpleUser]
-  implicit val accountReuse: Reusability[Wallet] = Reusability.derive[Wallet]
-  implicit val fullAccountReuse: Reusability[FullWallet] = Reusability.derive[FullWallet]
+  implicit val walletReuse: Reusability[Wallet] = Reusability.derive[Wallet]
+  implicit val fullWalletReuse: Reusability[FullWallet] = Reusability.derive[FullWallet]
   implicit val sftPagesReuse: Reusability[SftPages] = Reusability.byRefOr_==[SftPages]
   implicit val sortingColumnReuse: Reusability[SortingColumn] = Reusability.byRefOr_==[SortingColumn]
   implicit val orderReuse: Reusability[Order] = Reusability.byRefOr_==[Order]
@@ -177,17 +177,17 @@ object Implicits {
   implicit val transactionTrackingReuse: Reusability[TransactionTracking] = Reusability.by_==[TransactionTracking]
   implicit val currencyReuse: Reusability[Currency] = Reusability.derive[Currency]
   implicit val currencyMapReuse: Reusability[Map[String, Currency]] = Reusability.map[String, Currency]
-  implicit val moneyAccountCurrencyReuse: Reusability[AccountCurrency] = Reusability.derive[AccountCurrency]
-  implicit val moneyAccountCurrencyMapReuse: Reusability[Map[Int, AccountCurrency]] = Reusability.map[Int, AccountCurrency]
-  implicit val moneyAccountOptionalCurrencyReuse: Reusability[AccountOptionalCurrency] = Reusability.derive[AccountOptionalCurrency]
-  implicit val moneyAccountOptionalCurrencyMapReuse: Reusability[Map[Int, AccountOptionalCurrency]] = Reusability.map[Int, AccountOptionalCurrency]
+  implicit val accountCurrencyReuse: Reusability[AccountCurrency] = Reusability.derive[AccountCurrency]
+  implicit val accountCurrencyMapReuse: Reusability[Map[Int, AccountCurrency]] = Reusability.map[Int, AccountCurrency]
+  implicit val accountOptionalCurrencyReuse: Reusability[AccountOptionalCurrency] = Reusability.derive[AccountOptionalCurrency]
+  implicit val accountOptionalCurrencyMapReuse: Reusability[Map[Int, AccountOptionalCurrency]] = Reusability.map[Int, AccountOptionalCurrency]
   implicit val categoryReuse: Reusability[Category] = Reusability.derive[Category]
   implicit val categoryMapReuse: Reusability[Map[Int, Category]] = Reusability.map[Int, Category]
   implicit val categoryTreeReuse: Reusability[CategoryTree] = Reusability.by_==[CategoryTree]
   implicit val currencyAndStatusReuse: Reusability[CurrencyAndStatus] = Reusability.derive[CurrencyAndStatus]
-  implicit val expandedMoneyAccountCurrencyReuse: Reusability[ExpandedAccountCurrency] = Reusability.derive[ExpandedAccountCurrency]
-  implicit val enhancedMoneyAccountReuse: Reusability[EnhancedAccount] = Reusability.derive[EnhancedAccount]
-  implicit val moneyAccountMapReuse: Reusability[Map[Int, EnhancedAccount]] = Reusability.map[Int, EnhancedAccount]
+  implicit val expandedAccountCurrencyReuse: Reusability[ExpandedAccountCurrency] = Reusability.derive[ExpandedAccountCurrency]
+  implicit val enhancedAccountReuse: Reusability[EnhancedAccount] = Reusability.derive[EnhancedAccount]
+  implicit val accountMapReuse: Reusability[Map[Int, EnhancedAccount]] = Reusability.map[Int, EnhancedAccount]
   implicit val enhancedTransactionReuse: Reusability[EnhancedTransaction] = Reusability.derive[EnhancedTransaction]
 }
 

@@ -52,11 +52,11 @@ trait Filtering extends Base {
   }
 
   def setMoneyAccountsFilter(status: MICheckbox.Status, moneyAccountId: String): Callback = $.modState { state =>
-    val newFilter = modStateForSet(status, state, _.moneyAccountsActiveFilters, moneyAccountId.toInt)
+    val newFilter = modStateForSet(status, state, _.accountsActiveFilters, moneyAccountId.toInt)
     state.copy(
       checkedTransactions = Set.empty[Int],
-      moneyAccountsActiveFilters = newFilter,
-      displayTransactions = filterTransactions(state, moneyAccountsActiveFilters = Some(newFilter))
+      accountsActiveFilters = newFilter,
+      displayTransactions = filterTransactions(state, accountsActiveFilters = Some(newFilter))
     )
   }
 }

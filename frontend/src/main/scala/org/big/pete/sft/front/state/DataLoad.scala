@@ -23,27 +23,27 @@ trait DataLoad extends Base {
   def loadGeneralData: AsyncCallback[GeneralData] =
     ajaxCall[GeneralData]("GET", "/general", None, GeneralData(domain.emptyMe, List.empty, List.empty, List.empty))
 
-  private def loadTransactions(accountPermalink: String, start: LocalDate, end: LocalDate): AsyncCallback[List[Transaction]] = {
-    val apiPath = "/" + accountPermalink + "/transactions?" +
+  private def loadTransactions(walletPermalink: String, start: LocalDate, end: LocalDate): AsyncCallback[List[Transaction]] = {
+    val apiPath = "/" + walletPermalink + "/transactions?" +
       "start=" + start.format(ReactDatePicker.DateFormat) +
       "&end=" + end.format(ReactDatePicker.DateFormat)
     ajaxCall[List[Transaction]]("GET", apiPath, None, List.empty)
   }
 
-  private def loadMoneyAccounts(accountPermalink: String, start: LocalDate, end: LocalDate): AsyncCallback[Map[Int, EnhancedAccount]] = {
-    val apiPath = "/" + accountPermalink + "/money-accounts?" +
+  private def loadAccounts(walletPermalink: String, start: LocalDate, end: LocalDate): AsyncCallback[Map[Int, EnhancedAccount]] = {
+    val apiPath = "/" + walletPermalink + "/accounts?" +
       "start=" + start.format(ReactDatePicker.DateFormat) +
       "&end=" + end.format(ReactDatePicker.DateFormat)
     ajaxCall[List[EnhancedAccount]]("GET", apiPath, None, List.empty)
-      .map(_.map(ma => ma.id -> ma).toMap)
+      .map(_.map(account => account.id -> account).toMap)
   }
 
-  private def loadCategories(accountPermalink: String): AsyncCallback[Map[Int, Category]] = {
-    ajaxCall[List[Category]]("GET", "/" + accountPermalink + "/categories", None, List.empty)
+  private def loadCategories(walletPermalink: String): AsyncCallback[Map[Int, Category]] = {
+    ajaxCall[List[Category]]("GET", "/" + walletPermalink + "/categories", None, List.empty)
       .map(_.map(cat => cat.id -> cat).toMap)
   }
 
-  def refreshAccount(account: String): AsyncCallback[Unit] = {
+  def refreshWallet(wallet: String): AsyncCallback[Unit] = {
     $.state.async.flatMap { state =>
       val data = AsyncCallback.sequence(
         List(
@@ -51,9 +51,9 @@ trait DataLoad extends Base {
             loadGeneralData
           else
             AsyncCallback.pure(GeneralData(state.me, state.availablePatrons, state.currencies.values.toList, state.accounts)),
-          loadCategories(account),
-          loadMoneyAccounts(account, state.from, state.to),
-          loadTransactions(account, state.from, state.to)
+          loadCategories(wallet),
+          loadAccounts(wallet, state.from, state.to),
+          loadTransactions(wallet, state.from, state.to)
         )
       )
 
@@ -61,20 +61,20 @@ trait DataLoad extends Base {
         val generalData = dataList.head.asInstanceOf[GeneralData]
         val currencies = generalData.currencies.map(cur => cur.id -> cur).toMap
         val cats = dataList(2).asInstanceOf[Map[Int, Category]]
-        val moneyAccounts = dataList(3).asInstanceOf[Map[Int, EnhancedAccount]]
+        val accounts = dataList(3).asInstanceOf[Map[Int, EnhancedAccount]]
         val transactions = dataList(4).asInstanceOf[List[Transaction]]
 
         $.modStateAsync { s =>
           s.copy(
             me = generalData.me,
             availablePatrons = generalData.patrons,
-            accounts = generalData.accounts,
+            wallets = generalData.wallets,
             currencies = currencies,
             categories = cats,
-            moneyAccounts = moneyAccounts,
+            accounts = accounts,
             transactions = transactions,
             categoryTree = CategoryTree.generateTree(cats.values.toList),
-            displayTransactions = filterTransactions(s, Some(transactions), Some(cats), Some(moneyAccounts), currencies = Some(currencies))
+            displayTransactions = filterTransactions(s, Some(transactions), Some(cats), Some(accounts), currencies = Some(currencies))
           )
         }
       }

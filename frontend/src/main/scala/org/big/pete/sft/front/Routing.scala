@@ -4,7 +4,7 @@ import japgolly.scalajs.react.{CtorType, ScalaComponent}
 import japgolly.scalajs.react.component.Scala.Component
 import japgolly.scalajs.react.extra.router.{BaseUrl, RouterCtl, RouterWithProps, RouterWithPropsConfig, RouterWithPropsConfigDsl, SetRouteVia}
 import japgolly.scalajs.react.vdom.VdomElement
-import org.big.pete.sft.front.SftMain.{AccountsSelectionPage, CategoriesPage, MoneyAccountsPage, SftPages, TransactionsPage}
+import org.big.pete.sft.front.SftMain.{WalletSelectionPage, CategoriesPage, AccountsPage, SftPages, TransactionsPage}
 
 
 object Routing {
@@ -23,21 +23,21 @@ object Routing {
     val routerConfig: RouterWithPropsConfig[SftPages, Props] = RouterWithPropsConfigDsl[SftPages, Props].buildConfig { dsl =>
       import dsl._
 
-      val mainRoute = staticRoute(root, AccountsSelectionPage)
+      val mainRoute = staticRoute(root, WalletSelectionPage)
       val transactionsRoute = ("#" / string("[a-zA-Z0-9_-]+") / "transactions").caseClass[TransactionsPage]
       val categoriesRoute = ("#" / string("[a-zA-Z0-9_-]+") / "categories").caseClass[CategoriesPage]
-      val moneyAccountRoute = ("#" / string("[a-zA-Z0-9_-]+") / "money-accounts").caseClass[MoneyAccountsPage]
+      val moneyAccountRoute = ("#" / string("[a-zA-Z0-9_-]+") / "money-accounts").caseClass[AccountsPage]
 
       (emptyRule
-        | mainRoute ~> renderRP((rCtl, p) => genPage(rCtl, AccountsSelectionPage, p))
+        | mainRoute ~> renderRP((rCtl, p) => genPage(rCtl, WalletSelectionPage, p))
         | dynamicRoute(transactionsRoute) { case x: TransactionsPage => x } ~> dynRenderRP(
         (page, rCtl, p) => genPage(rCtl, page, p)
       )
         | dynamicRoute(categoriesRoute) { case x: CategoriesPage => x } ~> dynRenderRP((page, rCtl, p) => genPage(rCtl, page, p))
-        | dynamicRoute(moneyAccountRoute) { case x: MoneyAccountsPage => x } ~> dynRenderRP(
+        | dynamicRoute(moneyAccountRoute) { case x: AccountsPage => x } ~> dynRenderRP(
         (page, rCtl, p) => genPage(rCtl, page, p)
       )
-        ).notFound(redirectToPage(AccountsSelectionPage)(SetRouteVia.HistoryReplace))
+        ).notFound(redirectToPage(WalletSelectionPage)(SetRouteVia.HistoryReplace))
     }
 
     def render(props: Props): VdomElement = {

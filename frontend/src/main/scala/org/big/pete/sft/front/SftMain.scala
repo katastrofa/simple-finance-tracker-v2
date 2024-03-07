@@ -12,10 +12,10 @@ import scala.scalajs.js.annotation.JSExport
 
 object SftMain {
   sealed trait SftPages
-  case object AccountsSelectionPage extends SftPages
-  case class TransactionsPage(account: String) extends SftPages
-  case class CategoriesPage(account: String) extends SftPages
-  case class MoneyAccountsPage(account: String) extends SftPages
+  case object WalletSelectionPage extends SftPages
+  case class TransactionsPage(wallet: String) extends SftPages
+  case class CategoriesPage(wallet: String) extends SftPages
+  case class AccountsPage(wallet: String) extends SftPages
 
 
   @JSExport

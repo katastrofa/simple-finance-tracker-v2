@@ -5,7 +5,7 @@ import org.big.pete.BPJson
 import org.big.pete.datepicker.ReactDatePicker
 import org.big.pete.sft.domain.{WalletEdit, AddWallet, Category, CategoryDeleteStrategies, EnhancedAccount, FullWallet, Account, AccountCurrency, AccountDeleteStrategy, ShiftStrategy, ShiftStrategyPerCurrency}
 import org.big.pete.sft.front.domain.CategoryTree
-import org.big.pete.sft.front.utilz.getAccountPermalink
+import org.big.pete.sft.front.utilz.getWalletPermalink
 
 import java.time.LocalDate
 
@@ -33,7 +33,7 @@ trait DataUpdate extends DataLoad {
 
   def saveCategory(id: Option[Int], name: String, description: String, parent: Option[Int]): Callback = {
     $.props.flatMap { props =>
-      val account = getAccountPermalink(props.activePage).getOrElse("")
+      val account = getWalletPermalink(props.activePage).getOrElse("")
       val realParent = parent.flatMap(p => if (p == -42) None else Some(p))
       val realDescription = if (description.nonEmpty) Some(description) else None
       val method = if (id.isDefined) "POST" else "PUT"
@@ -52,12 +52,12 @@ trait DataUpdate extends DataLoad {
 
   def deleteCategory(id: Int, moveSubCats: Option[Int], moveTransactions: Option[Int]): Callback = {
     $.props.flatMap { props =>
-      val account = getAccountPermalink(props.activePage).getOrElse("")
+      val account = getWalletPermalink(props.activePage).getOrElse("")
       ajaxUpdate[String](
         "DELETE",
         "/" + account + "/categories/" + id.toString,
         BPJson.write(CategoryDeleteStrategies(ShiftStrategy(moveSubCats), ShiftStrategy(moveTransactions))),
-        _ => refreshAccount(account).toCallback
+        _ => refreshWallet(account).toCallback
       )
     }
   }
@@ -65,7 +65,7 @@ trait DataUpdate extends DataLoad {
   def saveMoneyAccount(id: Option[Int], name: String, created: LocalDate, currencies: List[AccountCurrency]): Callback = {
     $.props.flatMap { props =>
       $.state.flatMap { state =>
-        val account = getAccountPermalink(props.activePage).getOrElse("")
+        val account = getWalletPermalink(props.activePage).getOrElse("")
         val method = if (id.isDefined) "POST" else "PUT"
         val maId = id.getOrElse(-1)
 
@@ -85,12 +85,12 @@ trait DataUpdate extends DataLoad {
 
   def deleteMoneyAccount(id: Int, strategies: List[ShiftStrategyPerCurrency]): Callback = {
     $.props.flatMap { props =>
-      val account = getAccountPermalink(props.activePage).getOrElse("")
+      val account = getWalletPermalink(props.activePage).getOrElse("")
       ajaxUpdate[String](
         "DELETE",
         "/" + account + "/money-accounts/" + id.toString,
         BPJson.write(AccountDeleteStrategy(strategies)),
-        _ => refreshAccount(account).toCallback
+        _ => refreshWallet(account).toCallback
       )
     }
   }

@@ -6,7 +6,7 @@ import org.big.pete.react.MICheckbox
 import org.big.pete.react.MICheckbox.Status
 import org.big.pete.sft.domain.{DeleteTransactions, EnhancedAccount, MassEditTransactions, ShiftStrategy, TrackingEdit, Transaction, TransactionTracking, TransactionType}
 import org.big.pete.sft.front.domain.AccountUpdateAction
-import org.big.pete.sft.front.utilz.getAccountPermalink
+import org.big.pete.sft.front.utilz.getWalletPermalink
 
 import java.time.LocalDate
 
@@ -39,7 +39,7 @@ trait TransactionsProcessing extends DataLoad {
       destinationCurrency: Option[String]
   ): Callback = {
     $.props.flatMap { props =>
-      val account = getAccountPermalink(props.activePage).getOrElse("")
+      val account = getWalletPermalink(props.activePage).getOrElse("")
       val method = if (id.isDefined) "POST" else "PUT"
 
       ajaxUpdate[Transaction](
@@ -55,12 +55,12 @@ trait TransactionsProcessing extends DataLoad {
           val updatedMA = {
             if (id.isDefined) {
               val oldTransaction = state.transactions.find(_.id == id.get).get
-              val removedTransactionMAs = updateMoneyAccountsWithTransaction(
+              val removedTransactionMAs = updateAccountsWithTransaction(
                 oldTransaction, state.from, state.to, state.moneyAccounts, AccountUpdateAction.Reverse
               )
-              updateMoneyAccountsWithTransaction(transaction, state.from, state.to, removedTransactionMAs, AccountUpdateAction.Attach)
+              updateAccountsWithTransaction(transaction, state.from, state.to, removedTransactionMAs, AccountUpdateAction.Attach)
             } else
-              updateMoneyAccountsWithTransaction(transaction, state.from, state.to, state.moneyAccounts, AccountUpdateAction.Attach)
+              updateAccountsWithTransaction(transaction, state.from, state.to, state.moneyAccounts, AccountUpdateAction.Attach)
           }
           updateStateWithTransaction(state, state.transactions.filter(_.id != transaction.id) ++ List(transaction), updatedMA)
         }
@@ -76,7 +76,7 @@ trait TransactionsProcessing extends DataLoad {
     }
 
     $.props.flatMap { props =>
-      val account = getAccountPermalink(props.activePage).getOrElse("")
+      val account = getWalletPermalink(props.activePage).getOrElse("")
       ajaxUpdate[Transaction](
         "POST",
         "/" + account + "/transactions/tracking",
@@ -90,14 +90,14 @@ trait TransactionsProcessing extends DataLoad {
 
   def deleteTransaction(id: Int): Callback = {
     $.props.flatMap { props =>
-      val account = getAccountPermalink(props.activePage).getOrElse("")
+      val account = getWalletPermalink(props.activePage).getOrElse("")
       ajaxUpdate[String](
         "DELETE",
         "/" + account + "/transactions/" + id.toString,
         "",
         _ => $.modState { state =>
           val removedTransaction = state.transactions.find(_.id == id).get
-          val updatedMA = updateMoneyAccountsWithTransaction(
+          val updatedMA = updateAccountsWithTransaction(
             removedTransaction, state.from, state.to, state.moneyAccounts, AccountUpdateAction.Reverse
           )
           updateStateWithTransaction(state, state.transactions.filter(_.id != id), updatedMA)
@@ -108,24 +108,24 @@ trait TransactionsProcessing extends DataLoad {
 
   def deleteTransactions(ids: Set[Int]): Callback = {
     $.props.flatMap { props =>
-      val account = getAccountPermalink(props.activePage).getOrElse("")
+      val account = getWalletPermalink(props.activePage).getOrElse("")
       ajaxUpdate[Int](
         "DELETE",
         "/" + account + "/transactions",
         BPJson.write(DeleteTransactions(ids.toList)),
-        _ => $.modState(_.copy(checkedTransactions = Set.empty)) >> refreshAccount(account).toCallback
+        _ => $.modState(_.copy(checkedTransactions = Set.empty)) >> refreshWallet(account).toCallback
       )
     }
   }
 
   def massEditTransactions(ids: Set[Int], newCat: Option[Int], newMoneyAccount: Option[Int]): Callback = {
     $.props.flatMap { props =>
-      val account = getAccountPermalink(props.activePage).getOrElse("")
+      val account = getWalletPermalink(props.activePage).getOrElse("")
       ajaxUpdate[Int](
         "POST",
         "/" + account + "/transactions/mass-edit",
         BPJson.write(MassEditTransactions(ids.toList, ShiftStrategy(newCat), ShiftStrategy(newMoneyAccount))),
-        _ => $.modState(_.copy(checkedTransactions = Set.empty)) >> refreshAccount(account).toCallback
+        _ => $.modState(_.copy(checkedTransactions = Set.empty)) >> refreshWallet(account).toCallback
       )
     }
   }

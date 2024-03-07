@@ -18,7 +18,7 @@ object SidenavFilters {
       onOpenFilter: FiltersOpen => Callback,
       transactions: TransactionsProps,
       categories: CategoriesProps,
-      moneyAccounts: MoneyAccountProps
+      accounts: AccountProps
   )
 
   case class CollapsibleHeaderProps(hasActiveFilters: Boolean, text: String, section: FiltersOpen, onOpenFilter: FiltersOpen => Callback)
@@ -34,16 +34,16 @@ object SidenavFilters {
       onCategoryFilterChange: Int => (Option[Status], Callback) => Callback,
       categoryTree: List[CategoryTree]
   )
-  case class MoneyAccountProps(
-      moneyAccountsActiveFilters: Set[Int],
-      onMoneyAccountFilterChange: Int => (Option[Status], Callback) => Callback,
-      moneyAccounts: List[EnhancedAccount]
+  case class AccountProps(
+      accountsActiveFilters: Set[Int],
+      onAccountFilterChange: Int => (Option[Status], Callback) => Callback,
+      accounts: List[EnhancedAccount]
   )
 
   sealed trait FiltersOpen
-  case object TransactionsFiltersOpen extends FiltersOpen
-  case object CategoriesFiltersOpen extends FiltersOpen
-  case object MoneyAccountFiltersOpen extends FiltersOpen
+  private case object TransactionsFiltersOpen extends FiltersOpen
+  private case object CategoriesFiltersOpen extends FiltersOpen
+  private case object AccountFiltersOpen extends FiltersOpen
 
   implicit val filtersOpenReuse: Reusability[FiltersOpen] = Reusability.byRefOr_==[FiltersOpen]
   implicit val collapsibleHeaderPropsReuse: Reusability[CollapsibleHeaderProps] =
@@ -60,8 +60,8 @@ object SidenavFilters {
         <.li(^.classSet("bold waves-effect" -> true, "active" -> props.activeFilter.contains(CategoriesFiltersOpen)),
           categoriesFilterComponent(props.onOpenFilter -> props.categories)
         ),
-        <.li(^.classSet("bold waves-effect" -> true, "active" -> props.activeFilter.contains(MoneyAccountFiltersOpen)),
-          moneyAccountsFilterComponent(props.onOpenFilter -> props.moneyAccounts)
+        <.li(^.classSet("bold waves-effect" -> true, "active" -> props.activeFilter.contains(AccountFiltersOpen)),
+          accountsFilterComponent(props.onOpenFilter -> props.accounts)
         )
       )
     }.build
@@ -83,7 +83,7 @@ object SidenavFilters {
 
         def expandTransactionTypes(transactionType: TransactionType) = {
           val status = Status.fromBoolean(props.transactionTypeActiveFilters.contains(transactionType))
-          MICheckbox.li.withKey(s"ttf-${transactionType.toString}")(MICheckbox.Props(
+          MICheckbox.liComponent.withKey(s"ttf-${transactionType.toString}")(MICheckbox.Props(
             transactionType.toString,
             transactionType.toString,
             StateSnapshot(status)(props.onTransactionTypeChange(transactionType))
@@ -92,7 +92,7 @@ object SidenavFilters {
 
         def expandTracking(tracking: TransactionTracking) = {
           val status = Status.fromBoolean(props.trackingActiveFilters.contains(tracking))
-          MICheckbox.li.withKey(s"ttf-${tracking.toString}")(MICheckbox.Props(
+          MICheckbox.liComponent.withKey(s"ttf-${tracking.toString}")(MICheckbox.Props(
             tracking.toString,
             tracking.toString,
             StateSnapshot(status)(props.onTrackingChange(tracking))
@@ -144,7 +144,7 @@ object SidenavFilters {
         }
 
         def mapCategory(cat: CategoryTree) =
-          MICheckbox.li.withKey(s"cf-${cat.id}")(MICheckbox.Props(
+          MICheckbox.liComponent.withKey(s"cf-${cat.id}")(MICheckbox.Props(
             cat.id.toString,
             cat.shortDisplayName,
             StateSnapshot(getStatus(cat))(props.onCategoryFilterChange(cat.id))
@@ -166,28 +166,28 @@ object SidenavFilters {
         )
       }.build
 
-  private val moneyAccountsFilterComponent: Component[(FiltersOpen => Callback, MoneyAccountProps), Unit, Unit, CtorType.Props] =
-    ScalaComponent.builder[(FiltersOpen => Callback, MoneyAccountProps)]
+  private val accountsFilterComponent: Component[(FiltersOpen => Callback, AccountProps), Unit, Unit, CtorType.Props] =
+    ScalaComponent.builder[(FiltersOpen => Callback, AccountProps)]
       .stateless
       .render_P { case (onOpenFilter, props) =>
-        def expandMoneyAccount(ma: EnhancedAccount) = {
-          val status = Status.fromBoolean(props.moneyAccountsActiveFilters.contains(ma.id))
-          MICheckbox.li.withKey(s"maf-${ma.id}")(MICheckbox.Props(
+        def expandAccount(ma: EnhancedAccount) = {
+          val status = Status.fromBoolean(props.accountsActiveFilters.contains(ma.id))
+          MICheckbox.liComponent.withKey(s"maf-${ma.id}")(MICheckbox.Props(
             ma.id.toString,
             ma.name,
-            StateSnapshot(status)(props.onMoneyAccountFilterChange(ma.id))
+            StateSnapshot(status)(props.onAccountFilterChange(ma.id))
           ))
         }
 
         <.div(
           collapsibleHeaderComponent.apply(CollapsibleHeaderProps(
-            props.moneyAccountsActiveFilters.nonEmpty,
-            "Money Account",
-            MoneyAccountFiltersOpen,
+            props.accountsActiveFilters.nonEmpty,
+            "Account",
+            AccountFiltersOpen,
             onOpenFilter
           )),
           <.div(^.cls := "collapsible-body",
-            <.ul(props.moneyAccounts.map(expandMoneyAccount).toVdomArray)
+            <.ul(props.accounts.map(expandAccount).toVdomArray)
           )
         )
       }.build

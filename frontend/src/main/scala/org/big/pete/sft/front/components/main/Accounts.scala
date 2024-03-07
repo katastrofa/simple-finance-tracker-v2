@@ -9,7 +9,7 @@ import japgolly.scalajs.react.{Callback, CtorType, ReactFormEventFromInput, Reus
 import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.react.{MaterialIcon, TextInput}
 import org.big.pete.sft.domain.{FullWallet, SimpleUser}
-import org.big.pete.sft.front.SftMain.{AccountsSelectionPage, SftPages, TransactionsPage, dropDownPatron}
+import org.big.pete.sft.front.SftMain.{WalletSelectionPage, SftPages, TransactionsPage, dropDownPatron}
 import org.big.pete.sft.front.helpers.{FormModal, ModalButtons}
 import org.big.pete.sft.front.utilz
 import org.scalajs.dom.html.Element
@@ -179,7 +179,7 @@ object Accounts {
         <.a(
           ^.href := props.router.urlFor(TransactionsPage(account.permalink)).value,
           ^.onClick ==> (e => props.router.setEH(TransactionsPage(account.permalink))(e) >>
-            props.onPageChange(TransactionsPage(account.permalink), Some(AccountsSelectionPage))),
+            props.onPageChange(TransactionsPage(account.permalink), Some(WalletSelectionPage))),
           account.name
         )
       ),

@@ -11,7 +11,7 @@ package object state {
 
   final private val AddBigDecimals: (BigDecimal, BigDecimal) => BigDecimal = _ + _
   final private val SubtractBigDecimals: (BigDecimal, BigDecimal) => BigDecimal = _ - _
-  final val MAOperations: Map[AccountUpdateAction, Map[AccountUpdateOperation, (BigDecimal, BigDecimal) => BigDecimal]] = Map(
+  final val AccountOperations: Map[AccountUpdateAction, Map[AccountUpdateOperation, (BigDecimal, BigDecimal) => BigDecimal]] = Map(
     AccountUpdateAction.Attach -> Map(
       AccountUpdateOperation.Add -> AddBigDecimals,
       AccountUpdateOperation.Remove -> SubtractBigDecimals

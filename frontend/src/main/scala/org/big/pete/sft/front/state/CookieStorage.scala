@@ -11,7 +11,7 @@ object CookieStorage {
   import org.big.pete.sft.front.state.Implicits._
 
   final private val SettingsCookieName = "sft-v2-settings"
-  final private val AddTransactionCookieName = "sft-v2-add-transaction-{account}"
+  final private val AddTransactionCookieName = "sft-v2-add-transaction-{wallet}"
 
   private var browserSettings: BrowserSettings = _
   private val addTransactionSetup: mutable.Map[String, AddTransactionSetup] = mutable.Map.empty[String, AddTransactionSetup]
@@ -37,17 +37,17 @@ object CookieStorage {
     BPCookie.setObj(SettingsCookieName, settings, new CookieAttributes(7, "/"))
   }
 
-  def getAddTransactionSetup(account: String): AddTransactionSetup = {
-    if (!addTransactionSetup.contains(account)) {
-      val setup = BPCookie.getObj[AddTransactionSetup](AddTransactionCookieName.replace("{account}", account))
+  def getAddTransactionSetup(wallet: String): AddTransactionSetup = {
+    if (!addTransactionSetup.contains(wallet)) {
+      val setup = BPCookie.getObj[AddTransactionSetup](AddTransactionCookieName.replace("{wallet}", wallet))
         .getOrElse(defaultAddTransactionSetup)
-      addTransactionSetup += account -> setup
+      addTransactionSetup += wallet -> setup
     }
-    addTransactionSetup(account)
+    addTransactionSetup(wallet)
   }
 
-  def updateAddTransactionSetup(account: String, setup: AddTransactionSetup): String = {
-    addTransactionSetup += account -> setup
-    BPCookie.setObj(AddTransactionCookieName.replace("{account}", account), setup, new CookieAttributes(3, "/"))
+  def updateAddTransactionSetup(wallet: String, setup: AddTransactionSetup): String = {
+    addTransactionSetup += wallet -> setup
+    BPCookie.setObj(AddTransactionCookieName.replace("{wallet}", wallet), setup, new CookieAttributes(3, "/"))
   }
 }

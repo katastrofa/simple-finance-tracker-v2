@@ -40,13 +40,13 @@ object FullPage extends EffectSyntax {
     .stateless
     .render_P { props =>
       val mainPage = props.activePage match {
-        case SftMain.AccountsSelectionPage =>
+        case SftMain.WalletSelectionPage =>
           Accounts.component(props.accounts)
         case SftMain.TransactionsPage(_) =>
           Page.component(props.transactions)
         case SftMain.CategoriesPage(_) =>
           Categories.component(props.categories)
-        case SftMain.MoneyAccountsPage(_) =>
+        case SftMain.AccountsPage(_) =>
           moneyaccount.Page.component(props.moneyAccounts)
       }
 

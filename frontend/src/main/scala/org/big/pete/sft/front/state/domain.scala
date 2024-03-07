@@ -27,16 +27,16 @@ case class State(
     trackingActiveFilters: Set[TransactionTracking],
     contentFilter: String,
     categoriesActiveFilters: Set[Int],
-    moneyAccountsActiveFilters: Set[Int],
+    accountsActiveFilters: Set[Int],
     checkedTransactions: Set[Int],
     transactionsSorting: List[(SortingColumn, Order)],
 
     me: SimpleUser,
     availablePatrons: List[SimpleUser],
-    accounts: List[FullWallet],
+    wallets: List[FullWallet],
     currencies: Map[String, Currency],
     categories: Map[Int, Category],
-    moneyAccounts: Map[Int, EnhancedAccount],
+    accounts: Map[Int, EnhancedAccount],
     transactions: List[Transaction],
 
     categoryTree: List[CategoryTree],
@@ -52,9 +52,9 @@ case class AddTransactionSetup(
     date: LocalDate,
     transactionType: TransactionType,
     categoryId: Option[Int],
-    moneyAccountId: Option[Int],
+    accountId: Option[Int],
     currency: Option[String],
-    destMAId: Option[Int],
+    destAccountId: Option[Int],
     destCurrency: Option[String]
 )
 
