@@ -22,9 +22,9 @@ class Categories[F[_]: MonadCancelThrow](
   def getCategory(catId: Int): F[Category] =
     CategoriesDao.getCategory(catId).transact(transactor).map(_.get)
 
-  def listCategories(accountId: Int): F[Response[F]] = {
+  def listCategories(wallet: Int): F[Response[F]] = {
     for {
-      cats <- CategoriesDao.listCategories(accountId).transact(transactor)
+      cats <- CategoriesDao.listCategories(wallet).transact(transactor)
       response <- Ok(cats.asJson)
     } yield response
   }
@@ -37,24 +37,24 @@ class Categories[F[_]: MonadCancelThrow](
     } yield response
   }
 
-  def editCategory(cat: Category, accountId: Int): F[Response[F]] = {
+  def editCategory(cat: Category, wallet: Int): F[Response[F]] = {
     for {
-      _ <- CategoriesDao.editCategory(cat, accountId).transact(transactor)
+      _ <- CategoriesDao.editCategory(cat, wallet).transact(transactor)
       newCat <- CategoriesDao.getCategory(cat.id).transact(transactor)
       response <- Ok(newCat.get.asJson)
     } yield response
   }
 
-  def deleteCategory(id: Int, accountId: Int, catsShiftStrategy: ShiftStrategy, transactionsShiftStrategy: ShiftStrategy): F[Response[F]] = {
+  def deleteCategory(id: Int, wallet: Int, catsShiftStrategy: ShiftStrategy, transactionsShiftStrategy: ShiftStrategy): F[Response[F]] = {
     for {
-      _ <- CategoriesDao.updateCatParent(id, catsShiftStrategy.newId, accountId).transact(transactor)
+      _ <- CategoriesDao.updateCatParent(id, catsShiftStrategy.newId, wallet).transact(transactor)
       _ <-
         if (transactionsShiftStrategy.newId.isDefined)
-          TransactionsDao.changeCategory(id, transactionsShiftStrategy.newId.get, accountId).transact(transactor)
+          TransactionsDao.changeCategory(id, transactionsShiftStrategy.newId.get, wallet).transact(transactor)
         else
           TransactionsDao.deleteForCategory(id).transact(transactor)
 
-      _ <- CategoriesDao.deleteCategory(id, accountId).transact(transactor)
+      _ <- CategoriesDao.deleteCategory(id, wallet).transact(transactor)
       response <- Ok("")
     } yield response
   }

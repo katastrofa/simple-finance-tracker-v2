@@ -23,9 +23,9 @@ class Transactions[F[_]: MonadCancelThrow](
 ) extends ToConnectionIOOps with FlatMapSyntax with FunctorSyntax {
   import dsl._
 
-  def listTransaction(accountId: Int, start: LocalDate, end: LocalDate): F[Response[F]] = {
+  def listTransaction(wallet: Int, start: LocalDate, end: LocalDate): F[Response[F]] = {
     for {
-      transactions <- DBT.listTransactions(accountId, start, end).transact(transactor)
+      transactions <- DBT.listTransactions(wallet, start, end).transact(transactor)
       response <- Ok(transactions.asJson)
     } yield response
   }
@@ -54,10 +54,10 @@ class Transactions[F[_]: MonadCancelThrow](
     } yield response
   }
 
-  def massEditTransactions(ids: List[Int], shiftCat: ShiftStrategy, shiftMoneyAccount: ShiftStrategy): F[Response[F]] = {
+  def massEditTransactions(ids: List[Int], shiftCat: ShiftStrategy, shiftAccount: ShiftStrategy): F[Response[F]] = {
     for {
-      edited <- if (shiftCat.newId.nonEmpty || shiftMoneyAccount.newId.nonEmpty)
-        DBT.massEditTransactions(NonEmptyList(ids.head, ids.tail), shiftCat.newId, shiftMoneyAccount.newId).transact(transactor)
+      edited <- if (shiftCat.newId.nonEmpty || shiftAccount.newId.nonEmpty)
+        DBT.massEditTransactions(NonEmptyList(ids.head, ids.tail), shiftCat.newId, shiftAccount.newId).transact(transactor)
       else
         Monad[F].pure(0)
       response <- Ok(s"$edited")

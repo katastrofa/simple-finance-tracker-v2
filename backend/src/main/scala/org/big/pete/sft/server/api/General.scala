@@ -20,7 +20,7 @@ import org.http4s.circe.CirceEntityEncoder._
 
 class General[F[_]: Async: Parallel](
     usersCache: BpCache[F, Int, User],
-    accountsCache: BpCache[F, String, FullWallet],
+    walletsCache: BpCache[F, String, FullWallet],
     currencyCache: FullRefreshBpCache[F, String, Currency],
     dsl: Http4sDsl[F],
     implicit val transactor: Transactor[F]
@@ -41,56 +41,56 @@ class General[F[_]: Async: Parallel](
   } yield response
 
   def generalDataFetch(user: User): F[Response[F]] = for {
-    (patrons, currencies, accounts) <- (
+    (patrons, currencies, wallets) <- (
       DBG.listPatrons.transact(transactor),
       currencyCache.getValues,
       DBG.listFullWallets(user).transact(transactor)
     ).parTupled
-    _ <- accounts.map(account => accountsCache.put(account.permalink, account)).sequence
-    response <- Ok(GeneralData(user.simple, patrons, currencies, accounts).asJson)
+    _ <- wallets.map(wallet => walletsCache.put(wallet.permalink, wallet)).sequence
+    response <- Ok(GeneralData(user.simple, patrons, currencies, wallets).asJson)
   } yield response
 
   def listWallets(authUser: AuthUser): F[Response[F]] = for {
-    accounts <- DBG.listFullWallets(authUser.db).transact(transactor)
-    _ <- accounts.map(account => accountsCache.put(account.permalink, account)).sequence
-    response <- Ok(accounts.asJson)
+    wallets <- DBG.listFullWallets(authUser.db).transact(transactor)
+    _ <- wallets.map(wallet => walletsCache.put(wallet.permalink, wallet)).sequence
+    response <- Ok(wallets.asJson)
   } yield response
 
-  def addAccount(authUser: AuthUser, account: AddWallet): F[Response[F]] = {
+  def addWallet(authUser: AuthUser, wallet: AddWallet): F[Response[F]] = {
     val permissions = authUser.db.permissions
     for {
-      newId <- DBG.addWallet(account).transact(transactor)
-      _ <- DBG.addPatrons((authUser.db.id :: account.patrons).toSet, newId).transact(transactor)
-      newAccount <- DBG.getFullWallet(newId).transact(transactor)
+      newId <- DBG.addWallet(wallet).transact(transactor)
+      _ <- DBG.addPatrons((authUser.db.id :: wallet.patrons).toSet, newId).transact(transactor)
+      newWallet <- DBG.getFullWallet(newId).transact(transactor)
       newPermissions = permissions.copy(perWallet = permissions.perWallet + (newId -> permissions.default))
       _ <- Users.updatePermissions(authUser.db.id, newPermissions).transact(transactor)
       _ <- usersCache.remove(authUser.db.id)
-      _ <- accountsCache.put(newAccount.get.permalink, newAccount.get)
-      response <- Ok(newAccount.get.asJson)
+      _ <- walletsCache.put(newWallet.get.permalink, newWallet.get)
+      response <- Ok(newWallet.get.asJson)
     } yield response
   }
 
-  def editAccount(account: WalletEdit): F[Response[F]] = {
+  def editWallet(wallet: WalletEdit): F[Response[F]] = {
     for {
-      oldAccount <- accountsCache.get(account.oldPermalink).map(_.get)
-      _ <- accountsCache.remove(account.oldPermalink)
-      _ <- DBG.editWallet(account).transact(transactor)
+      oldWallet <- walletsCache.get(wallet.oldPermalink).map(_.get)
+      _ <- walletsCache.remove(wallet.oldPermalink)
+      _ <- DBG.editWallet(wallet).transact(transactor)
 
-      newAccountPatrons = account.patrons.toSet
-      patronsToRemove = oldAccount.patrons.filterNot(user => newAccountPatrons.contains(user.id)).map(_.id)
-      patronsToAdd = newAccountPatrons.filterNot(id => oldAccount.patrons.exists(_.id == id))
-      _ <- DBG.addPatrons(patronsToAdd, account.id).transact(transactor)
-      _ <- DBG.removePatrons(patronsToRemove.toSet, account.id).transact(transactor)
+      newWalletPatrons = wallet.patrons.toSet
+      patronsToRemove = oldWallet.patrons.filterNot(user => newWalletPatrons.contains(user.id)).map(_.id)
+      patronsToAdd = newWalletPatrons.filterNot(id => oldWallet.patrons.exists(_.id == id))
+      _ <- DBG.addPatrons(patronsToAdd, wallet.id).transact(transactor)
+      _ <- DBG.removePatrons(patronsToRemove.toSet, wallet.id).transact(transactor)
 
-      newAccount <- DBG.getFullWallet(account.id).transact(transactor)
-      _ <- accountsCache.put(newAccount.get.permalink, newAccount.get)
-      response <- Ok(newAccount.get.asJson)
+      newWallet <- DBG.getFullWallet(wallet.id).transact(transactor)
+      _ <- walletsCache.put(newWallet.get.permalink, newWallet.get)
+      response <- Ok(newWallet.get.asJson)
     } yield response
   }
 
-  def deleteAccount(id: Int, permalink: String): F[Response[F]] = for {
+  def deleteWallet(id: Int, permalink: String): F[Response[F]] = for {
     _ <- DBG.deleteWallet(id).traverse(_.transact(transactor))
-    _ <- accountsCache.remove(permalink)
+    _ <- walletsCache.remove(permalink)
     _ <- usersCache.clear()
     response <- Ok("")
   } yield response
