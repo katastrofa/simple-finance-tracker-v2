@@ -47,10 +47,10 @@ trait DataLoad extends Base {
     $.state.async.flatMap { state =>
       val data = AsyncCallback.sequence(
         List(
-          if (state.accounts.isEmpty || state.currencies.isEmpty)
+          if (state.wallets.isEmpty || state.currencies.isEmpty)
             loadGeneralData
           else
-            AsyncCallback.pure(GeneralData(state.me, state.availablePatrons, state.currencies.values.toList, state.accounts)),
+            AsyncCallback.pure(GeneralData(state.me, state.availablePatrons, state.currencies.values.toList, state.wallets)),
           loadCategories(wallet),
           loadAccounts(wallet, state.from, state.to),
           loadTransactions(wallet, state.from, state.to)

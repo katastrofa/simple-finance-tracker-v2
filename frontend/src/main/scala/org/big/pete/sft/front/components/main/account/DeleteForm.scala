@@ -1,4 +1,4 @@
-package org.big.pete.sft.front.components.main.moneyaccount
+package org.big.pete.sft.front.components.main.account
 
 import japgolly.scalajs.react.{Callback, CtorType, Reusability, ScalaFnComponent}
 import japgolly.scalajs.react.component.ScalaFn.{Component, Unmounted}
@@ -13,12 +13,12 @@ import java.time.LocalDate
 
 
 object DeleteForm {
-  case class DeleteMoneyAccountProps(
+  case class DeleteAccountProps(
       accounts: List[EnhancedAccount],
       toDelete: Option[EnhancedAccount],
       shiftTransactionsTo: Map[String, StateSnapshot[Option[EnhancedAccount]]],
-      deleteMoneyAccount: Callback,
-      closeDeleteModal: Callback
+      deleteAccount: Callback,
+      closeModal: Callback
   )
   case class SingleShiftTransactionsProps(
       availableAccounts: List[EnhancedAccount],
@@ -27,37 +27,37 @@ object DeleteForm {
       tabIndex: Int
   )
 
-  final val NoShiftMoneyAccount =
+  final val NoShiftAccount =
     EnhancedAccount(-42, "Do not shift - delete", LocalDate.now(), List.empty, List.empty, None)
 
 
-  implicit val stringMoneyAccountMap: Reusability[Map[String, StateSnapshot[Option[EnhancedAccount]]]] =
+  implicit val stringAccountMap: Reusability[Map[String, StateSnapshot[Option[EnhancedAccount]]]] =
     Reusability.map[String, StateSnapshot[Option[EnhancedAccount]]]
-  implicit val deleteMoneyAccountPropsReuse: Reusability[DeleteMoneyAccountProps] =
-    Reusability.caseClassExcept[DeleteMoneyAccountProps]("deleteMoneyAccount", "closeDeleteModal")
+  implicit val deleteAccountPropsReuse: Reusability[DeleteAccountProps] =
+    Reusability.caseClassExcept[DeleteAccountProps]("deleteAccount", "closeModal")
   implicit val singleShiftTransactionsPropsReuse: Reusability[SingleShiftTransactionsProps] =
-    Reusability.caseClassExcept[SingleShiftTransactionsProps]("changeShiftTransactions")
+    Reusability.derive[SingleShiftTransactionsProps]
 
 
-  private val deleteMoneyAccountForm: Component[DeleteMoneyAccountProps, CtorType.Props] = ScalaFnComponent.withReuse[DeleteMoneyAccountProps]
+  private val deleteAccountForm: Component[DeleteAccountProps, CtorType.Props] = ScalaFnComponent.withReuse[DeleteAccountProps]
     { props =>
       <.form(
-        props.toDelete.get.currencies.map { maCurrency =>
-          val available = NoShiftMoneyAccount :: props.accounts
-            .filter(_.currencies.exists(_.currency.id == maCurrency.currency.id))
+        props.toDelete.get.currencies.map { currency =>
+          val available = NoShiftAccount :: props.accounts
+            .filter(_.currencies.exists(_.currency.id == currency.currency.id))
 
-          singleShiftTransactions.withKey(s"com-delete-ma-shift-${maCurrency.currency.id}") {
-            SingleShiftTransactionsProps(available, props.shiftTransactionsTo(maCurrency.currency.id), maCurrency.currency, 320 + maCurrency.id)
+          singleShiftTransactions.withKey(s"com-delete-account-shift-${currency.currency.id}") {
+            SingleShiftTransactionsProps(available, props.shiftTransactionsTo(currency.currency.id), currency.currency, 320 + currency.id)
           }
         }.toVdomArray,
-        ModalButtons("Delete", 351, props.deleteMoneyAccount, props.closeDeleteModal)
+        ModalButtons("Delete", 351, props.deleteAccount, props.closeModal)
       )
     }
 
   private val singleShiftTransactions = ScalaFnComponent.withReuse[SingleShiftTransactionsProps] { props =>
     <.div(^.cls := "row",
       DropDown(
-        s"delete-ma-shift-${props.currency.id}",
+        s"delete-account-shift-${props.currency.id}",
         "Shift Transactions for " + displayCurrency(props.currency),
         props.availableAccounts,
         props.shift,
@@ -71,8 +71,8 @@ object DeleteForm {
       accounts: List[EnhancedAccount],
       toDelete: Option[EnhancedAccount],
       shiftTransactionsTo: Map[String, StateSnapshot[Option[EnhancedAccount]]],
-      deleteMoneyAccount: Callback,
-      closeDeleteModal: Callback
-  ): Unmounted[DeleteMoneyAccountProps] =
-    deleteMoneyAccountForm(DeleteMoneyAccountProps(accounts, toDelete, shiftTransactionsTo, deleteMoneyAccount, closeDeleteModal))
+      deleteAccount: Callback,
+      closeModal: Callback
+  ): Unmounted[DeleteAccountProps] =
+    deleteAccountForm(DeleteAccountProps(accounts, toDelete, shiftTransactionsTo, deleteAccount, closeModal))
 }

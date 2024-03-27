@@ -10,9 +10,9 @@ import org.big.pete.datepicker.ReactDatePicker
 import org.big.pete.react.MaterialIcon
 import org.big.pete.sft.front.SftMain.SftPages
 import org.big.pete.sft.front.components.header.{Sidenav, SidenavFilters}
-import org.big.pete.sft.front.components.main.moneyaccount
+import org.big.pete.sft.front.components.main.account
 import org.big.pete.sft.front.components.main.transactions.Page
-import org.big.pete.sft.front.components.main.{Accounts, Categories}
+import org.big.pete.sft.front.components.main.{Wallets, Categories}
 
 import java.time.LocalDate
 
@@ -30,10 +30,10 @@ object FullPage extends EffectSyntax {
       sidenavTop: Sidenav.TopProps,
       sidenavFilters: SidenavFilters.Props,
 
-      accounts: Accounts.Props,
+      accounts: Wallets.Props,
       transactions: Page.Props,
       categories: Categories.Props,
-      moneyAccounts: moneyaccount.Page.Props
+      moneyAccounts: account.Page.Props
   )
 
   val component: Component[Props, Unit, Unit, CtorType.Props] = ScalaComponent.builder[Props]
@@ -41,13 +41,13 @@ object FullPage extends EffectSyntax {
     .render_P { props =>
       val mainPage = props.activePage match {
         case SftMain.WalletSelectionPage =>
-          Accounts.component(props.accounts)
+          Wallets.component(props.accounts)
         case SftMain.TransactionsPage(_) =>
           Page.component(props.transactions)
         case SftMain.CategoriesPage(_) =>
           Categories.component(props.categories)
         case SftMain.AccountsPage(_) =>
-          moneyaccount.Page.component(props.moneyAccounts)
+          account.Page.component(props.moneyAccounts)
       }
 
       ReactFragment(

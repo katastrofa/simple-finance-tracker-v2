@@ -32,23 +32,23 @@ trait TransactionsProcessing extends DataLoad {
       amount: BigDecimal,
       description: String,
       category: Int,
-      moneyAccount: Int,
+      account: Int,
       currency: String,
       destinationAmount: Option[BigDecimal],
-      destinationMoneyAccountId: Option[Int],
+      destinationAccount: Option[Int],
       destinationCurrency: Option[String]
   ): Callback = {
     $.props.flatMap { props =>
-      val account = getWalletPermalink(props.activePage).getOrElse("")
+      val wallet = getWalletPermalink(props.activePage).getOrElse("")
       val method = if (id.isDefined) "POST" else "PUT"
 
       ajaxUpdate[Transaction](
         method,
-        "/" + account + "/transactions",
+        "/" + wallet + "/transactions",
         BPJson.write(
           Transaction(
-            id.getOrElse(-1), date, transactionType, amount, description, category, moneyAccount, currency,
-            TransactionTracking.None, destinationAmount, destinationMoneyAccountId, destinationCurrency, None
+            id.getOrElse(-1), date, transactionType, amount, description, category, account, currency,
+            TransactionTracking.None, destinationAmount, destinationAccount, destinationCurrency, None
           )
         ),
         transaction => $.modState { state =>
@@ -56,11 +56,11 @@ trait TransactionsProcessing extends DataLoad {
             if (id.isDefined) {
               val oldTransaction = state.transactions.find(_.id == id.get).get
               val removedTransactionMAs = updateAccountsWithTransaction(
-                oldTransaction, state.from, state.to, state.moneyAccounts, AccountUpdateAction.Reverse
+                oldTransaction, state.from, state.to, state.accounts, AccountUpdateAction.Reverse
               )
               updateAccountsWithTransaction(transaction, state.from, state.to, removedTransactionMAs, AccountUpdateAction.Attach)
             } else
-              updateAccountsWithTransaction(transaction, state.from, state.to, state.moneyAccounts, AccountUpdateAction.Attach)
+              updateAccountsWithTransaction(transaction, state.from, state.to, state.accounts, AccountUpdateAction.Attach)
           }
           updateStateWithTransaction(state, state.transactions.filter(_.id != transaction.id) ++ List(transaction), updatedMA)
         }
@@ -76,13 +76,13 @@ trait TransactionsProcessing extends DataLoad {
     }
 
     $.props.flatMap { props =>
-      val account = getWalletPermalink(props.activePage).getOrElse("")
+      val wallet = getWalletPermalink(props.activePage).getOrElse("")
       ajaxUpdate[Transaction](
         "POST",
-        "/" + account + "/transactions/tracking",
+        "/" + wallet + "/transactions/tracking",
         BPJson.write(TrackingEdit(id, newTracking)),
         transaction => $.modState { state =>
-          updateStateWithTransaction(state, state.transactions.filter(_.id != id) ++ List(transaction), state.moneyAccounts)
+          updateStateWithTransaction(state, state.transactions.filter(_.id != id) ++ List(transaction), state.accounts)
         }
       )
     }
@@ -90,15 +90,15 @@ trait TransactionsProcessing extends DataLoad {
 
   def deleteTransaction(id: Int): Callback = {
     $.props.flatMap { props =>
-      val account = getWalletPermalink(props.activePage).getOrElse("")
+      val wallet = getWalletPermalink(props.activePage).getOrElse("")
       ajaxUpdate[String](
         "DELETE",
-        "/" + account + "/transactions/" + id.toString,
+        "/" + wallet + "/transactions/" + id.toString,
         "",
         _ => $.modState { state =>
           val removedTransaction = state.transactions.find(_.id == id).get
           val updatedMA = updateAccountsWithTransaction(
-            removedTransaction, state.from, state.to, state.moneyAccounts, AccountUpdateAction.Reverse
+            removedTransaction, state.from, state.to, state.accounts, AccountUpdateAction.Reverse
           )
           updateStateWithTransaction(state, state.transactions.filter(_.id != id), updatedMA)
         }
@@ -108,24 +108,24 @@ trait TransactionsProcessing extends DataLoad {
 
   def deleteTransactions(ids: Set[Int]): Callback = {
     $.props.flatMap { props =>
-      val account = getWalletPermalink(props.activePage).getOrElse("")
+      val wallet = getWalletPermalink(props.activePage).getOrElse("")
       ajaxUpdate[Int](
         "DELETE",
-        "/" + account + "/transactions",
+        "/" + wallet + "/transactions",
         BPJson.write(DeleteTransactions(ids.toList)),
-        _ => $.modState(_.copy(checkedTransactions = Set.empty)) >> refreshWallet(account).toCallback
+        _ => $.modState(_.copy(checkedTransactions = Set.empty)) >> refreshWallet(wallet).toCallback
       )
     }
   }
 
-  def massEditTransactions(ids: Set[Int], newCat: Option[Int], newMoneyAccount: Option[Int]): Callback = {
+  def massEditTransactions(ids: Set[Int], newCat: Option[Int], newAccount: Option[Int]): Callback = {
     $.props.flatMap { props =>
-      val account = getWalletPermalink(props.activePage).getOrElse("")
+      val wallet = getWalletPermalink(props.activePage).getOrElse("")
       ajaxUpdate[Int](
         "POST",
-        "/" + account + "/transactions/mass-edit",
-        BPJson.write(MassEditTransactions(ids.toList, ShiftStrategy(newCat), ShiftStrategy(newMoneyAccount))),
-        _ => $.modState(_.copy(checkedTransactions = Set.empty)) >> refreshWallet(account).toCallback
+        "/" + wallet + "/transactions/mass-edit",
+        BPJson.write(MassEditTransactions(ids.toList, ShiftStrategy(newCat), ShiftStrategy(newAccount))),
+        _ => $.modState(_.copy(checkedTransactions = Set.empty)) >> refreshWallet(wallet).toCallback
       )
     }
   }
@@ -133,10 +133,10 @@ trait TransactionsProcessing extends DataLoad {
   private def updateStateWithTransaction(
       state: State,
       newTransactions: List[Transaction],
-      updatedMoneyAccounts: Map[Int, EnhancedAccount]
+      updatedAccounts: Map[Int, EnhancedAccount]
   ): State = {
     state.copy(
-      moneyAccounts = updatedMoneyAccounts,
+      accounts = updatedAccounts,
       transactions = newTransactions,
       displayTransactions = filterTransactions(state, Some(newTransactions))
     )

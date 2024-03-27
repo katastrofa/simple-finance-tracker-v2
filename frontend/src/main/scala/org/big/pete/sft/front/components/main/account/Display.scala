@@ -1,4 +1,4 @@
-package org.big.pete.sft.front.components.main.moneyaccount
+package org.big.pete.sft.front.components.main.account
 
 import japgolly.scalajs.react.component.ScalaFn.Component
 import japgolly.scalajs.react.{Callback, CtorType, Reusability, ScalaFnComponent}
@@ -17,7 +17,7 @@ object Display {
       openDeleteModal: EnhancedAccount => Callback
   )
 
-  implicit val maDisplayPropsReuse: Reusability[Props] =
+  implicit val accountDisplayPropsReuse: Reusability[Props] =
     Reusability.caseClassExcept[Props]("openEditModal", "openDeleteModal")
 
   val headerComponent: Component[Unit, CtorType.Nullary] = ScalaFnComponent.withReuse[Unit] { _ =>

@@ -1,4 +1,4 @@
-package org.big.pete.sft.front.components.main.moneyaccount
+package org.big.pete.sft.front.components.main.account
 
 import japgolly.scalajs.react.component.ScalaFn.{Component, Unmounted}
 import japgolly.scalajs.react.extra.StateSnapshot
@@ -8,7 +8,7 @@ import japgolly.scalajs.react.{Callback, CtorType, Reusability, ScalaFnComponent
 import org.big.pete.datepicker.ReactDatePicker
 import org.big.pete.react.{DropDown, MaterialIcon, TextInput}
 import org.big.pete.sft.domain.Currency
-import org.big.pete.sft.front.components.main.moneyaccount.Page.{CurrencyAmount, availableCurrencies}
+import org.big.pete.sft.front.components.main.account.Page.{CurrencyAmount, availableCurrencies}
 import org.big.pete.sft.front.helpers.{ModalButtons, MoneyTextBox}
 
 import java.time.LocalDate
@@ -34,7 +34,7 @@ object EditForm {
       id: Int,
       availableCurrencies: Map[String, Currency],
       startAmount: StateSnapshot[BigDecimal],
-      maCurrency: StateSnapshot[Option[Currency]],
+      accountCurrency: StateSnapshot[Option[Currency]],
       hasNextButton: Boolean,
       hasDeleteButton: Boolean,
       tabIndex: Int,
@@ -67,7 +67,7 @@ object EditForm {
         val currencyState = currencySS.prepare(curAmount.toModStateFn).apply(curAmount.value)
         val amountState = amountSS.prepare(curAmount.toModStateFn).apply(curAmount.value)
 
-        currencyEditComponent.withKey(s"add-ma-ec-$id").apply(
+        currencyEditComponent.withKey(s"add-account-ec-$id").apply(
           CurrencyEditProps(
             id, available, amountState, currencyState, id == lastId, id != firstId, 303 + id * 2, props.addNext, props.remove(id)
           )
@@ -76,8 +76,8 @@ object EditForm {
     }
 
     <.form(
-      <.div(^.cls := "row", TextInput("add-ma-name", "Name", props.name, 301, List("col", "s12"))),
-      <.div(^.cls := "row", ReactDatePicker("add-ma-started", props.created, Set("col", "s12"), 302)),
+      <.div(^.cls := "row", TextInput("add-account-name", "Name", props.name, 301, List("col", "s12"))),
+      <.div(^.cls := "row", ReactDatePicker("add-account-started", props.created, Set("col", "s12"), 302)),
       currenciesComponents.toVdomArray,
       ModalButtons(props.id.map(_ => "Save").getOrElse("Add"), 395, props.save, props.close)
     )
@@ -110,16 +110,16 @@ object EditForm {
       ReactFragment(
         <.div(^.cls := "row",
           DropDown(
-            s"add-ma-currency-${props.id}",
+            s"add-account-currency-${props.id}",
             "Currency",
             props.availableCurrencies.values.toList,
-            props.maCurrency,
+            props.accountCurrency,
             props.tabIndex,
             List("col", "s12")
           ),
         ),
         <.div(^.cls := "row valign-wrapper",
-          MoneyTextBox(s"add-ma-amount-${props.id}", "Start Amount", props.startAmount, props.tabIndex + 1, List("col", columns)),
+          MoneyTextBox(s"add-account-amount-${props.id}", "Start Amount", props.startAmount, props.tabIndex + 1, List("col", columns)),
           MaterialIcon.Icon(MaterialIcon.Props(MaterialIcon.i, MaterialIcon.midMedium, "delete", props.remove, iconClasses)).when(props.hasDeleteButton),
           MaterialIcon.Icon(MaterialIcon.Props(MaterialIcon.i, MaterialIcon.midMedium, "add", props.addNext, iconClasses)).when(props.hasNextButton)
         )

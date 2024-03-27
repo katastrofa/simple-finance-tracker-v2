@@ -22,7 +22,7 @@ object Sidenav {
       activePage: SftPages,
       onPageChange: (SftPages, Option[SftPages]) => Callback
   )
-  case class SidenavLinkProps(isActive: Boolean, url: String, linkClick: ^.onClick.Event => Callback, changePage: Callback)
+  private case class SidenavLinkProps(isActive: Boolean, url: String, linkClick: ^.onClick.Event => Callback, changePage: Callback)
 
   val topHeader: ScalaFn.Component[Unit, CtorType.Children] = ScalaFnComponent.justChildren { children =>
     <.div(^.cls := "navbar-fixed",

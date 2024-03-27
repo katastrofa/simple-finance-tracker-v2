@@ -5,8 +5,8 @@ import japgolly.scalajs.react.callback.{AsyncCallback, Callback, CallbackTo}
 import japgolly.scalajs.react.component.Scala.{BackendScope, Component, Unmounted}
 import org.big.pete.sft.front.SftMain.{WalletSelectionPage, SftPages}
 import org.big.pete.sft.front.components.header.{Sidenav, SidenavFilters}
-import org.big.pete.sft.front.components.main.moneyaccount
-import org.big.pete.sft.front.components.main.{Accounts, Categories}
+import org.big.pete.sft.front.components.main.account
+import org.big.pete.sft.front.components.main.{Wallets, Categories}
 import org.big.pete.sft.front.components.main.transactions
 import org.big.pete.sft.front.state.{CookieStorage, DataUpdate, DefaultSorting, Filtering, Props, State, TransactionsProcessing, domain}
 import org.big.pete.sft.front.domain.{CategoryTree, Order, SortingColumn}
@@ -115,10 +115,10 @@ object SftState {
             setContentFilter
           ),
           SidenavFilters.CategoriesProps(state.categoriesActiveFilters, setCategoriesFilter, state.categoryTree),
-          SidenavFilters.MoneyAccountProps(state.accountsActiveFilters, setMoneyAccountsFilter, state.moneyAccounts.values.toList)
+          SidenavFilters.MoneyAccountProps(state.accountsActiveFilters, setAccountsFilter, state.moneyAccounts.values.toList)
         ),
 
-        Accounts.Props(state.me, state.availablePatrons, state.accounts, props.activePage, props.router, onPageClick, saveAccount),
+        Wallets.Props(state.me, state.availablePatrons, state.accounts, props.activePage, props.router, onPageClick, saveWallet),
         transactions.Page.Props(
           getWalletPermalink(props.activePage).getOrElse(""),
           state.displayTransactions,
@@ -135,7 +135,7 @@ object SftState {
           massEditTransactions
         ),
         Categories.Props(state.categoryTree, saveCategory, deleteCategory),
-        moneyaccount.Page.Props(state.moneyAccounts.values.toList, state.currencies, saveMoneyAccount, deleteMoneyAccount)
+        account.Page.Props(state.moneyAccounts.values.toList, state.currencies, saveAccount, deleteAccount)
       ))
     }
   }

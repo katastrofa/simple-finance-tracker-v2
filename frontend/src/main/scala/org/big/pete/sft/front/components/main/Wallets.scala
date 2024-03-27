@@ -15,13 +15,13 @@ import org.big.pete.sft.front.utilz
 import org.scalajs.dom.html.Element
 
 
-object Accounts {
+object Wallets {
   import org.big.pete.sft.front.domain.Implicits._
 
   case class Props(
       me: SimpleUser,
       patrons: List[SimpleUser],
-      accounts: List[FullWallet],
+      wallets: List[FullWallet],
       activePage: SftPages,
       router: RouterCtl[SftPages],
       onPageChange: (SftPages, Option[SftPages]) => Callback,
@@ -34,7 +34,7 @@ object Accounts {
       permalink: String,
       patrons: Map[Int, SimpleUser]
   )
-  case class AccountProps(
+  case class WalletProps(
       activePage: SftPages,
       router: RouterCtl[SftPages],
       onPageChange: (SftPages, Option[SftPages]) => Callback,
@@ -65,8 +65,8 @@ object Accounts {
 
   implicit val propsReuse: Reusability[Props] = Reusability.caseClassExcept("router", "onPageChange", "save")
   implicit val stateReuse: Reusability[State] = Reusability.derive[State]
-  implicit val accountPropsReuse: Reusability[AccountProps] =
-    Reusability.caseClassExcept[AccountProps]("router", "onPageChange", "openEditModal")
+  implicit val walletPropsReuse: Reusability[WalletProps] =
+    Reusability.caseClassExcept[WalletProps]("router", "onPageChange", "openEditModal")
   implicit val formPropsReuse: Reusability[FormProps] =
     Reusability.caseClassExcept[FormProps]("changeName", "changePermalink", "addPatron", "changePatron", "save", "close")
   implicit val patronEditPropsReuse: Reusability[PatronEditProps] =
@@ -109,7 +109,7 @@ object Accounts {
         props <- $.props
         state <- $.state
 
-        oldPermalink = props.accounts.find(account => state.id.contains(account.id)).map(_.permalink)
+        oldPermalink = props.wallets.find(wallet => state.id.contains(wallet.id)).map(_.permalink)
         _ <- props.save(oldPermalink, state.id, state.name, state.permalink, props.me.id :: state.patrons.values.toList.map(_.id))
         _ <- close
       } yield ()
@@ -118,25 +118,25 @@ object Accounts {
     def openAddNew: Callback =
       $.modState(_.copy(isEditModalOpen = true, None, "", "", Map.empty))
 
-    def openEditModal(account: FullWallet): Callback = $.props.flatMap { props =>
+    def openEditModal(wallet: FullWallet): Callback = $.props.flatMap { props =>
       $.modState(_.copy(
         isEditModalOpen = true,
-        Some(account.id),
-        account.name,
-        account.permalink,
-        account.patrons.map(patron => patron.id -> patron).toMap - props.me.id
+        Some(wallet.id),
+        wallet.name,
+        wallet.permalink,
+        wallet.patrons.map(patron => patron.id -> patron).toMap - props.me.id
       ))
     }
 
     def render(props: Props, state: State): html_<^.VdomTagOf[Element] = {
-      val accountProps = AccountProps(props.activePage, props.router, props.onPageChange, openEditModal)
-      val accounts = props.accounts.map { account =>
-        accountComponent.withKey(s"a-${account.id}").apply((account, accountProps))
+      val walletProps = WalletProps(props.activePage, props.router, props.onPageChange, openEditModal)
+      val wallets = props.wallets.map { wallet =>
+        accountComponent.withKey(s"a-${wallet.id}").apply((wallet, walletProps))
       }.toVdomArray
 
       tableWrap(
-        "accounts-table",
-        FormModal.component(FormModal.Props("add-account-modal"))(
+        "wallets-table",
+        FormModal.component(FormModal.Props("add-wallet-modal"))(
           addModal.apply(FormProps(
             state.id, state.name, state.permalink,
             props.me, props.patrons, state.patrons,
@@ -145,7 +145,7 @@ object Accounts {
           ))
         ).when(state.isEditModalOpen),
         headerComponent(),
-        accounts,
+        wallets,
         headerComponent(),
         <.a(
           ^.cls := "waves-effect waves-light btn nice",
@@ -171,19 +171,19 @@ object Accounts {
     )
   }
 
-  private val accountComponent: Component[(FullWallet, AccountProps), CtorType.Props] = ScalaFnComponent.withReuse[(FullWallet, AccountProps)] { case (account, props) =>
+  private val accountComponent: Component[(FullWallet, WalletProps), CtorType.Props] = ScalaFnComponent.withReuse[(FullWallet, WalletProps)] { case (wallet, props) =>
     <.tr(
-      <.td(^.cls := "hide-on-small-only id right-align", account.id.toString),
+      <.td(^.cls := "hide-on-small-only id right-align", wallet.id.toString),
       <.td(^.cls := "name",
-        MaterialIcon.Icon(MaterialIcon.Props(MaterialIcon.i, MaterialIcon.small, "edit", props.openEditModal(account), Set("right"))),
+        MaterialIcon.Icon(MaterialIcon.Props(MaterialIcon.i, MaterialIcon.small, "edit", props.openEditModal(wallet), Set("right"))),
         <.a(
-          ^.href := props.router.urlFor(TransactionsPage(account.permalink)).value,
-          ^.onClick ==> (e => props.router.setEH(TransactionsPage(account.permalink))(e) >>
-            props.onPageChange(TransactionsPage(account.permalink), Some(WalletSelectionPage))),
-          account.name
+          ^.href := props.router.urlFor(TransactionsPage(wallet.permalink)).value,
+          ^.onClick ==> (e => props.router.setEH(TransactionsPage(wallet.permalink))(e) >>
+            props.onPageChange(TransactionsPage(wallet.permalink), Some(WalletSelectionPage))),
+          wallet.name
         )
       ),
-      <.td(^.cls := "permalink", account.permalink)
+      <.td(^.cls := "permalink", wallet.permalink)
     )
   }
 
@@ -202,11 +202,11 @@ object Accounts {
 
       <.form(
         <.div(^.cls := "row",
-          TextInput.component(TextInput.Props("add-account-name", "Name", props.name, props.changeName, 101, List("col", "s12")))
+          TextInput.component(TextInput.Props("add-wallet-name", "Name", props.name, props.changeName, 101, List("col", "s12")))
         ),
         <.div(^.cls := "row",
           TextInput.component(
-            TextInput.Props("add-account-permalink", "Permalink", props.permalink, props.changePermalink, 102, List("col", "s12"))
+            TextInput.Props("add-wallet-permalink", "Permalink", props.permalink, props.changePermalink, 102, List("col", "s12"))
           )
         ),
         <.div(^.cls := "row", <.div(^.cls := "col s12", <.h6("Default Patron"), <.div(^.cls := "patron", props.me.displayName))),

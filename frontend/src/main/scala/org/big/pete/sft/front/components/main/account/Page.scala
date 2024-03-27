@@ -1,4 +1,4 @@
-package org.big.pete.sft.front.components.main.moneyaccount
+package org.big.pete.sft.front.components.main.account
 
 import japgolly.scalajs.react.Reusability
 import japgolly.scalajs.react.component.Scala
@@ -48,8 +48,8 @@ object Page {
       toDelete: Option[Int]
   )
 
-  implicit val maPagePropsReuse: Reusability[Props] = Reusability.caseClassExcept[Props]("save", "delete")
-  implicit val maPageStateReuse: Reusability[State] = Reusability.derive[State]
+  implicit val accountPagePropsReuse: Reusability[Props] = Reusability.caseClassExcept[Props]("save", "delete")
+  implicit val accountPageStateReuse: Reusability[State] = Reusability.derive[State]
   implicit val currencyAmountReuse: Reusability[CurrencyAmount] = Reusability.derive[CurrencyAmount]
 
 
@@ -66,8 +66,6 @@ object Page {
 
     private val nameSnap = StateSnapshot.withReuse.prepare(changeName)
     private val createdSnap = StateSnapshot.withReuse.prepare(changeCreated)
-//    private val startAmountSnap = (id: Int) => StateSnapshot.withReuse.prepare(updateStartAmount(id))
-//    private val currencySnap = (id: Int) => StateSnapshot.withReuse.prepare(updateCurrency(id))
     private val currencyAmountSnap = (id: Int) => StateSnapshot.withReuse.prepare(updateCurrencyAmount(id))
     private val shiftTransactionsSnap = (cur: String) => StateSnapshot.withReuse.prepare(changeShiftTransactions(cur))
 
@@ -77,16 +75,6 @@ object Page {
 
     private def changeCreated(date: Option[LocalDate], fn: Callback): Callback =
       date.map(ld => $.modState(_.copy(created = ld))).getOrElse(Callback.empty) >> fn
-
-//    private def updateStartAmount(id: Int)(amount: Option[BigDecimal], fn: Callback): Callback = $.modState { state =>
-//      val newTuple = state.currencyAmounts(id).copy(amount = amount.getOrElse(BigDecimal(0)))
-//      state.copy(currencyAmounts = state.currencyAmounts + (id -> newTuple))
-//    } >> fn
-//
-//    private def updateCurrency(id: Int)(currency: Option[Option[Currency]], fn: Callback): Callback = $.modState { state =>
-//      val newTuple = state.currencyAmounts(id).copy(currency = currency.flatten)
-//      state.copy(currencyAmounts = state.currencyAmounts + (id -> newTuple))
-//    } >> fn
 
     private def updateCurrencyAmount(id: Int)(curOpt: Option[CurrencyAmount], fn: Callback): Callback = curOpt.map { curAmount =>
       $.modState { state => state.copy(currencyAmounts = state.currencyAmounts + (id -> curAmount)) }
@@ -106,10 +94,10 @@ object Page {
     }
 
 
-    def changeShiftTransactions(currency: String)(emaOpt: Option[Option[EnhancedAccount]], fn: Callback): Callback = emaOpt.map { ema =>
+    def changeShiftTransactions(currency: String)(accountOpt: Option[Option[EnhancedAccount]], fn: Callback): Callback = accountOpt.map { account =>
       $.modState { state =>
-        val realEma = if (ema.isDefined && ema.get.id == DeleteForm.NoShiftMoneyAccount.id) None else ema
-        state.copy(shiftTransactions = state.shiftTransactions + (currency -> realEma))
+        val realAccount = if (account.isDefined && account.get.id == DeleteForm.NoShiftAccount.id) None else account
+        state.copy(shiftTransactions = state.shiftTransactions + (currency -> realAccount))
       }
     }.getOrElse(Callback.empty) >> fn
 
@@ -142,15 +130,15 @@ object Page {
     }
 
     def openDeleteModal(account: EnhancedAccount): Callback = $.modState { state =>
-      val newShift = account.currencies.map(_.currency.id -> Some(DeleteForm.NoShiftMoneyAccount)).toMap
+      val newShift = account.currencies.map(_.currency.id -> Some(DeleteForm.NoShiftAccount)).toMap
       state.copy(deleteIsOpen = true, shiftTransactions = newShift, toDelete = Some(account.id))
     }
 
-    def deleteMoneyAccount(): Callback = for {
+    def deleteAccount(): Callback = for {
       props <- $.props
       state <- $.state
-      shifting = state.shiftTransactions.map { case (currency, emaOpt) =>
-        val id = if (emaOpt.isDefined && emaOpt.get.id == DeleteForm.NoShiftMoneyAccount.id) None else emaOpt.map(_.id)
+      shifting = state.shiftTransactions.map { case (currency, accountOpt) =>
+        val id = if (accountOpt.isDefined && accountOpt.get.id == DeleteForm.NoShiftAccount.id) None else accountOpt.map(_.id)
         ShiftStrategyPerCurrency(id, currency)
       }.toList
       _ <- props.delete(state.toDelete.get, shifting)
@@ -159,8 +147,8 @@ object Page {
 
 
     def render(props: Props, state: State): VdomTagOf[Element] = {
-      val moneyAccounts = props.accounts
-        .map(ema => Display.lineComponent.withKey(s"ma-${ema.id}").apply(Display.Props(ema, openEditModal, openDeleteModal)))
+      val accounts = props.accounts
+        .map(account => Display.lineComponent.withKey(s"account-${account.id}")(Display.Props(account, openEditModal, openDeleteModal)))
         .toVdomArray
 
       val currencyAmounts = state.currencyAmounts.map { case (id, value) =>
@@ -171,23 +159,23 @@ object Page {
       }
 
       tableWrap(
-        "money-accounts-table",
+        "accounts-table",
         List(
-          FormModal.component(FormModal.Props("add-money-account-modal")) {
+          FormModal.component(FormModal.Props("add-account-modal")) {
             EditForm(
               props.currencies, state.id, nameSnap(state.name), createdSnap(state.created), currencyAmounts,
               addCurrency(), removeCurrency, saveModal, closeModal
             )
           }.when(state.isOpen),
-          FormModal.component(FormModal.Props("delete-money-account-modal")) {
+          FormModal.component(FormModal.Props("delete-account-modal")) {
             DeleteForm(
               props.accounts, state.toDelete.flatMap(id => props.accounts.find(_.id == id)), shiftTransactions,
-              deleteMoneyAccount(), closeDeleteModal
+              deleteAccount(), closeDeleteModal
             )
           }.when(state.deleteIsOpen)
         ).toTagMod,
         Display.headerComponent(),
-        moneyAccounts,
+        accounts,
         Display.headerComponent(),
         <.a(
           ^.cls := "waves-effect waves-light btn nice",
