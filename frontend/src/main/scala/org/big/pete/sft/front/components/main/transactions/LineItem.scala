@@ -43,7 +43,7 @@ object LineItem {
     val additionalAmountInfo = if (props.transaction.destinationAmount.isDefined)
       " -> " + formatAmount(props.transaction.destinationCurrency.get.symbol, props.transaction.destinationAmount.get)
     else ""
-    val additionalMoneyAccount = props.transaction.destinationAccountName.map(name => s" -> $name").getOrElse("")
+    val additionalAccount = props.transaction.destinationAccountName.map(name => s" -> $name").getOrElse("")
 
     val mainTr = <.tr(^.cls := "show-hoverable", ^.key := s"line-${props.transaction.id}",
       MICheckbox.td(
@@ -74,7 +74,7 @@ object LineItem {
         <.span(^.cls := "category-big", props.transaction.categoryFullName),
         <.span(^.cls := "category-small", props.transaction.categoryName)
       ),
-      <.td(^.cls := "money-account hide-on-med-and-down", props.transaction.accountName + additionalMoneyAccount),
+      <.td(^.cls := "account hide-on-med-and-down", props.transaction.accountName + additionalAccount),
       <.td(
         ^.cls := "delete hide-on-med-and-down",
         MaterialIcon.Icon(MaterialIcon.Props(
@@ -121,7 +121,7 @@ object LineItem {
         ),
         <.div(^.cls := "details-item row",
           <.strong(^.cls := "col l2 s3", "Account: "),
-          <.span(^.cls := "col l10 s9", props.transaction.accountName + additionalMoneyAccount)
+          <.span(^.cls := "col l10 s9", props.transaction.accountName + additionalAccount)
         ),
         <.div(^.cls := "details-item row",
           <.strong(^.cls := "col l2 s3", "Status: "),

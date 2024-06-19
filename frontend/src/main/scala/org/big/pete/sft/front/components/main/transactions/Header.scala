@@ -49,7 +49,7 @@ object Header {
         )
       ),
       <.th(^.cls := "category", "Category"),
-      <.th(^.cls := "money-account hide-on-med-and-down", "Account"),
+      <.th(^.cls := "account hide-on-med-and-down", "Account"),
       <.th(^.cls := "delete hide-on-med-and-down", ""),
       <.th(^.cls := "status center-align", "")
     )

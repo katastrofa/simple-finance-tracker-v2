@@ -21,7 +21,7 @@ object EditForm {
   case class Props(
       linearCats: List[CategoryTree],
       categories: Map[Int, Category],
-      moneyAccounts: Map[Int, EnhancedAccount],
+      accounts: Map[Int, EnhancedAccount],
       id: Option[Int],
       date: StateSnapshot[LocalDate],
       transactionType: StateSnapshot[Option[TransactionType]],
@@ -29,8 +29,8 @@ object EditForm {
       destAmount: StateSnapshot[BigDecimal],
       description: StateSnapshot[String],
       category: StateSnapshot[Option[CategoryTree]],
-      moneyAccount: StateSnapshot[Option[EnhancedAccount]],
-      destMoneyAccount: StateSnapshot[Option[EnhancedAccount]],
+      account: StateSnapshot[Option[EnhancedAccount]],
+      destAccount: StateSnapshot[Option[EnhancedAccount]],
       currency: StateSnapshot[Option[Currency]],
       destCurrency: StateSnapshot[Option[Currency]],
       addNext: StateSnapshot[Boolean],
@@ -45,9 +45,9 @@ object EditForm {
     private val refAmount = Ref.toScalaComponent(MoneyTextBox.component)
     private val refDescription = Ref.toScalaComponent(TextInput.component)
     private val refCategory = Ref.toScalaComponent(DropDown.component)
-    private val refMoneyAccount = Ref.toScalaComponent(DropDown.component)
+    private val refAccount = Ref.toScalaComponent(DropDown.component)
     private val refCurrency = Ref.toScalaComponent(DropDown.component)
-    private val refDestMoneyAccount = Ref.toScalaComponent(DropDown.component)
+    private val refDestAccount = Ref.toScalaComponent(DropDown.component)
     private val refDestCurrency = Ref.toScalaComponent(DropDown.component)
     private val refDestAmount = Ref.toScalaComponent(MoneyTextBox.component)
     private val refAddNext = Ref.toScalaComponent(SimpleCheckbox.component)
@@ -57,17 +57,17 @@ object EditForm {
       ref.foreachCB(_.backend.focus).async.delayMs(50).toCallback
 
     def render(props: Props): VdomTagOf[Form] = {
-      def getAvailableCurrencies(maId: Option[Int]): List[Currency] =
-        maId.map(id => props.moneyAccounts(id).status.map(_.currency))
+      def getAvailableCurrencies(account: Option[Int]): List[Currency] =
+        account.map(id => props.accounts(id).status.map(_.currency))
           .getOrElse(List.empty)
 
       val refToLast = (if (props.id.isEmpty) refAddNext else refButtons)
         .asInstanceOf[Ref.WithScalaComponent[Any, Any, _ <: HasFocus, CtorType.Props]]
-      val refToNext = (if (props.transactionType.value.contains(TransactionType.Transfer)) refDestMoneyAccount else refToLast)
+      val refToNext = (if (props.transactionType.value.contains(TransactionType.Transfer)) refDestAccount else refToLast)
         .asInstanceOf[Ref.WithScalaComponent[Any, Any, _ <: HasFocus, CtorType.Props]]
 
-      val mainAccountCurrencies = getAvailableCurrencies(props.moneyAccount.value.map(_.id))
-      val destAccountCurrencies = getAvailableCurrencies(props.destMoneyAccount.value.map(_.id))
+      val mainAccountCurrencies = getAvailableCurrencies(props.account.value.map(_.id))
+      val destAccountCurrencies = getAvailableCurrencies(props.destAccount.value.map(_.id))
 
       <.form(
         <.div(^.cls := "row",
@@ -102,15 +102,15 @@ object EditForm {
             props.category,
             405,
             List("col", "s12"),
-            shiftFocus(refMoneyAccount)
+            shiftFocus(refAccount)
           )
         ),
         <.div(^.cls := "row",
-          DropDown.withRef(refMoneyAccount)(
-            "add-tr-ma",
-            "Money Account",
-            props.moneyAccounts.values.toList,
-            props.moneyAccount,
+          DropDown.withRef(refAccount)(
+            "add-tr-account",
+            "Account",
+            props.accounts.values.toList,
+            props.account,
             406,
             List("col", "s12"),
             shiftFocus(refCurrency)
@@ -128,11 +128,11 @@ object EditForm {
           )
         ),
         <.div(^.cls := "row",
-          DropDown.withRef(refDestMoneyAccount)(
-            "add-tr-ma-dest",
-            "Destination Money Account",
-            props.moneyAccounts.values.toList,
-            props.destMoneyAccount,
+          DropDown.withRef(refDestAccount)(
+            "add-tr-account-dest",
+            "Destination Account",
+            props.accounts.values.toList,
+            props.destAccount,
             408,
             List("col", "s12"),
             shiftFocus(refDestCurrency)

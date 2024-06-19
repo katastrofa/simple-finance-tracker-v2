@@ -2,13 +2,13 @@ import java.nio.file.StandardCopyOption
 
 val sftFullBuild = taskKey[Unit]("Builds the back-end assembly and front-end and pushes it into the back-end target folder")
 
-val Http4sVersion = "1.0.0-M40"
+val Http4sVersion = "1.0.0-M41"
 val CirceVersion = "0.14.6"
 //val MunitVersion = "0.7.29"
 val LogbackVersion = "1.4.14"
 //val MunitCatsEffectVersion = "1.0.6"
 val EnumeratumVersion = "1.7.3"
-val CatsEffectVersion = "3.5.1"
+val CatsEffectVersion = "3.5.3"
 val MyScalaVersion = "2.13.12"
 val DoobieVersion = "1.0.0-RC5"
 val ScalaJsReactVersion = "2.1.1"

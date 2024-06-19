@@ -20,9 +20,9 @@ object MassEditModal {
   case class Props(
       selectedTransactions: List[EnhancedTransaction],
       linearCats: List[CategoryTree],
-      moneyAccounts: Map[Int, EnhancedAccount],
+      accounts: Map[Int, EnhancedAccount],
       selectedCat: StateSnapshot[Option[CategoryTree]],
-      selectedMA: StateSnapshot[Option[EnhancedAccount]],
+      selectedAccount: StateSnapshot[Option[EnhancedAccount]],
       confirm: Callback,
       close: Callback
   )
@@ -36,8 +36,8 @@ object MassEditModal {
     def render(props: Props): VdomTagOf[Form] = {
       val extendedCats = LeaveAsIsCat :: props.linearCats
       val usedCurrencies = props.selectedTransactions.map(_.currency.id).toSet
-      val extendedMas = props.moneyAccounts.filter { case (_, ma) =>
-        ma.currencies.map(_.currency.id).toSet.intersect(usedCurrencies).size == usedCurrencies.size
+      val extendedAccounts = props.accounts.filter { case (_, account) =>
+        account.currencies.map(_.currency.id).toSet.intersect(usedCurrencies).size == usedCurrencies.size
       } + (-1 -> LeaveAsIsMa)
 
       <.form(
@@ -53,10 +53,10 @@ object MassEditModal {
         ),
         <.div(^.cls := "row",
           DropDown(
-            "mass-edit-tr-ma",
-            "Money Account",
-            extendedMas.values.toList,
-            props.selectedMA,
+            "mass-edit-tr-account",
+            "Account",
+            extendedAccounts.values.toList,
+            props.selectedAccount,
             431,
             List("col", "s12")
           )
