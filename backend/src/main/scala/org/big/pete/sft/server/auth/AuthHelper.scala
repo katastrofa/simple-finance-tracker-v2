@@ -12,6 +12,7 @@ import org.big.pete.cache.BpCache
 import org.big.pete.sft.db.dao.Users
 import org.big.pete.sft.db.domain.User
 import org.big.pete.sft.server.auth.domain._
+import org.big.pete.sft.server.auth.domain.Implicits.{googleTokenResponseDecoder, personResponseDecoder}
 import org.http4s.dsl.Http4sDsl
 import org.http4s.{AuthedRequest, HttpDate, Request, RequestCookie, Response, ResponseCookie}
 import org.http4s.headers.{Location, `User-Agent`}
@@ -25,8 +26,9 @@ class AuthHelper[F[_]: MonadCancelThrow](
     config: Config,
     dsl: Http4sDsl[F],
     sttpBackend: SttpBackend[F, Any],
-    usersCache: BpCache[F, Int, User],
-    implicit val transactor: Transactor[F]
+    usersCache: BpCache[F, Int, User]
+)(
+    using transactor: Transactor[F]
 ) extends FunctorSyntax with FlatMapSyntax with MonadCancelSyntax with ToConnectionIOOps with LogSupport
 {
   import dsl._
@@ -85,15 +87,18 @@ class AuthHelper[F[_]: MonadCancelThrow](
   private def parseBrowserInfo(request: Request[F]): String =
     request.headers.get(`User-Agent`.name).map(_.head.value).getOrElse("")
 
-  def loginRedirectHandler: Kleisli[OptionT[F, *], AuthedRequest[F, LoginRedirect], Response[F]] = Kleisli { request =>
-    OptionT.liftF(Found(Location(request.context.uri)))
+  def loginRedirectHandler = Kleisli { (request: AuthedRequest[F, LoginRedirect]) =>
+    val kokot = Location(request.context.uri)
+    val pica = Found(kokot)
+    val kokotPica = OptionT.liftF(Found(Location(request.context.uri)))
+    kokotPica
   }
 
   def processLoginError(errorCode: String): F[Response[F]] =
     Forbidden(s"Error code: $errorCode")
 
   def processLoginFromElgoog(codeToken: String, request: Request[F]): F[Response[F]] = {
-    import org.http4s.implicits.http4sLiteralsSyntax
+    import org.http4s.implicits._
 
     val loginResult = for {
       tokenResponse <- getTokenFromElgoog(codeToken)

@@ -6,7 +6,7 @@ import japgolly.scalajs.react.{Callback, CtorType, ReactFormEventFromInput, Ref,
 import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.datepicker.ReactDatePicker
 import org.big.pete.react.{HasFocus, TextInput, WithFocus}
-import org.big.pete.sft.domain.{Category, Currency, EnhancedMoneyAccount, TransactionType}
+import org.big.pete.sft.domain.{Category, Currency, EnhancedAccount, Op}
 import org.big.pete.sft.front.SftMain.{dropDownCategoryTree, dropDownCurrency, dropDownMoneyAccount, dropDownTT}
 import org.big.pete.sft.front.components.main.displayCurrency
 import org.big.pete.sft.front.domain.CategoryTree
@@ -23,10 +23,10 @@ object AddForm {
   case class Props(
       linearCats: List[CategoryTree],
       categories: Map[Int, Category],
-      moneyAccounts: Map[Int, EnhancedMoneyAccount],
+      moneyAccounts: Map[Int, EnhancedAccount],
       id: Option[Int],
       date: LocalDate,
-      transactionType: TransactionType,
+      transactionType: Op,
       amount: BigDecimal,
       destAmount: Option[BigDecimal],
       description: String,
@@ -37,13 +37,13 @@ object AddForm {
       destCurrency: Option[String],
       addNext: Boolean,
       dateChange: LocalDate => CallbackTo[LocalDate],
-      ttChange: TransactionType => Callback,
+      ttChange: Op => Callback,
       amountChange: BigDecimal => Callback,
       descriptionChange: ReactFormEventFromInput => Callback,
       categoryChange: CategoryTree => Callback,
-      maChange: EnhancedMoneyAccount => Callback,
+      maChange: EnhancedAccount => Callback,
       currencyChange: Currency => Callback,
-      destinationMAChange: EnhancedMoneyAccount => Callback,
+      destinationMAChange: EnhancedAccount => Callback,
       destinationAmountChange: BigDecimal => Callback,
       destinationCurrencyChange: Currency => Callback,
       addNextChange: ReactFormEventFromInput => Callback,
@@ -74,12 +74,12 @@ object AddForm {
 
     def render(props: Props): VdomTagOf[Form] = {
       def getAvailableCurrencies(maId: Option[Int]): List[Currency] =
-        maId.map(id => props.moneyAccounts(id).status.map(_.currency))
+        maId.map(id => props.moneyAccounts(id).balance.map(_.currency))
           .getOrElse(List.empty)
 
       val refToLast = (if (props.id.isEmpty) refAddNext else refButtons)
         .asInstanceOf[Ref.WithScalaComponent[Any, Any, _ <: HasFocus, CtorType.Props]]
-      val refToNext = (if (props.transactionType == TransactionType.Transfer) refDestMoneyAccount else refToLast)
+      val refToNext = (if (props.transactionType == Op.Transfer) refDestMoneyAccount else refToLast)
         .asInstanceOf[Ref.WithScalaComponent[Any, Any, _ <: HasFocus, CtorType.Props]]
 
       val mainAccountCurrencies = getAvailableCurrencies(props.moneyAccountId)
@@ -105,7 +105,7 @@ object AddForm {
             dropDownTT.Props(
               "add-tr-tt",
               "Transaction Type",
-              TransactionType.values.toList,
+              Op.values.toList,
               _.toString,
               _.toString,
               props.ttChange,
@@ -189,7 +189,7 @@ object AddForm {
               shiftFocus(refDestCurrency)
             )
           )
-        ).when(props.transactionType == TransactionType.Transfer),
+        ).when(props.transactionType == Op.Transfer),
         <.div(^.cls := "row",
           dropDownCurrency.component.withRef(refDestCurrency)(
             dropDownCurrency.Props(
@@ -205,13 +205,13 @@ object AddForm {
               shiftFocus(refDestAmount)
             )
           )
-        ).when(props.transactionType == TransactionType.Transfer),
+        ).when(props.transactionType == Op.Transfer),
         <.div(^.cls := "row",
           MoneyTextBox.component.withRef(refDestAmount).apply(MoneyTextBox.Props(
             "add-tr-amount-dest", "Destination Amount", props.destAmount.getOrElse(BigDecimal(0)),
             props.destinationAmountChange, 410, List("col", "s12"), shiftFocus(refToLast)
           )),
-        ).when(props.transactionType == TransactionType.Transfer),
+        ).when(props.transactionType == Op.Transfer),
         <.div(^.cls := "row",
           SimpleCheckbox.component.withRef(refAddNext)(SimpleCheckbox.Props("Add another", props.addNext, 411, props.addNextChange))
         ).when(props.id.isEmpty),

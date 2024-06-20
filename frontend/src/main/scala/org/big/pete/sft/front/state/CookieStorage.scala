@@ -1,6 +1,6 @@
 package org.big.pete.sft.front.state
 
-import org.big.pete.sft.domain.TransactionType
+import org.big.pete.sft.domain.Op
 import org.big.pete.{BPCookie, CookieAttributes}
 
 import java.time.LocalDate
@@ -23,7 +23,7 @@ object CookieStorage {
     )
 
   private def defaultAddTransactionSetup: AddTransactionSetup =
-    AddTransactionSetup(LocalDate.now(), TransactionType.Expense, None, None, None, None, None)
+    AddTransactionSetup(LocalDate.now(), Op.Expense, None, None, None, None, None)
 
   def getBrowserSettings: BrowserSettings = {
     if (browserSettings == null)

@@ -7,7 +7,7 @@ import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{Callback, CallbackTo, CtorType, ReactFormEventFromInput, Reusability, ScalaComponent, ScalaFnComponent}
 import org.big.pete.datepicker.ReactDatePicker
 import org.big.pete.react.{MaterialIcon, TextInput}
-import org.big.pete.sft.domain.{Currency, EnhancedMoneyAccount, MoneyAccountOptionalCurrency}
+import org.big.pete.sft.domain.{Currency, EnhancedAccount, AccountOptionalCurrency}
 import org.big.pete.sft.front.SftMain
 import org.big.pete.sft.front.components.main.displayCurrency
 import org.big.pete.sft.front.helpers.{ModalButtons, MoneyTextBox}
@@ -23,7 +23,7 @@ object Forms {
       id: Option[Int],
       name: String,
       created: LocalDate,
-      editCurrencies: Map[Int, MoneyAccountOptionalCurrency],
+      editCurrencies: Map[Int, AccountOptionalCurrency],
       changeName: ReactFormEventFromInput => Callback,
       changeAmount: Int => BigDecimal => Callback,
       changeCurrency: Int => Currency => Callback,
@@ -36,7 +36,7 @@ object Forms {
 
   case class CurrencyEditProps(
       availableCurrencies: Map[String, Currency],
-      maCurrency: MoneyAccountOptionalCurrency,
+      maCurrency: AccountOptionalCurrency,
       hasNextButton: Boolean,
       hasDeleteButton: Boolean,
       tabIndex: Int,
@@ -47,20 +47,20 @@ object Forms {
   )
 
   case class DeleteMoneyAccountProps(
-      accounts: List[EnhancedMoneyAccount],
-      toDelete: Option[EnhancedMoneyAccount],
+      accounts: List[EnhancedAccount],
+      toDelete: Option[EnhancedAccount],
       shiftTransactionsTo: Map[String, Int],
-      changeShiftTransactionsForCurrency: String => EnhancedMoneyAccount => Callback,
+      changeShiftTransactionsForCurrency: String => EnhancedAccount => Callback,
       deleteMoneyAccount: Callback,
       closeDeleteModal: Callback
   )
 
   case class SingleShiftTransactionsProps(
-      availableAccounts: List[EnhancedMoneyAccount],
+      availableAccounts: List[EnhancedAccount],
       shift: Int,
       currency: Currency,
       tabIndex: Int,
-      changeShiftTransactions: EnhancedMoneyAccount => Callback
+      changeShiftTransactions: EnhancedAccount => Callback
   )
 
   implicit val formPropsReuse: Reusability[FormProps] = Reusability.caseClassExcept[FormProps](
@@ -75,7 +75,7 @@ object Forms {
     Reusability.caseClassExcept[SingleShiftTransactionsProps]("changeShiftTransactions")
 
   final val NoShiftMoneyAccount =
-    EnhancedMoneyAccount(-42, "Do not shift - delete", LocalDate.now(), List.empty, List.empty, None)
+    EnhancedAccount(-42, "Do not shift - delete", LocalDate.now(), List.empty, List.empty, None)
 
 
   val editForm: Scala.Component[FormProps, Unit, Unit, CtorType.Props] = ScalaComponent.builder[FormProps]

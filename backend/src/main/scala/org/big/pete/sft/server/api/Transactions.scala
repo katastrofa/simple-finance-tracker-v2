@@ -8,8 +8,8 @@ import doobie.syntax.ToConnectionIOOps
 import doobie.util.transactor.Transactor
 import io.circe.syntax.EncoderOps
 import org.big.pete.sft.db.dao.{Transactions => DBT}
-import org.big.pete.sft.domain.{ShiftStrategy, TrackingEdit, Transaction}
-import org.big.pete.sft.domain.Implicits._
+import org.big.pete.sft.domain.{ShiftStrategy, StatusEdit, Transaction}
+import org.big.pete.sft.domain.Givens._
 import org.http4s.Response
 import org.http4s.dsl.Http4sDsl
 import org.http4s.circe.CirceEntityEncoder._
@@ -18,22 +18,23 @@ import java.time.LocalDate
 
 
 class Transactions[F[_]: MonadCancelThrow](
-    dsl: Http4sDsl[F],
-    implicit val transactor: Transactor[F]
+    dsl: Http4sDsl[F]
+)(
+    using transactor: Transactor[F]
 ) extends ToConnectionIOOps with FlatMapSyntax with FunctorSyntax {
   import dsl._
 
-  def listTransaction(accountId: Int, start: LocalDate, end: LocalDate): F[Response[F]] = {
+  def listTransaction(wallet: Int, start: LocalDate, end: LocalDate): F[Response[F]] = {
     for {
-      transactions <- DBT.listTransactions(accountId, start, end).transact(transactor)
+      transactions <- DBT.listTransactions(wallet, start, end).transact(transactor)
       response <- Ok(transactions.asJson)
     } yield response
   }
 
   def addTransaction(trans: Transaction): F[Response[F]] = {
     for {
-      newId <- DBT.addTransaction(trans).transact(transactor)
-      newTransaction <- DBT.getTransaction(newId).transact(transactor)
+      id <- DBT.addTransaction(trans).transact(transactor)
+      newTransaction <- DBT.getTransaction(id).transact(transactor)
       response <- Ok(newTransaction.get.asJson)
     } yield response
   }
@@ -46,18 +47,18 @@ class Transactions[F[_]: MonadCancelThrow](
     } yield response
   }
 
-  def editTracking(tracking: TrackingEdit): F[Response[F]] = {
+  def editStatus(status: StatusEdit): F[Response[F]] = {
     for {
-      _ <- DBT.editTracking(tracking.id, tracking.tracking).transact(transactor)
-      newTransaction <- DBT.getTransaction(tracking.id).transact(transactor)
+      _ <- DBT.editStatus(status.id, status.status).transact(transactor)
+      newTransaction <- DBT.getTransaction(status.id).transact(transactor)
       response <- Ok(newTransaction.get.asJson)
     } yield response
   }
 
-  def massEditTransactions(ids: List[Int], shiftCat: ShiftStrategy, shiftMoneyAccount: ShiftStrategy): F[Response[F]] = {
+  def massEditTransactions(ids: List[Int], shiftCat: ShiftStrategy, shiftAccount: ShiftStrategy): F[Response[F]] = {
     for {
-      edited <- if (shiftCat.newId.nonEmpty || shiftMoneyAccount.newId.nonEmpty)
-        DBT.massEditTransactions(NonEmptyList(ids.head, ids.tail), shiftCat.newId, shiftMoneyAccount.newId).transact(transactor)
+      edited <- if (shiftCat.newId.nonEmpty || shiftAccount.newId.nonEmpty)
+        DBT.massEditTransactions(NonEmptyList(ids.head, ids.tail), shiftCat.newId, shiftAccount.newId).transact(transactor)
       else
         Monad[F].pure(0)
       response <- Ok(s"$edited")

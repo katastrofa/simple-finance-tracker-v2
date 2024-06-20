@@ -4,7 +4,7 @@ import japgolly.scalajs.react.component.ScalaFn.Component
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{Callback, CtorType, Reusability, ScalaFnComponent}
 import org.big.pete.react.{MICheckbox, MaterialIcon}
-import org.big.pete.sft.domain.{TransactionTracking, TransactionType}
+import org.big.pete.sft.domain.{Status, Op}
 import org.big.pete.sft.front.components.main.{DateFormat, SmallDateFormat, formatAmount}
 import org.big.pete.sft.front.domain.EnhancedTransaction
 import org.big.pete.sft.front.helpers.NiceButton
@@ -13,10 +13,10 @@ import org.big.pete.sft.front.helpers.NiceButton
 object LineItem {
   import org.big.pete.sft.front.domain.Implicits._
 
-  final val trackingToIcon = Map[TransactionTracking, String](
-    TransactionTracking.None -> "horizontal_rule",
-    TransactionTracking.Auto -> "blur_circular",
-    TransactionTracking.Verified -> "check_circle"
+  final val trackingToIcon = Map[Status, String](
+    Status.None -> "horizontal_rule",
+    Status.Auto -> "blur_circular",
+    Status.Verified -> "check_circle"
   )
 
   case class Props(
@@ -24,7 +24,7 @@ object LineItem {
       isChecked: Boolean,
       isDetailsVisible: Boolean,
       checkTransaction: (MICheckbox.Status, String) => Callback,
-      trackingChanged: (Int, TransactionTracking) => Callback,
+      trackingChanged: (Int, Status) => Callback,
       openEditModal: EnhancedTransaction => Callback,
       openDeleteModal: Set[Int] => Callback,
       toggleDetails: Int => Callback,
@@ -37,9 +37,9 @@ object LineItem {
 
   val component: Component[Props, CtorType.Props] = ScalaFnComponent.withReuse[Props] { props =>
     val amountClass = props.transaction.transactionType match {
-      case TransactionType.Income => "green-text text-darken-1"
-      case TransactionType.Expense => "red-text text-darken-1"
-      case TransactionType.Transfer => "amber-text text-darken-2"
+      case Op.Income => "green-text text-darken-1"
+      case Op.Expense => "red-text text-darken-1"
+      case Op.Transfer => "amber-text text-darken-2"
     }
     val additionalAmountInfo = if (props.transaction.destinationAmount.isDefined)
       " -> " + formatAmount(props.transaction.destinationCurrency.get.symbol, props.transaction.destinationAmount.get)

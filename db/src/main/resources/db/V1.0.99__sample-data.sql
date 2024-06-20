@@ -8,5 +8,5 @@ INSERT INTO currencies VALUES
 
 INSERT INTO users (email, display_name, permissions) VALUE
     ('katastrofa42@gmail.com', 'Peter',
-       '{"global": ["Basic", "ModifyOwnAccount", "ModifyAccount", "DeleteOwnAccount", "DeleteAccount"], "perAccount": {}, "default": ["Basic", "ModifyOwnCategory", "ModifyOwnMoneyAccount", "ModifyOwnTransactions", "ModifyCategory", "ModifyMoneyAccount", "ModifyTransactions", "DeleteCategory", "DeleteMoneyAccount", "DeleteTransactions"]}'
+       '{"global": ["Basic", "ModifyOwnWallet", "ModifyWallet", "DeleteOwnWallet", "DeleteWallet"], "perWallet": {}, "default": ["Basic", "ModifyOwnCategory", "ModifyOwnAccount", "ModifyOwnTransactions", "ModifyCategory", "ModifyAccount", "ModifyTransactions", "DeleteCategory", "DeleteAccount", "DeleteTransactions"]}'
     );

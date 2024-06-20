@@ -3,7 +3,7 @@ package org.big.pete.sft.front
 import japgolly.scalajs.react.{CtorType, ScalaComponent}
 import japgolly.scalajs.react.callback.{AsyncCallback, Callback, CallbackTo}
 import japgolly.scalajs.react.component.Scala.{BackendScope, Component, Unmounted}
-import org.big.pete.sft.domain.{Account, Currency}
+import org.big.pete.sft.domain.{Wallet, Currency}
 import org.big.pete.sft.front.SftMain.{AccountsSelectionPage, SftPages}
 import org.big.pete.sft.front.components.header.{Sidenav, SidenavFilters, TopHeader}
 import org.big.pete.sft.front.components.main.moneyaccount
@@ -68,7 +68,7 @@ object SftState {
           ajaxData <- AsyncCallback.sequence(List(loadAccounts, loadCurrencies))
           _ <- $.modStateAsync(_.copy(
             isMenuOpen = false,
-            accounts = ajaxData.head.asInstanceOf[List[Account]],
+            accounts = ajaxData.head.asInstanceOf[List[Wallet]],
             currencies = ajaxData.last.asInstanceOf[List[Currency]].map(cur => cur.id -> cur).toMap
           ))
         } yield 3

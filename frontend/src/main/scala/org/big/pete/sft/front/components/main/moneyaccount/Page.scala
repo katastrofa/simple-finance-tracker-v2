@@ -6,7 +6,7 @@ import japgolly.scalajs.react.vdom.html_<^
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{Callback, CallbackTo, CtorType, ReactFormEventFromInput, ScalaComponent}
 import org.big.pete.react.MaterialIcon
-import org.big.pete.sft.domain.{Currency, EnhancedMoneyAccount, MoneyAccountCurrency, MoneyAccountOptionalCurrency, ShiftStrategyPerCurrency}
+import org.big.pete.sft.domain.{Currency, EnhancedAccount, AccountCurrency, AccountOptionalCurrency, ShiftStrategyPerCurrency}
 import org.big.pete.sft.front.components.main.tableWrap
 import org.big.pete.sft.front.helpers.AddModal
 import org.scalajs.dom.html.Element
@@ -17,9 +17,9 @@ import java.time.LocalDate
 object Page {
 
   case class Props(
-      accounts: List[EnhancedMoneyAccount],
+      accounts: List[EnhancedAccount],
       currencies: Map[String, Currency],
-      save: (Option[Int], String, LocalDate, List[MoneyAccountCurrency]) => Callback,
+      save: (Option[Int], String, LocalDate, List[AccountCurrency]) => Callback,
       delete: (Int, List[ShiftStrategyPerCurrency]) => Callback
   )
 
@@ -29,13 +29,13 @@ object Page {
       id: Option[Int],
       name: String,
       created: LocalDate,
-      editCurrencies: Map[Int, MoneyAccountOptionalCurrency],
+      editCurrencies: Map[Int, AccountOptionalCurrency],
       shiftTransactionsTo: Map[String, Int],
       toDelete: Option[Int]
   )
 
   private def initialMACurrency(currencies: Map[String, Currency]) =
-    MoneyAccountOptionalCurrency(0, 0, currencies.headOption.map(_._2.id), BigDecimal(0))
+    AccountOptionalCurrency(0, 0, currencies.headOption.map(_._2.id), BigDecimal(0))
 
 
   class Backend($: BackendScope[Props, State]) {
@@ -61,7 +61,7 @@ object Page {
         val usedCurrencies = state.editCurrencies.values.flatMap(_.currency).toSet
         val unusedCurrency = props.currencies.find(item => !usedCurrencies.contains(item._1)).map(_._1)
         val newId = state.editCurrencies.keys.max + 1
-        val newEditCurrency = MoneyAccountOptionalCurrency(newId, state.id.getOrElse(0), unusedCurrency, BigDecimal(0))
+        val newEditCurrency = AccountOptionalCurrency(newId, state.id.getOrElse(0), unusedCurrency, BigDecimal(0))
         state.copy(editCurrencies = state.editCurrencies + (newId -> newEditCurrency))
       }
     }
@@ -69,7 +69,7 @@ object Page {
     private def changeCreated(date: LocalDate): CallbackTo[LocalDate] =
       $.modState(_.copy(created = date)) >> CallbackTo.pure(date)
 
-    def changeShiftTransactions(currency: String)(ema: EnhancedMoneyAccount): Callback = $.modState { state =>
+    def changeShiftTransactions(currency: String)(ema: EnhancedAccount): Callback = $.modState { state =>
       state.copy(shiftTransactionsTo = state.shiftTransactionsTo + (currency -> ema.id))
     }
 
@@ -95,14 +95,14 @@ object Page {
       }
     }
 
-    def openEditModal(account: EnhancedMoneyAccount): Callback = $.modState { state =>
+    def openEditModal(account: EnhancedAccount): Callback = $.modState { state =>
       state.copy(
         isOpen = true, deleteIsOpen = false, Some(account.id), account.name, account.created,
         account.currencies.map(cur => cur.id -> cur.simple.toOptional).toMap
       )
     }
 
-    def openDeleteModal(account: EnhancedMoneyAccount): Callback = $.modState { state =>
+    def openDeleteModal(account: EnhancedAccount): Callback = $.modState { state =>
       val newShift = account.currencies.map(_.currency.id -> Forms.NoShiftMoneyAccount.id).toMap
       state.copy(deleteIsOpen = true, shiftTransactionsTo = newShift, toDelete = Some(account.id))
     }

@@ -2,17 +2,17 @@ package org.big.pete.sft.front.state
 
 import japgolly.scalajs.react.callback.{AsyncCallback, Callback}
 import org.big.pete.datepicker.ReactDatePicker
-import org.big.pete.sft.domain.{Account, Category, Currency, EnhancedMoneyAccount, Transaction}
+import org.big.pete.sft.domain.{Wallet, Category, Currency, EnhancedAccount, Transaction}
 import org.big.pete.sft.front.domain.CategoryTree
 
 import java.time.LocalDate
 
 
 trait DataLoad extends Base {
-  import org.big.pete.sft.domain.Implicits._
+  import org.big.pete.sft.domain.Givens._
 
-  def loadAccounts: AsyncCallback[List[Account]] = {
-    ajaxCall[List[Account]]("GET", "/accounts", None, List.empty)
+  def loadAccounts: AsyncCallback[List[Wallet]] = {
+    ajaxCall[List[Wallet]]("GET", "/accounts", None, List.empty)
   }
 
   def loadCurrencies: AsyncCallback[List[Currency]] = {
@@ -26,11 +26,11 @@ trait DataLoad extends Base {
     ajaxCall[List[Transaction]]("GET", apiPath, None, List.empty)
   }
 
-  private def loadMoneyAccounts(accountPermalink: String, start: LocalDate, end: LocalDate): AsyncCallback[Map[Int, EnhancedMoneyAccount]] = {
+  private def loadMoneyAccounts(accountPermalink: String, start: LocalDate, end: LocalDate): AsyncCallback[Map[Int, EnhancedAccount]] = {
     val apiPath = "/" + accountPermalink + "/money-accounts?" +
       "start=" + start.format(ReactDatePicker.DateFormat) +
       "&end=" + end.format(ReactDatePicker.DateFormat)
-    ajaxCall[List[EnhancedMoneyAccount]]("GET", apiPath, None, List.empty)
+    ajaxCall[List[EnhancedAccount]]("GET", apiPath, None, List.empty)
       .map(_.map(ma => ma.id -> ma).toMap)
   }
 
@@ -53,10 +53,10 @@ trait DataLoad extends Base {
         )
 
         data.flatMap { dataList =>
-          val accounts = dataList.head.asInstanceOf[List[Account]]
+          val accounts = dataList.head.asInstanceOf[List[Wallet]]
           val currencies = dataList(1).asInstanceOf[List[Currency]].map(cur => cur.id -> cur).toMap
           val cats = dataList(2).asInstanceOf[Map[Int, Category]]
-          val moneyAccounts = dataList(3).asInstanceOf[Map[Int, EnhancedMoneyAccount]]
+          val moneyAccounts = dataList(3).asInstanceOf[Map[Int, EnhancedAccount]]
           val transactions = dataList(4).asInstanceOf[List[Transaction]]
 
           $.modStateAsync { s =>

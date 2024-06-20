@@ -3,7 +3,7 @@ package org.big.pete.sft.front.state
 import japgolly.scalajs.react.ReactFormEventFromInput
 import japgolly.scalajs.react.callback.Callback
 import org.big.pete.react.MICheckbox
-import org.big.pete.sft.domain.{TransactionTracking, TransactionType}
+import org.big.pete.sft.domain.{Status, Op}
 import org.big.pete.sft.front.components.header.SidenavFilters.FiltersOpen
 
 
@@ -16,7 +16,7 @@ trait Filtering extends Base {
   }
 
   def setTtFilter(status: MICheckbox.Status, tt: String): Callback = $.modState { state =>
-    val newFilter = modStateForSet(status, state, _.transactionTypeActiveFilters, TransactionType.withName(tt))
+    val newFilter = modStateForSet(status, state, _.transactionTypeActiveFilters, Op.withName(tt))
     state.copy(
       checkedTransactions = Set.empty[Int],
       transactionTypeActiveFilters = newFilter,
@@ -25,7 +25,7 @@ trait Filtering extends Base {
   }
 
   def setTrackingFilter(status: MICheckbox.Status, tracking: String): Callback = $.modState { state =>
-    val newFilter = modStateForSet(status, state, _.trackingActiveFilters, TransactionTracking.withName(tracking))
+    val newFilter = modStateForSet(status, state, _.trackingActiveFilters, Status.withName(tracking))
     state.copy(
       checkedTransactions = Set.empty[Int],
       trackingActiveFilters = newFilter,

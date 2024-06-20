@@ -1,13 +1,15 @@
 package org.big.pete.cache
 
 import cats.syntax._
+import cats.syntax.option.catsSyntaxOptionId
+import cats.syntax.parallel.catsSyntaxParallelSequence1
+//import cats.syntax.all._
 import cats.Monad
 import cats.data.OptionT
 import cats.effect.kernel.Resource
 import cats.effect.kernel.syntax.AsyncSyntax
 import cats.effect.std.{Semaphore, Supervisor}
 import cats.effect.{Async, Clock, Deferred, ExitCode, IO, IOApp, Ref}
-import cats.implicits.catsSyntaxParallelSequence1
 
 import scala.collection.mutable
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
@@ -15,10 +17,7 @@ import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
 case class Entry[V](inserted: FiniteDuration, value: V)
 
-trait BpCache[F[_], K, V] extends MonadSyntax with FlatMapSyntax with FunctorSyntax {
-  implicit val clockF: Clock[F]
-  implicit val monadF: Monad[F]
-
+trait BpCache[F[_]: Monad: Clock, K, V] extends MonadSyntax with FlatMapSyntax with FunctorSyntax {
   protected val data: Ref[F, mutable.Map[K, Entry[V]]]
 
   def contains(key: K): F[Boolean] =
@@ -37,12 +36,12 @@ trait BpCache[F[_], K, V] extends MonadSyntax with FlatMapSyntax with FunctorSyn
     data.modify(_.addOne(key -> entry) -> entry)
 
   def put(key: K, value: V): F[Entry[V]] = for {
-    inserted <- clockF.realTime
+    inserted <- Clock[F].realTime
     entry <- putEntry(key, Entry(inserted, value))
   } yield entry
 
   def putMany(values: List[(K, V)]): F[Unit] = for {
-    inserted <- clockF.realTime
+    inserted <- Clock[F].realTime
     _ <- data.update { map =>
       values.foreach { case (key, value) => map.addOne(key -> Entry(inserted, value)) }
       map
@@ -60,19 +59,18 @@ trait BpCache[F[_], K, V] extends MonadSyntax with FlatMapSyntax with FunctorSyn
   }
 }
 
-trait MaxSizeBpCache[F[_], K, V] extends BpCache[F, K, V] with TraverseSyntax {
+trait MaxSizeBpCache[F[_]: Monad: Clock, K, V] extends BpCache[F, K, V] with TraverseSyntax {
   protected val keyAges: Ref[F, mutable.SortedMap[FiniteDuration, mutable.Set[K]]]
   protected val canModify: Semaphore[F]
   val maxSize: Int
   val allowedOverhead: Int
 
-
   abstract override def putEntry(key: K, value: Entry[V]): F[Entry[V]] = {
     for {
       _ <- canModify.acquire
       alreadyContains <- contains(key)
-      entryOpt <- if (alreadyContains) getEntry(key) else monadF.pure(None)
-      _ <- if (entryOpt.isDefined) removeAge(entryOpt.get.inserted, key) else monadF.unit
+      entryOpt <- if (alreadyContains) getEntry(key) else Monad[F].pure(None)
+      _ <- if (entryOpt.isDefined) removeAge(entryOpt.get.inserted, key) else Monad[F].unit
       entry <- super.putEntry(key, value)
       _ <- addAge(entry.inserted, key)
       _ <- canModify.release
@@ -115,7 +113,7 @@ trait MaxSizeBpCache[F[_], K, V] extends BpCache[F, K, V] with TraverseSyntax {
   private def checkAndRemoveOldestEntries(): F[Unit] = {
     for {
       entries <- data.get
-      _ <- if (entries.size > maxSize + allowedOverhead) removeOldestEntries(entries.size - maxSize) else monadF.unit
+      _ <- if (entries.size > maxSize + allowedOverhead) removeOldestEntries(entries.size - maxSize) else Monad[F].unit
     } yield ()
   }
 
@@ -134,7 +132,7 @@ trait MaxSizeBpCache[F[_], K, V] extends BpCache[F, K, V] with TraverseSyntax {
 
   private def getAndRemoveOldestKeys(approximateCount: Int, keys: Set[K]): F[Set[K]] = {
     if (keys.size >= approximateCount)
-      monadF.pure(keys)
+      Monad[F].pure(keys)
     else for {
       next <- removeOldest()
       finalSet <- getAndRemoveOldestKeys(approximateCount, keys ++ next)
@@ -142,8 +140,7 @@ trait MaxSizeBpCache[F[_], K, V] extends BpCache[F, K, V] with TraverseSyntax {
   }
 }
 
-trait AutoFetchBpCache[F[_], K, V] extends BpCache[F, K, V] {
-  implicit val asyncF: Async[F]
+trait AutoFetchBpCache[F[_]: Monad: Clock: Async, K, V] extends BpCache[F, K, V] {
   val fetchMethod: K => F[Option[V]]
   val fetchAttempts: Ref[F, Map[K, Deferred[F, Option[Entry[V]]]]]
 
@@ -164,7 +161,7 @@ trait AutoFetchBpCache[F[_], K, V] extends BpCache[F, K, V] {
       defer <- Deferred[F, Option[Entry[V]]]
       _ <- fetchAttempts.update(_ + (key -> defer))
       data <- rawFetchData(key)
-      _ <- if (data.isDefined) putEntry(key, data.get) else monadF.pure(data)
+      _ <- if (data.isDefined) putEntry(key, data.get).map(_.some) else Monad[F].pure(data)
       _ <- defer.complete(data)
       _ <- fetchAttempts.update(_ - key)
     } yield data
@@ -173,15 +170,14 @@ trait AutoFetchBpCache[F[_], K, V] extends BpCache[F, K, V] {
   private def rawFetchData(key: K): F[Option[Entry[V]]] = {
     val dataT = for {
       value <- OptionT(fetchMethod(key))
-      ts <- OptionT.liftF(clockF.realTime)
+      ts <- OptionT.liftF(Clock[F].realTime)
     } yield Entry(ts, value)
     dataT.value
   }
 }
 
 
-trait FullRefreshBpCache[F[_], K, V] extends BpCache[F, K, V] {
-  implicit val asyncF: Async[F]
+trait FullRefreshBpCache[F[_]: Monad: Clock: Async, K, V] extends BpCache[F, K, V] {
   val supervisor: Supervisor[F]
   val refreshMethod: () => F[List[(K, V)]]
   val refreshing: Semaphore[F]
@@ -189,7 +185,7 @@ trait FullRefreshBpCache[F[_], K, V] extends BpCache[F, K, V] {
 
   private def fetchAll: F[Unit] = for {
     acquired <- refreshing.tryAcquire
-    _ <- if (acquired) doRefresh() else asyncF.unit
+    _ <- if (acquired) doRefresh() else Async[F].unit
     _ <- refreshing.release
   } yield ()
 
@@ -201,7 +197,7 @@ trait FullRefreshBpCache[F[_], K, V] extends BpCache[F, K, V] {
 
   private def start(): F[Unit] = for {
     _ <- fetchAll
-    _ <- asyncF.sleep(refreshInterval)
+    _ <- Async[F].sleep(refreshInterval)
     _ <- start()
   } yield ()
 
@@ -214,17 +210,21 @@ object FullRefreshBpCache {
 
   def apply[K, V](rInterval: FiniteDuration, rMethod: () => IO[List[(K, V)]]): Resource[IO, IO[FullRefreshBpCache[IO, K, V]]] = {
     Supervisor[IO].map { createdSupervisor =>
+      given Async[IO] = IO.asyncForIO
+      given Clock[IO] = Clock[IO]
+      given Monad[IO] = Monad[IO]
+
       for {
         createdData <- Ref[IO].of(mutable.Map.empty[K, Entry[V]])
         createdRefreshing <- Semaphore.apply[IO](1)
         cache = new FullRefreshBpCache[IO, K, V] {
-          override implicit val asyncF: Async[IO] = IO.asyncForIO
+//          override implicit val asyncF: Async[IO] = IO.asyncForIO
           override val supervisor: Supervisor[IO] = createdSupervisor
           override val refreshMethod: () => IO[List[(K, V)]] = rMethod
           override val refreshing: Semaphore[IO] = createdRefreshing
           override val refreshInterval: FiniteDuration = rInterval
-          override implicit val clockF: Clock[IO] = Clock[IO]
-          override implicit val monadF: Monad[IO] = Monad[IO]
+//          override implicit val clockF: Clock[IO] = Clock[IO]
+//          override implicit val monadF: Monad[IO] = Monad[IO]
           override protected val data: Ref[IO, mutable.Map[K, Entry[V]]] = createdData
         }
         _ <- cache.init
@@ -237,7 +237,7 @@ object FullRefreshBpCache {
 }
 
 
-class SimpleBpCache[F[_], K, V](val data: Ref[F, mutable.Map[K, Entry[V]]])(implicit val clockF: Clock[F], val monadF: Monad[F])
+class SimpleBpCache[F[_]: Monad: Clock, K, V](val data: Ref[F, mutable.Map[K, Entry[V]]])
   extends BpCache[F, K, V]
 
 object SimpleBpCache {
@@ -247,15 +247,12 @@ object SimpleBpCache {
 }
 
 
-class MaxSizeBpCacheImpl[F[_], K, V](
+class MaxSizeBpCacheImpl[F[_]: Monad: Clock, K, V](
     val maxSize: Int,
     val data: Ref[F, mutable.Map[K, Entry[V]]],
     val keyAges: Ref[F, mutable.SortedMap[FiniteDuration, mutable.Set[K]]],
     val canModify: Semaphore[F],
     overhead: Option[Int] = None
-)(
-    implicit val clockF: Clock[F],
-    val monadF: Monad[F]
 ) extends BpCache[F, K, V]
   with MaxSizeBpCache[F, K, V]
 {
@@ -271,7 +268,7 @@ object MaxSizeBpCache {
 }
 
 
-class FullBpCache[F[_], K, V](
+class FullBpCache[F[_]: Monad: Clock: Async, K, V](
     val maxSize: Int,
     val fetchMethod: K => F[Option[V]],
     val data: Ref[F, mutable.Map[K, Entry[V]]],
@@ -279,10 +276,6 @@ class FullBpCache[F[_], K, V](
     val canModify: Semaphore[F],
     val fetchAttempts: Ref[F, Map[K, Deferred[F, Option[Entry[V]]]]],
     overhead: Option[Int] = None
-)(
-    implicit val clockF: Clock[F],
-    val monadF: Monad[F],
-    val asyncF: Async[F]
 ) extends BpCache[F, K, V]
     with MaxSizeBpCache[F, K, V]
     with AutoFetchBpCache[F, K, V]
@@ -308,7 +301,7 @@ object Test extends IOApp with AsyncSyntax {
     Range.apply(0, count).map(_ => cache.get(42)).toList.parSequence
   }
 
-  def fullRefresh(): IO[List[(Int, String)]] = {
+  private def fullRefresh(): IO[List[(Int, String)]] = {
     IO.println("Refreshing ... ") >> IO.pure(List(1 -> "Fuck", 2 -> "this", 3 -> "Shit"))
   }
 

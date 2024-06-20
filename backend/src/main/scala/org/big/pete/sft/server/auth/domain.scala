@@ -1,6 +1,7 @@
 package org.big.pete.sft.server.auth
 
-import io.circe.generic.JsonCodec
+import io.circe.Decoder
+import io.circe.generic.semiauto.*
 import org.big.pete.sft.db.domain.{Login, User}
 import org.http4s.Uri
 
@@ -11,13 +12,16 @@ object domain {
   case class AuthCookieData(id: Int, authCode: String) {
     override def toString: String = s"$id$AuthCookieSeparator$authCode"
   }
-
-  @JsonCodec
+  
   case class GoogleTokenResponse(access_token: String, expires_in: Int, id_token: String, scope: String, token_type: String)
-  @JsonCodec
   case class NameObject(displayName: String, familyName: String, givenName: String)
-  @JsonCodec
   case class EmailObject(value: String)
-  @JsonCodec
   case class PersonResponse(names: List[NameObject], emailAddresses: List[EmailObject])
+
+  object Implicits {
+    given googleTokenResponseDecoder: Decoder[GoogleTokenResponse] = deriveDecoder
+    given nameObjectDecoder: Decoder[NameObject] = deriveDecoder
+    given emailObjectDecoder: Decoder[EmailObject] = deriveDecoder
+    given personResponseDecoder: Decoder[PersonResponse] = deriveDecoder
+  }
 }

@@ -2,7 +2,7 @@ package org.big.pete.sft.front.domain
 
 import enumeratum.{Enum, EnumEntry}
 import japgolly.scalajs.react.Reusability
-import org.big.pete.sft.domain.{Account, Category, Currency, CurrencyAndStatus, EnhancedMoneyAccount, ExpandedMoneyAccountCurrency, MoneyAccountCurrency, MoneyAccountOptionalCurrency, Transaction, TransactionTracking, TransactionType}
+import org.big.pete.sft.domain.{Wallet, Category, Currency, CurrencyBalance, EnhancedAccount, ExpandedAccountCurrency, AccountCurrency, AccountOptionalCurrency, Transaction, Status, Op}
 import org.big.pete.sft.front.SftMain.SftPages
 
 import java.time.LocalDate
@@ -64,7 +64,7 @@ object CategoryTree {
 case class EnhancedTransaction(
     id: Int,
     date: LocalDate,
-    transactionType: TransactionType,
+    transactionType: Op,
     amount: BigDecimal,
     currency: Currency,
     description: String,
@@ -73,7 +73,7 @@ case class EnhancedTransaction(
     categoryFullName: String,
     moneyAccountId: Int,
     moneyAccountName: String,
-    tracking: TransactionTracking,
+    tracking: Status,
     destinationAmount: Option[BigDecimal],
     destinationCurrency: Option[Currency],
     destinationMoneyAccountId: Option[Int],
@@ -83,31 +83,31 @@ case class EnhancedTransaction(
 object EnhancedTransaction {
   def enhance(
       categories: Map[Int, Category],
-      moneyAccounts: Map[Int, EnhancedMoneyAccount],
+      moneyAccounts: Map[Int, EnhancedAccount],
       currencies: Map[String, Currency]
   )(
       transaction: Transaction
   ): EnhancedTransaction = {
-    val moneyAccount = moneyAccounts(transaction.moneyAccount)
-    val destinationMoneyAccount = transaction.destinationMoneyAccountId.map(moneyAccounts)
-    val parentCats = CategoryTree.parentTree(categories, Some(transaction.categoryId), List.empty)
+    val moneyAccount = moneyAccounts(transaction.account)
+    val destinationMoneyAccount = transaction.destinationAccount.map(moneyAccounts)
+    val parentCats = CategoryTree.parentTree(categories, Some(transaction.category), List.empty)
 
     EnhancedTransaction(
       transaction.id,
       transaction.date,
-      transaction.transactionType,
+      transaction.op,
       transaction.amount,
       currencies(transaction.currency),
       transaction.description,
-      transaction.categoryId,
-      Range(0, parentCats.length - 1).map(_ => "--").mkString("") + " " + categories(transaction.categoryId).name,
+      transaction.category,
+      Range(0, parentCats.length - 1).map(_ => "--").mkString("") + " " + categories(transaction.category).name,
       parentCats.map(_.name).mkString(" - "),
-      transaction.moneyAccount,
+      transaction.account,
       moneyAccount.name,
-      transaction.tracking,
+      transaction.status,
       transaction.destinationAmount,
       transaction.destinationCurrency.map(currencies),
-      transaction.destinationMoneyAccountId,
+      transaction.destinationAccount,
       destinationMoneyAccount.map(_.name)
     )
   }
@@ -152,25 +152,25 @@ object Implicits {
 
   implicit val stringIntMapReuse: Reusability[Map[String, Int]] = Reusability.map[String, Int]
 
-  implicit val accountReuse: Reusability[Account] = Reusability.derive[Account]
+  implicit val accountReuse: Reusability[Wallet] = Reusability.derive[Wallet]
   implicit val sftPagesReuse: Reusability[SftPages] = Reusability.byRefOr_==[SftPages]
   implicit val sortingColumnReuse: Reusability[SortingColumn] = Reusability.byRefOr_==[SortingColumn]
   implicit val orderReuse: Reusability[Order] = Reusability.byRefOr_==[Order]
-  implicit val transactionTypeReuse: Reusability[TransactionType] = Reusability.by_==[TransactionType]
-  implicit val transactionTrackingReuse: Reusability[TransactionTracking] = Reusability.by_==[TransactionTracking]
+  implicit val transactionTypeReuse: Reusability[Op] = Reusability.by_==[Op]
+  implicit val transactionTrackingReuse: Reusability[Status] = Reusability.by_==[Status]
   implicit val currencyReuse: Reusability[Currency] = Reusability.derive[Currency]
   implicit val currencyMapReuse: Reusability[Map[String, Currency]] = Reusability.map[String, Currency]
-  implicit val moneyAccountCurrencyReuse: Reusability[MoneyAccountCurrency] = Reusability.derive[MoneyAccountCurrency]
-  implicit val moneyAccountCurrencyMapReuse: Reusability[Map[Int, MoneyAccountCurrency]] = Reusability.map[Int, MoneyAccountCurrency]
-  implicit val moneyAccountOptionalCurrencyReuse: Reusability[MoneyAccountOptionalCurrency] = Reusability.derive[MoneyAccountOptionalCurrency]
-  implicit val moneyAccountOptionalCurrencyMapReuse: Reusability[Map[Int, MoneyAccountOptionalCurrency]] = Reusability.map[Int, MoneyAccountOptionalCurrency]
+  implicit val moneyAccountCurrencyReuse: Reusability[AccountCurrency] = Reusability.derive[AccountCurrency]
+  implicit val moneyAccountCurrencyMapReuse: Reusability[Map[Int, AccountCurrency]] = Reusability.map[Int, AccountCurrency]
+  implicit val moneyAccountOptionalCurrencyReuse: Reusability[AccountOptionalCurrency] = Reusability.derive[AccountOptionalCurrency]
+  implicit val moneyAccountOptionalCurrencyMapReuse: Reusability[Map[Int, AccountOptionalCurrency]] = Reusability.map[Int, AccountOptionalCurrency]
   implicit val categoryReuse: Reusability[Category] = Reusability.derive[Category]
   implicit val categoryMapReuse: Reusability[Map[Int, Category]] = Reusability.map[Int, Category]
   implicit val categoryTreeReuse: Reusability[CategoryTree] = Reusability.by_==[CategoryTree]
-  implicit val currencyAndStatusReuse: Reusability[CurrencyAndStatus] = Reusability.derive[CurrencyAndStatus]
-  implicit val expandedMoneyAccountCurrencyReuse: Reusability[ExpandedMoneyAccountCurrency] = Reusability.derive[ExpandedMoneyAccountCurrency]
-  implicit val enhancedMoneyAccountReuse: Reusability[EnhancedMoneyAccount] = Reusability.derive[EnhancedMoneyAccount]
-  implicit val moneyAccountMapReuse: Reusability[Map[Int, EnhancedMoneyAccount]] = Reusability.map[Int, EnhancedMoneyAccount]
+  implicit val currencyAndStatusReuse: Reusability[CurrencyBalance] = Reusability.derive[CurrencyBalance]
+  implicit val expandedMoneyAccountCurrencyReuse: Reusability[ExpandedAccountCurrency] = Reusability.derive[ExpandedAccountCurrency]
+  implicit val enhancedMoneyAccountReuse: Reusability[EnhancedAccount] = Reusability.derive[EnhancedAccount]
+  implicit val moneyAccountMapReuse: Reusability[Map[Int, EnhancedAccount]] = Reusability.map[Int, EnhancedAccount]
   implicit val enhancedTransactionReuse: Reusability[EnhancedTransaction] = Reusability.derive[EnhancedTransaction]
 }
 

@@ -10,8 +10,8 @@ import fs2.io.net.tls.TLSContext
 import org.big.pete.cache.{FullBpCache, FullRefreshBpCache}
 import org.big.pete.sft.db.dao.{General, Users}
 import org.big.pete.sft.db.domain.User
-import org.big.pete.sft.domain.{Account, Currency}
-import org.big.pete.sft.server.api.{Categories, MoneyAccounts, Transactions, General => GeneralApi}
+import org.big.pete.sft.domain.{Wallet, Currency}
+import org.big.pete.sft.server.api.{Categories, Accounts, Transactions, General => GeneralApi}
 import org.big.pete.sft.server.auth.AuthHelper
 import org.big.pete.sft.server.security.AccessHelper
 import org.http4s.dsl.Http4sDsl
@@ -87,23 +87,25 @@ object Main extends IOApp with LogSupport with ToConnectionIOOps {
   private val resources =
     for {
       sttp <- HttpClientCatsBackend.resource[IO]()
-      transactor <- HikariTransactor.fromHikariConfig[IO](dbConfig, global)
+      transactor <- HikariTransactor.fromHikariConfig[IO](dbConfig)
       tls <- createTLSContext(mainConfig)
-      accountsCache <- Resource.eval(FullBpCache.apply[String, Account](100, General.getAccount(_).transact(transactor)))
+      accountsCache <- Resource.eval(FullBpCache.apply[String, Wallet](100, General.getWallet(_).transact(transactor)))
       usersCache <- Resource.eval(FullBpCache.apply[Int, User](100, Users.getUser(_).transact(transactor)))
       currencyCache <- FullRefreshBpCache[String, Currency](() => General.listCurrencies.transact(transactor).map(_.map(cur => cur.id -> cur)))
     } yield (sttp, transactor, tls, accountsCache, usersCache, currencyCache)
 
   override def run(args: List[String]): IO[ExitCode] = {
     resources.use { case (sttp, transactor, tls, accountsCache, usersCache, currencyCacheIO) =>
+      given transactorImpl: HikariTransactor[IO] = transactor
+      
       val currencyCache = currencyCacheIO.unsafeRunSync()(runtime)
       val dsl = Http4sDsl[IO]
-      val authHelper = new AuthHelper[IO](mainConfig, dsl, sttp, usersCache, transactor)
-      val accessHelper = new AccessHelper[IO](accountsCache, dsl, transactor)
-      val accountsApi = new GeneralApi[IO](usersCache, accountsCache, currencyCache, dsl, transactor)
-      val categoriesApi = new Categories[IO](dsl, transactor)
-      val moneyAccountsApi = new MoneyAccounts[IO](dsl, currencyCache, transactor)
-      val transactionsApi = new Transactions[IO](dsl, transactor)
+      val authHelper = new AuthHelper[IO](mainConfig, dsl, sttp, usersCache)
+      val accessHelper = new AccessHelper[IO](accountsCache, dsl)
+      val accountsApi = new GeneralApi[IO](usersCache, accountsCache, currencyCache, dsl)
+      val categoriesApi = new Categories[IO](dsl)
+      val moneyAccountsApi = new Accounts[IO](dsl, currencyCache)
+      val transactionsApi = new Transactions[IO](dsl)
 
       val server = new SftV2Server[IO](
         accountsCache,

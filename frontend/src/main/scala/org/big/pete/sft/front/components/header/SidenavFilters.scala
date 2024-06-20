@@ -7,7 +7,7 @@ import japgolly.scalajs.react.component.ScalaFn
 import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.react.{MICheckbox, MaterialIcon, TextInput}
 import org.big.pete.react.MICheckbox.Status
-import org.big.pete.sft.domain.{EnhancedMoneyAccount, TransactionTracking, TransactionType}
+import org.big.pete.sft.domain.{EnhancedAccount, Status, Op}
 import org.big.pete.sft.front.domain.CategoryTree
 
 
@@ -22,9 +22,9 @@ object SidenavFilters {
 
   case class CollapsibleHeaderProps(hasActiveFilters: Boolean, text: String, section: FiltersOpen, onOpenFilter: FiltersOpen => Callback)
   case class TransactionsProps(
-      transactionTypeActiveFilters: Set[TransactionType],
+      transactionTypeActiveFilters: Set[Op],
       onTransactionTypeChange: (Status, String) => Callback,
-      trackingActiveFilters: Set[TransactionTracking],
+      trackingActiveFilters: Set[Status],
       onTrackingChange: (Status, String) => Callback,
       contentFilter: String,
       onContentFilterChange: ReactFormEventFromInput => Callback
@@ -37,7 +37,7 @@ object SidenavFilters {
   case class MoneyAccountProps(
       moneyAccountsActiveFilters: Set[Int],
       onMoneyAccountFilterChange: (Status, String) => Callback,
-      moneyAccounts: List[EnhancedMoneyAccount]
+      moneyAccounts: List[EnhancedAccount]
   )
 
   sealed trait FiltersOpen
@@ -81,7 +81,7 @@ object SidenavFilters {
       .stateless
       .render_P { case (onOpenFilter, props) =>
 
-        def expandTransactionTypes(transactionType: TransactionType) =
+        def expandTransactionTypes(transactionType: Op) =
           MICheckbox.component.withKey(s"ttf-${transactionType.toString}").apply(MICheckbox.Props(
             <.li(_: _*),
             Map.empty,
@@ -91,7 +91,7 @@ object SidenavFilters {
             props.onTransactionTypeChange
           ))
 
-        def expandTracking(tracking: TransactionTracking) =
+        def expandTracking(tracking: Status) =
           MICheckbox.component.withKey(s"ttf-${tracking.toString}").apply(MICheckbox.Props(
             <.li(_: _*),
             Map.empty,
@@ -112,11 +112,11 @@ object SidenavFilters {
             <.ul(
               <.li(
                 <.h6("Transaction types"),
-                <.ul(TransactionType.values.map(expandTransactionTypes).toVdomArray)
+                <.ul(Op.values.map(expandTransactionTypes).toVdomArray)
               ),
               <.li(
                 <.h6("Tracking"),
-                <.ul(TransactionTracking.values.map(expandTracking).toVdomArray)
+                <.ul(Status.values.map(expandTracking).toVdomArray)
               ),
               <.li(
                 <.h6("Content"),
@@ -176,7 +176,7 @@ object SidenavFilters {
     ScalaComponent.builder[(FiltersOpen => Callback, MoneyAccountProps)]
       .stateless
       .render_P { case (onOpenFilter, props) =>
-        def expandMoneyAccount(ma: EnhancedMoneyAccount) =
+        def expandMoneyAccount(ma: EnhancedAccount) =
           MICheckbox.component.withKey(s"maf-${ma.id}").apply(MICheckbox.Props(
             <.li(_: _*),
             Map.empty,

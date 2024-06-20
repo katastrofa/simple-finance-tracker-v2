@@ -8,7 +8,7 @@ import japgolly.scalajs.react.vdom.html_<^
 import japgolly.scalajs.react.{Callback, CtorType, ReactFormEventFromInput, Reusability, ScalaComponent, ScalaFnComponent}
 import japgolly.scalajs.react.vdom.html_<^._
 import org.big.pete.react.{MaterialIcon, TextInput}
-import org.big.pete.sft.domain.Account
+import org.big.pete.sft.domain.Wallet
 import org.big.pete.sft.front.SftMain.{AccountsSelectionPage, SftPages, TransactionsPage}
 import org.big.pete.sft.front.helpers.{AddModal, ModalButtons}
 import org.big.pete.sft.front.utilz
@@ -19,7 +19,7 @@ object Accounts {
   import org.big.pete.sft.front.domain.Implicits.{accountReuse, sftPagesReuse}
 
   case class Props(
-      accounts: List[Account],
+      accounts: List[Wallet],
       activePage: SftPages,
       router: RouterCtl[SftPages],
       onPageChange: (SftPages, Option[SftPages]) => Callback,
@@ -30,7 +30,7 @@ object Accounts {
       activePage: SftPages,
       router: RouterCtl[SftPages],
       onPageChange: (SftPages, Option[SftPages]) => Callback,
-      openEditModal: Account => Callback
+      openEditModal: Wallet => Callback
   )
 
   case class FormProps(
@@ -76,7 +76,7 @@ object Accounts {
     def openAddNew: Callback =
       $.modState(_.copy(isEditModalOpen = true, None, "", ""))
 
-    def openEditModal(account: Account): Callback =
+    def openEditModal(account: Wallet): Callback =
       $.modState(_.copy(isEditModalOpen = true, Some(account.id), account.name, account.permalink))
 
     def render(props: Props, state: State): html_<^.VdomTagOf[Element] = {
@@ -117,7 +117,7 @@ object Accounts {
     )
   }
 
-  private val accountComponent: Component[(Account, AccountProps), CtorType.Props] = ScalaFnComponent.withReuse[(Account, AccountProps)] { case (account, props) =>
+  private val accountComponent: Component[(Wallet, AccountProps), CtorType.Props] = ScalaFnComponent.withReuse[(Wallet, AccountProps)] { case (account, props) =>
     <.tr(
       <.td(^.cls := "hide-on-small-only id right-align", account.id.toString),
       <.td(^.cls := "name",

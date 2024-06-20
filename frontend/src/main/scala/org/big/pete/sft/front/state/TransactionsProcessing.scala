@@ -4,7 +4,7 @@ import japgolly.scalajs.react.Callback
 import org.big.pete.BPJson
 import org.big.pete.react.MICheckbox
 import org.big.pete.react.MICheckbox.Status
-import org.big.pete.sft.domain.{DeleteTransactions, EnhancedMoneyAccount, MassEditTransactions, ShiftStrategy, TrackingEdit, Transaction, TransactionTracking, TransactionType}
+import org.big.pete.sft.domain.{DeleteTransactions, EnhancedAccount, MassEditTransactions, ShiftStrategy, StatusEdit, Transaction, Status, Op}
 import org.big.pete.sft.front.domain.MAUpdateAction
 import org.big.pete.sft.front.utilz.getAccountPermalink
 
@@ -12,7 +12,7 @@ import java.time.LocalDate
 
 
 trait TransactionsProcessing extends DataLoad {
-  import org.big.pete.sft.domain.Implicits._
+  import org.big.pete.sft.domain.Givens._
 
   def checkTransaction(status: MICheckbox.Status, id: String): Callback = $.modState { state =>
     if (id == CheckAllId) {
@@ -28,7 +28,7 @@ trait TransactionsProcessing extends DataLoad {
   def saveTransaction(
       id: Option[Int],
       date: LocalDate,
-      transactionType: TransactionType,
+      transactionType: Op,
       amount: BigDecimal,
       description: String,
       category: Int,
@@ -48,7 +48,7 @@ trait TransactionsProcessing extends DataLoad {
         BPJson.write(
           Transaction(
             id.getOrElse(-1), date, transactionType, amount, description, category, moneyAccount, currency,
-            TransactionTracking.None, destinationAmount, destinationMoneyAccountId, destinationCurrency, None
+            Status.None, destinationAmount, destinationMoneyAccountId, destinationCurrency, None
           )
         ),
         transaction => $.modState { state =>
@@ -68,11 +68,11 @@ trait TransactionsProcessing extends DataLoad {
     }
   }
 
-  def transactionTrackingClick(id: Int, tracking: TransactionTracking): Callback = {
+  def transactionTrackingClick(id: Int, tracking: Status): Callback = {
     val newTracking = tracking match {
-      case TransactionTracking.None => TransactionTracking.Verified
-      case TransactionTracking.Auto => TransactionTracking.Verified
-      case TransactionTracking.Verified => TransactionTracking.None
+      case Status.None => Status.Verified
+      case Status.Auto => Status.Verified
+      case Status.Verified => Status.None
     }
 
     $.props.flatMap { props =>
@@ -133,7 +133,7 @@ trait TransactionsProcessing extends DataLoad {
   private def updateStateWithTransaction(
       state: State,
       newTransactions: List[Transaction],
-      updatedMoneyAccounts: Map[Int, EnhancedMoneyAccount]
+      updatedMoneyAccounts: Map[Int, EnhancedAccount]
   ): State = {
     state.copy(
       moneyAccounts = updatedMoneyAccounts,

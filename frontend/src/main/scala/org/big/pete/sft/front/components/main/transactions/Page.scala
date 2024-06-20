@@ -6,7 +6,7 @@ import japgolly.scalajs.react.extra.{EventListener, OnUnmount}
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{Callback, CtorType, ReactFormEventFromInput, Ref, Reusability, ScalaComponent}
 import org.big.pete.react.{MICheckbox, MaterialIcon}
-import org.big.pete.sft.domain.{Category, Currency, EnhancedMoneyAccount, TransactionTracking, TransactionType}
+import org.big.pete.sft.domain.{Category, Currency, EnhancedAccount, Status, Op}
 import org.big.pete.sft.front.components.main.{formatAmount, tableWrap}
 import org.big.pete.sft.front.domain.{CategoryTree, EnhancedTransaction, Order, SortingColumn}
 import org.big.pete.sft.front.helpers.PieChart
@@ -25,13 +25,13 @@ object Page {
       transactions: List[EnhancedTransaction],
       linearCats: List[CategoryTree],
       categories: Map[Int, Category],
-      moneyAccounts: Map[Int, EnhancedMoneyAccount],
+      moneyAccounts: Map[Int, EnhancedAccount],
       checkedTransactions: Set[Int],
       ordering: List[(SortingColumn, Order)],
       clickOrdering: SortingColumn => Callback,
       checkTransaction: (MICheckbox.Status, String) => Callback,
-      trackingChanged: (Int, TransactionTracking) => Callback,
-      save: (Option[Int], LocalDate, TransactionType, BigDecimal, String, Int, Int, String, Option[BigDecimal], Option[Int], Option[String]) => Callback,
+      trackingChanged: (Int, Status) => Callback,
+      save: (Option[Int], LocalDate, Op, BigDecimal, String, Int, Int, String, Option[BigDecimal], Option[Int], Option[String]) => Callback,
       deleteTransactions: Set[Int] => Callback,
       massEditSave: (Set[Int], Option[Int], Option[Int]) => Callback
   )
@@ -43,7 +43,7 @@ object Page {
       visibleDetails: Set[Int],
       id: Option[Int],
       date: LocalDate,
-      transactionType: TransactionType,
+      transactionType: Op,
       amount: BigDecimal,
       destAmount: Option[BigDecimal],
       description: String,
@@ -73,7 +73,7 @@ object Page {
       state.copy(date = date)
     } >> CallbackTo.pure(date)
 
-    def ttChange(tt: TransactionType): Callback =
+    def ttChange(tt: Op): Callback =
       $.modState(_.copy(transactionType = tt))
 
     def amountChange(amount: BigDecimal): Callback =
@@ -85,7 +85,7 @@ object Page {
     def categoryChange(cat: CategoryTree): Callback =
       $.modState(_.copy(categoryId = Some(cat.id)))
 
-    def maChange(ma: EnhancedMoneyAccount): Callback = $.modState { state =>
+    def maChange(ma: EnhancedAccount): Callback = $.modState { state =>
       val newCurrency = state.currency
         .flatMap(cur => ma.currencies.find(_.currency.id == cur))
         .map(_.currency.id)
@@ -95,7 +95,7 @@ object Page {
     def currencyChange(currency: Currency): Callback =
       $.modState(_.copy(currency = Some(currency.id)))
 
-    def destinationMAChange(ma: EnhancedMoneyAccount): Callback = $.modState { state =>
+    def destinationMAChange(ma: EnhancedAccount): Callback = $.modState { state =>
       val newDestCurrency = state.destCurrency
         .flatMap(cur => ma.currencies.find(_.currency.id == cur))
         .map(_.currency.id)
@@ -115,9 +115,9 @@ object Page {
     def save: Callback = for {
       props <- $.props
       state <- $.state
-      destAmount = if (state.transactionType == TransactionType.Transfer) state.destAmount else None
-      destMA = if (state.transactionType == TransactionType.Transfer) state.destMAId else None
-      destCurrency = if (state.transactionType == TransactionType.Transfer) state.destCurrency else None
+      destAmount = if (state.transactionType == Op.Transfer) state.destAmount else None
+      destMA = if (state.transactionType == Op.Transfer) state.destMAId else None
+      destCurrency = if (state.transactionType == Op.Transfer) state.destCurrency else None
       _ = CookieStorage.updateAddTransactionSetup(props.account, AddTransactionSetup(
         state.date, state.transactionType, state.categoryId, state.moneyAccountId, state.currency,
         state.destMAId, state.destCurrency
@@ -143,7 +143,7 @@ object Page {
       state.copy(massEditCat = Some(cat.id))
     }
 
-    def massEditMAChange(ma: EnhancedMoneyAccount): Callback = $.modState { state =>
+    def massEditMAChange(ma: EnhancedAccount): Callback = $.modState { state =>
       state.copy(massEditMA = Some(ma.id))
     }
 
@@ -227,14 +227,14 @@ object Page {
       def getTransactionsPieChartData: List[PieChart.PieChartData] = {
         props.transactions
           .filter(trans => props.checkedTransactions.isEmpty || props.checkedTransactions.contains(trans.id))
-          .filterNot(_.transactionType == TransactionType.Transfer)
+          .filterNot(_.transactionType == Op.Transfer)
           .groupBy(trans => (trans.transactionType, trans.currency.id))
           .map { case ((ttype, _), trans) =>
             val sum = trans.map(_.amount).sum
             PieChart.PieChartData(
               sum.floatValue,
               s"$ttype - ${formatAmount(trans.head.currency.symbol, sum)}",
-              if (ttype == TransactionType.Expense) "#E53935" else "#43A047"
+              if (ttype == Op.Expense) "#E53935" else "#43A047"
             )
           }.toList
       }
@@ -328,7 +328,7 @@ object Page {
   val component: Component[Props, State, Backend, CtorType.Props] = ScalaComponent.builder[Props]
     .initialState[State](State(
       isOpen = false, deleteIsOpen = false, massEditIsOpen = false, Set.empty, None, LocalDate.now(),
-      TransactionType.Expense, BigDecimal(0), None, "", None, None, None, None, None, addNext = false, Set.empty, None, None
+      Op.Expense, BigDecimal(0), None, "", None, None, None, None, None, addNext = false, Set.empty, None, None
     ))
     .renderBackend[Backend]
     .configure(EventListener.install("resize", _.backend.controlledInvocationOfUpdateColSpanCB, _ => window))

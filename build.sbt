@@ -2,24 +2,25 @@ import java.nio.file.StandardCopyOption
 
 val sftFullBuild = taskKey[Unit]("Builds the back-end assembly and front-end and pushes it into the back-end target folder")
 
-val Http4sVersion = "1.0.0-M37"
-val CirceVersion = "0.14.3"
+val Http4sVersion = "1.0.0-M41"
+val CirceVersion = "0.14.7"
 //val MunitVersion = "0.7.29"
-val LogbackVersion = "1.3.5"
+val LogbackVersion = "1.5.6"
 //val MunitCatsEffectVersion = "1.0.6"
-val EnumeratumVersion = "1.7.0"
-val CatsEffectVersion = "3.3.14"
-val MyScalaVersion = "2.13.7"
-val DoobieVersion = "1.0.0-RC2"
+val EnumeratumVersion = "1.7.3"
+val CatsEffectVersion = "3.5.3"
+val MyScalaVersion = "3.4.1"
+val DoobieVersion = "1.0.0-RC5"
 val ScalaJsReactVersion = "2.1.1"
 val ReactVersion = "17.0.2"
 val MyProjectName = "simple-finance-tracker-v2"
+
 
 scalaVersion := MyScalaVersion
 
 lazy val basicSettings = Seq(
   organization := "org.big.pete",
-  version := "0.4.0",
+  version := "0.4.0-tyrian",
   scalaVersion := MyScalaVersion,
   credentials += Credentials(Path.userHome / ".sbt" / ".credentials-github-repo"),
   resolvers += ("scala-toolz-github" at "https://maven.pkg.github.com/katastrofa/scala-toolz/")
@@ -31,10 +32,8 @@ lazy val shared = crossProject(JSPlatform, JVMPlatform)
   .in(file("shared"))
   .settings(basicSettings)
   .settings(
-    // https://mvnrepository.com/artifact/com.beachape/enumeratum
-    libraryDependencies += "com.beachape" %%% "enumeratum" % EnumeratumVersion,
     libraryDependencies += "io.circe" %%% "circe-generic" % CirceVersion,
-    libraryDependencies += "com.beachape" %%% "enumeratum-circe" % EnumeratumVersion
+    libraryDependencies += "org.latestbit" %% "circe-tagged-adt-codec" % "0.11.0"
   )
 //  .jsConfigure(_.enablePlugins(ScalaJSWeb))
 
@@ -45,8 +44,7 @@ lazy val cache = (project in file("cache"))
   .settings(basicSettings)
   .settings(
     name := "scala-toolz-cache",
-    libraryDependencies += "org.typelevel" %% "cats-effect" % CatsEffectVersion,
-    addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
+    libraryDependencies += "org.typelevel" %% "cats-effect" % CatsEffectVersion
   )
 
 lazy val db = (project in file("db"))
@@ -56,7 +54,7 @@ lazy val db = (project in file("db"))
     name := s"$MyProjectName-db",
     libraryDependencies += "org.tpolecat" %% "doobie-core" % DoobieVersion,
     libraryDependencies += "io.circe" %% "circe-jawn" % CirceVersion,
-    libraryDependencies += "org.wvlet.airframe" %% "airframe-log" % "22.11.4"
+    libraryDependencies += "org.wvlet.airframe" %% "airframe-log" % "24.6.0"
   )
 
 lazy val backend = (project in file("backend"))
@@ -65,32 +63,22 @@ lazy val backend = (project in file("backend"))
   .settings(
     name := s"$MyProjectName-backend",
 
-    libraryDependencies += "com.softwaremill.sttp.client3" %% "cats" % "3.8.5",
+    libraryDependencies += "org.typelevel" %% "log4cats-slf4j" % "2.7.0",
+    libraryDependencies += "com.softwaremill.sttp.client3" %% "cats" % "3.9.7",
     libraryDependencies += "org.tpolecat" %% "doobie-hikari" % DoobieVersion,
     libraryDependencies += "org.http4s" %% "http4s-ember-server" % Http4sVersion,
     libraryDependencies += "org.http4s" %% "http4s-circe" % Http4sVersion,
     libraryDependencies += "org.http4s" %% "http4s-dsl" % Http4sVersion,
     libraryDependencies += "ch.qos.logback" % "logback-classic" % LogbackVersion,
-    libraryDependencies += "org.scalameta" %% "svm-subs" % "20.2.0",
-    libraryDependencies += "com.typesafe" % "config" % "1.4.2",
-    libraryDependencies += "mysql" % "mysql-connector-java" % "8.0.30",
+    libraryDependencies += "com.typesafe" % "config" % "1.4.3",
+    libraryDependencies += "mysql" % "mysql-connector-java" % "8.0.33",
 
-    addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.13.2" cross CrossVersion.full),
-    addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"),
-
-    scalacOptions += "-Ymacro-annotations",
+//    scalacOptions += "-Ymacro-annotations",
     assembly / assemblyMergeStrategy := {
       case x if x.endsWith("netty.versions.properties") => MergeStrategy.concat
       case x if x.endsWith("module-info.class") => MergeStrategy.concat
       case x => (assembly / assemblyMergeStrategy).value.apply(x)
     }
-  )
-
-lazy val shapeFun = (project in file("shape-fun"))
-  .settings(basicSettings)
-  .settings(
-    name := s"shape-fun",
-    libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.10"
   )
 
 lazy val scalajsToolz = (project in file("scalajs-toolz"))
@@ -134,14 +122,12 @@ lazy val reactToolz = (project in file("react-toolz"))
     name := "react-toolz",
     scalaJSUseMainModuleInitializer := true,
 
-    libraryDependencies += "com.beachape" %%% "enumeratum" % EnumeratumVersion,
     libraryDependencies += "com.github.japgolly.scalajs-react" %%% "core" % ScalaJsReactVersion,
     libraryDependencies += "com.github.japgolly.scalajs-react" %%% "extra" % ScalaJsReactVersion,
 //    libraryDependencies += "com.github.japgolly.scalacss" %%% "ext-react" % "1.0.0",
 
     libraryDependencies += "io.github.cquiroz" %%% "scala-java-time" % "2.3.0",
     libraryDependencies += "io.github.cquiroz" %%% "scala-java-time-tzdb" % "2.3.0",
-    libraryDependencies += "com.chuusai" %%% "shapeless" % "2.3.9",
 
     Compile / npmDependencies ++= Seq(
       "react" -> ReactVersion,

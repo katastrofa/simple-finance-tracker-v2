@@ -7,24 +7,25 @@ import doobie.util.transactor.Transactor
 import io.circe.syntax.EncoderOps
 import org.big.pete.sft.db.dao.{Categories => CategoriesDao, Transactions => TransactionsDao}
 import org.big.pete.sft.domain.{Category, ShiftStrategy}
-import org.big.pete.sft.domain.Implicits._
+import org.big.pete.sft.domain.Givens._
 import org.http4s.Response
 import org.http4s.dsl.Http4sDsl
 import org.http4s.circe.CirceEntityEncoder._
 
 
 class Categories[F[_]: MonadCancelThrow](
-    dsl: Http4sDsl[F],
-    implicit val transactor: Transactor[F]
+    dsl: Http4sDsl[F]
+)(
+    using transactor: Transactor[F]
 ) extends ToConnectionIOOps with FlatMapSyntax with FunctorSyntax {
   import dsl._
 
-  def getCategory(catId: Int): F[Category] =
-    CategoriesDao.getCategory(catId).transact(transactor).map(_.get)
+  def getCategory(id: Int): F[Category] =
+    CategoriesDao.getCategory(id).transact(transactor).map(_.get)
 
-  def listCategories(accountId: Int): F[Response[F]] = {
+  def listCategories(wallet: Int): F[Response[F]] = {
     for {
-      cats <- CategoriesDao.listCategories(accountId).transact(transactor)
+      cats <- CategoriesDao.listCategories(wallet).transact(transactor)
       response <- Ok(cats.asJson)
     } yield response
   }
@@ -37,24 +38,24 @@ class Categories[F[_]: MonadCancelThrow](
     } yield response
   }
 
-  def editCategory(cat: Category, accountId: Int): F[Response[F]] = {
+  def editCategory(cat: Category, wallet: Int): F[Response[F]] = {
     for {
-      _ <- CategoriesDao.editCategory(cat, accountId).transact(transactor)
+      _ <- CategoriesDao.editCategory(cat, wallet).transact(transactor)
       newCat <- CategoriesDao.getCategory(cat.id).transact(transactor)
       response <- Ok(newCat.get.asJson)
     } yield response
   }
 
-  def deleteCategory(id: Int, accountId: Int, catsShiftStrategy: ShiftStrategy, transactionsShiftStrategy: ShiftStrategy): F[Response[F]] = {
+  def deleteCategory(id: Int, wallet: Int, catsShiftStrategy: ShiftStrategy, transactionsShiftStrategy: ShiftStrategy): F[Response[F]] = {
     for {
-      _ <- CategoriesDao.updateCatParent(id, catsShiftStrategy.newId, accountId).transact(transactor)
+      _ <- CategoriesDao.updateCatParent(id, catsShiftStrategy.newId, wallet).transact(transactor)
       _ <-
         if (transactionsShiftStrategy.newId.isDefined)
-          TransactionsDao.changeCategory(id, transactionsShiftStrategy.newId.get, accountId).transact(transactor)
+          TransactionsDao.changeCategory(id, transactionsShiftStrategy.newId.get, wallet).transact(transactor)
         else
           TransactionsDao.deleteForCategory(id).transact(transactor)
 
-      _ <- CategoriesDao.deleteCategory(id, accountId).transact(transactor)
+      _ <- CategoriesDao.deleteCategory(id, wallet).transact(transactor)
       response <- Ok("")
     } yield response
   }
