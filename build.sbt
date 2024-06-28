@@ -115,55 +115,22 @@ lazy val chartsJs = (project in file("charts-js"))
     webpackCliVersion := "5.0.1"
   )
 
-lazy val reactToolz = (project in file("react-toolz"))
+lazy val tyrianFront = (project in file("tyrian-front"))
   .enablePlugins(ScalaJSPlugin, ScalaJSWeb, ScalaJSBundlerPlugin)
   .settings(basicSettings)
   .settings(
-    name := "react-toolz",
+    name := "tyrian-front",
     scalaJSUseMainModuleInitializer := true,
 
-    libraryDependencies += "com.github.japgolly.scalajs-react" %%% "core" % ScalaJsReactVersion,
-    libraryDependencies += "com.github.japgolly.scalajs-react" %%% "extra" % ScalaJsReactVersion,
-//    libraryDependencies += "com.github.japgolly.scalacss" %%% "ext-react" % "1.0.0",
+    libraryDependencies += "io.indigoengine" %%% "tyrian-io" % "0.10.0",
+    scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.CommonJSModule) },
 
-    libraryDependencies += "io.github.cquiroz" %%% "scala-java-time" % "2.3.0",
-    libraryDependencies += "io.github.cquiroz" %%% "scala-java-time-tzdb" % "2.3.0",
+    Compile / fastOptJS / scalaJSLinkerConfig ~= { _.withSourceMap(false) },
+    Compile / fullOptJS / scalaJSLinkerConfig ~= { _.withSourceMap(false) },
 
-    Compile / npmDependencies ++= Seq(
-      "react" -> ReactVersion,
-      "react-dom" -> ReactVersion
-    ),
     webpack / version := "5.75.0",
     startWebpackDevServer / version := "4.11.1",
     webpackCliVersion := "5.0.1"
-  )
-
-lazy val frontend = (project in file("frontend"))
-  .dependsOn(sharedJs, reactToolz, scalajsToolz, chartsJs)
-  .enablePlugins(ScalaJSPlugin, ScalaJSWeb, ScalaJSBundlerPlugin)
-  .settings(basicSettings)
-  .settings(
-    name := s"$MyProjectName-frontend",
-    scalaJSUseMainModuleInitializer := true,
-
-    Compile / npmDependencies ++= Seq(
-      "react" -> ReactVersion,
-      "react-dom" -> ReactVersion
-    ),
-    webpack / version := "5.75.0",
-    startWebpackDevServer / version := "4.11.1",
-    webpackCliVersion := "5.0.1",
-
-    Compile / fastOptJS / webpack := {
-      val compiled = (Compile / fastOptJS / webpack).value
-      val log = streams.value.log
-      compiled.foreach { attributed =>
-        val destinationPath = file(s"frontend/src/main/resources/ignore/${attributed.data.name}").toPath
-        log.info(s"Copying: ${attributed.data} -> ${destinationPath.toString}")
-        java.nio.file.Files.copy(attributed.data.toPath, destinationPath, StandardCopyOption.REPLACE_EXISTING)
-      }
-      compiled
-    }
   )
 
 
@@ -178,36 +145,36 @@ lazy val root = (project in file("."))
       java.nio.file.Files.createDirectories(file(s"$deployFolder/static-assets/js").toPath)
       java.nio.file.Files.createDirectories(file(s"$deployFolder/static-assets/css").toPath)
 
-      val frontendResourcesFolder = (frontend / Compile / resourceDirectory).value
-      val reactToolzResourcesFolder = (reactToolz / Compile / resourceDirectory).value
+//      val frontendResourcesFolder = (frontend / Compile / resourceDirectory).value
+//      val reactToolzResourcesFolder = (reactToolz / Compile / resourceDirectory).value
       val backendResourcesFolder = (backend / Compile / resourceDirectory).value
 
-      val jsFiles = (frontend / Compile / fullOptJS / webpack).value
+//      val jsFiles = (frontend / Compile / fullOptJS / webpack).value
       val log = streams.value.log
 
-      val finalJsFiles = jsFiles.flatMap { attributed =>
-        if (attributed.data.toString.endsWith(".js")) {
-          val destFile = file(s"$deployFolder/static-assets/js/simple-finance-tracker-v2-frontend.js")
-          log.info(s"Copying: ${attributed.data.toString} -> ${destFile.toString}")
-          java.nio.file.Files.copy(attributed.data.toPath, destFile.toPath, StandardCopyOption.REPLACE_EXISTING)
-          Some(destFile)
-        } else None
-      }
+//      val finalJsFiles = jsFiles.flatMap { attributed =>
+//        if (attributed.data.toString.endsWith(".js")) {
+//          val destFile = file(s"$deployFolder/static-assets/js/simple-finance-tracker-v2-frontend.js")
+//          log.info(s"Copying: ${attributed.data.toString} -> ${destFile.toString}")
+//          java.nio.file.Files.copy(attributed.data.toPath, destFile.toPath, StandardCopyOption.REPLACE_EXISTING)
+//          Some(destFile)
+//        } else None
+//      }
 
-      val htmlSource = file(s"${frontendResourcesFolder.toString}/index-prod.html").toPath
+//      val htmlSource = file(s"${frontendResourcesFolder.toString}/index-prod.html").toPath
       val htmlDestination = file(s"$deployFolder/static-assets/index-main.html")
-      java.nio.file.Files.copy(htmlSource, htmlDestination.toPath, StandardCopyOption.REPLACE_EXISTING)
+//      java.nio.file.Files.copy(htmlSource, htmlDestination.toPath, StandardCopyOption.REPLACE_EXISTING)
 
-      val finalCssFiles = List(
-        file(s"$frontendResourcesFolder/sft-v2-main.css"),
-        file(s"$frontendResourcesFolder/my-materialize.css"),
-        file(s"$reactToolzResourcesFolder/date-picker.css")
-      ).map { fileToMove =>
-        val destFile = file(s"$deployFolder/static-assets/css/${fileToMove.name}")
-        log.info(s"Copying: ${fileToMove.toString} -> ${destFile.toString}")
-        java.nio.file.Files.copy(fileToMove.toPath, destFile.toPath, StandardCopyOption.REPLACE_EXISTING)
-        destFile
-      }
+//      val finalCssFiles = List(
+//        file(s"$frontendResourcesFolder/sft-v2-main.css"),
+//        file(s"$frontendResourcesFolder/my-materialize.css"),
+//        file(s"$reactToolzResourcesFolder/date-picker.css")
+//      ).map { fileToMove =>
+//        val destFile = file(s"$deployFolder/static-assets/css/${fileToMove.name}")
+//        log.info(s"Copying: ${fileToMove.toString} -> ${destFile.toString}")
+//        java.nio.file.Files.copy(fileToMove.toPath, destFile.toPath, StandardCopyOption.REPLACE_EXISTING)
+//        destFile
+//      }
 
       val backEndJar = (backend / assembly).value
       val backendJarDest = file(s"$deployFolder/simple-finance-tracker-v2.jar")
@@ -216,7 +183,7 @@ lazy val root = (project in file("."))
       val logbackFileDest = file(s"$deployFolder/logback.xml")
       java.nio.file.Files.copy(file(s"${backendResourcesFolder.toString}/prod-logback.xml").toPath, logbackFileDest.toPath, StandardCopyOption.REPLACE_EXISTING)
 
-      val allFiles = List(backendJarDest, logbackFileDest, htmlDestination) ++ finalJsFiles ++ finalCssFiles
+      val allFiles = List(backendJarDest, logbackFileDest, htmlDestination)// ++ finalJsFiles ++ finalCssFiles
 
       log.info("==================================================")
       log.info("Deployment Files:")
@@ -226,4 +193,4 @@ lazy val root = (project in file("."))
 //      "org.typelevel"   %% "munit-cats-effect-3" % MunitCatsEffectVersion % Test,
 //    testFrameworks += new TestFramework("munit.Framework")
   )
-  .aggregate(shared.jvm, shared.js, cache, db, backend, scalajsToolz, chartsJs, reactToolz, frontend)
+  .aggregate(shared.jvm, shared.js, cache, db, backend, scalajsToolz, chartsJs)
