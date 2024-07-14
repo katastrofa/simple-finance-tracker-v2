@@ -1,31 +1,26 @@
 package org.big.pete.tyrian.toolz
 
+import cats.effect.IO
 import org.big.pete.tyrian.{MyMsg, NoOp}
-import tyrian.Html as h
+import tyrian.{Cmd, Html as h}
 import tyrian.Tyrian.KeyboardEvent
 
 import java.time.format.DateTimeFormatter
 import java.time.{DayOfWeek, LocalDate}
 
 
-final case class KeyBinding(key: String, modifiers: List[String] = List.empty[String])
+final case class KeyBinding(key: String, modifiers: Set[String] = Set.empty[String])
 
-final case class KeyBindings(
-    prevDay: KeyBinding,
-    nextDay: KeyBinding,
-    prevMonth: KeyBinding,
-    nextMonth: KeyBinding,
-    prevWeek: Option[KeyBinding] = None,
-    nextWeek: Option[KeyBinding] = None,
-    prevYear: Option[KeyBinding] = None,
-    nextYear: Option[KeyBinding] = None
-)
+enum DatePickerMovement {
+  case PrevDay, NextDay, PrevMonth, NextMonth, PrevWeek, NextWeek, PrevYear, NextYear
+}
+
+type DatePickerBindings = Map[DatePickerMovement, KeyBinding]
 
 final case class DatePickerModel(
     id: String,
     cls: List[String],
     tabIndex: Int,
-    keyBindings: KeyBindings,
     active: Boolean,
     selected: LocalDate,
     browsing: Option[LocalDate],
@@ -33,7 +28,7 @@ final case class DatePickerModel(
 )
 
 enum DatePickerMsg extends MyMsg {
-  case Move(id: Int, months: Int, days: Int)
+  case Move(id: Int, move: DatePickerMovement)
   case Select(id: Int, date: LocalDate)
   case TextChange(id: Int, text: String)
 }
@@ -43,8 +38,43 @@ class DatePicker[M](dpId: Int, get: M => DatePickerModel, set: (M, DatePickerMod
   private def formatDate(date: LocalDate): String =
     date.format(DatePicker.DateFormat)
 
-  private def fillInput(editing: Option[String], date: LocalDate): String =
-    editing.getOrElse(formatDate(date))
+  private def fillInput(editing: Option[String], browsing: Option[LocalDate], date: LocalDate): String =
+    editing.getOrElse(formatDate(browsing.getOrElse(date)))
+
+  def processMsg(model: M): PartialFunction[MyMsg, (M, Cmd[IO, MyMsg])] = {
+    case DatePickerMsg.Move(id, move) if id == dpId =>
+      val m = get(model)
+      val browsingDate = m.browsing.getOrElse(m.selected)
+      val newDate = move match {
+        case DatePickerMovement.PrevDay => browsingDate.minusDays(1L)
+        case DatePickerMovement.NextDay => browsingDate.plusDays(1L)
+        case DatePickerMovement.PrevMonth => browsingDate.minusMonths(1L)
+        case DatePickerMovement.NextMonth => browsingDate.plusMonths(1L)
+        case DatePickerMovement.PrevWeek => browsingDate.minusWeeks(1L)
+        case DatePickerMovement.NextWeek => browsingDate.plusWeeks(1L)
+        case DatePickerMovement.PrevYear => browsingDate.minusYears(1L)
+        case DatePickerMovement.NextYear => browsingDate.plusYears(1L)
+      }
+      set(model, m.copy(browsing = Some(newDate), editing = None)) -> Cmd.None
+
+    case DatePickerMsg.Select(id, date) if id == dpId =>
+      val m = get(model)
+      set(model, m.copy(active = false, selected = date, browsing = None, editing = None)) -> Cmd.None
+
+    case DatePickerMsg.TextChange(id, text) if id == dpId =>
+      val m = get(model)
+      val newDate = text match {
+        case x if "[0-9]{4}".r.matches(x) =>
+          LocalDate.parse(x + "-01-01")
+        case x if "[0-9]{4}-[0-9]{2}".r.matches(x) =>
+          LocalDate.parse(x + "-01")
+        case x if "[0-9]{4}-[0-9]{2}-[0-9]{2}".r.matches(x) =>
+          LocalDate.parse(x)
+        case _ =>
+          m.browsing.getOrElse(m.selected)
+      }
+      set(model, m.copy(editing = Some(text), browsing = Some(newDate))) -> Cmd.None
+  }
 
   def view(origModel: M): h[MyMsg] = {
     val m = get(origModel)
@@ -68,7 +98,7 @@ class DatePicker[M](dpId: Int, get: M => DatePickerModel, set: (M, DatePickerMod
       ),
       h.input(
         h.id := m.id, h.`type` := "text", h.cls := "datepicker", h.tabIndex := m.tabIndex,
-        h.value := fillInput(m.editing, m.selected),
+        h.value := fillInput(m.editing, m.browsing, m.selected),
         h.onInput(DatePickerMsg.TextChange(dpId, _)),
         h.onKeyDown(handleBackspace(m)),
         h.onKeyPress(processKey(m))
@@ -94,25 +124,54 @@ class DatePicker[M](dpId: Int, get: M => DatePickerModel, set: (M, DatePickerMod
   }
 
   private def processKey(model: DatePickerModel)(e: KeyboardEvent): MyMsg = {
-    
+    e.key match {
+      case "Enter" =>
+        DatePickerMsg.Select(dpId, model.browsing.getOrElse(model.selected))
+      case "Escape" =>
+        e.preventDefault()
+        DatePickerMsg.Select(dpId, model.selected)
+      case key =>
+        checkKeyBinding(DatePicker.DefaultKeyBindings, e) match {
+          case Some(mov) =>
+            e.preventDefault()
+            e.stopPropagation()
+            DatePickerMsg.Move(dpId, mov)
+          case None =>
+            NoOp
+        }
+    }
+  }
+
+  private def checkKeyBinding(bindings: DatePickerBindings, e: KeyboardEvent): Option[DatePickerMovement] = {
+    bindings.find { case (mov, binding) =>
+      binding.key == e.key && matchModifiers(binding.modifiers, e)
+    }.map(_._1)
+  }
+
+  private def matchModifiers(modifiers: Set[String], e: KeyboardEvent): Boolean = {
+    val eventModifiers = List("Alt" -> e.altKey, "Control" -> e.ctrlKey, "Meta" -> e.metaKey, "Shift" -> e.shiftKey)
+      .filter(_._2)
+      .map(_._1)
+      .toSet
+    modifiers == eventModifiers
   }
 
   private def navigationButtons(id: String, titleDate: LocalDate): h[MyMsg] = {
     import DatePickerMsg.Move
     h.div(h.id := s"datepicker-title-$id", h.cls := "datepicker-controls", h.role := "heading")(
-      h.button(h.cls := "year-prev month-prev", h.`type` := "button", h.onClick(Move(dpId, -12, 0)))(
+      h.button(h.cls := "year-prev month-prev", h.`type` := "button", h.onClick(Move(dpId, DatePickerMovement.PrevYear)))(
         Views.icon("keyboard_double_arrow_left")
       ),
-      h.button(h.cls := "month-prev", h.`type` := "button", h.onClick(Move(dpId, -1, 0)))(
+      h.button(h.cls := "month-prev", h.`type` := "button", h.onClick(Move(dpId, DatePickerMovement.PrevMonth)))(
         Views.icon("keyboard_arrow_left")
       ),
       h.div(h.cls := "selects-container")(
         h.h5(s"${titleDate.getYear}-${titleDate.getMonthValue}")
       ),
-      h.button(h.cls := "month-next", h.`type` := "button", h.onClick(Move(dpId, 1, 0)))(
+      h.button(h.cls := "month-next", h.`type` := "button", h.onClick(Move(dpId, DatePickerMovement.NextMonth)))(
         Views.icon("keyboard_arrow_right")
       ),
-      h.button(h.cls := "year-next month-next", h.`type` := "button", h.onClick(Move(dpId, 12, 0)))(
+      h.button(h.cls := "year-next month-next", h.`type` := "button", h.onClick(Move(dpId, DatePickerMovement.NextYear)))(
         Views.icon("keyboard_double_arrow_right")
       )
     )
@@ -155,9 +214,6 @@ class DatePicker[M](dpId: Int, get: M => DatePickerModel, set: (M, DatePickerMod
           h.button(
             h.cls := "datepicker-day-button",
             h.`type` := "button",
-//            h.dataAttr("year", date.getYear.toString),
-//            h.dataAttr("month", date.getMonthValue.toString),
-//            h.dataAttr("day", date.getDayOfMonth.toString)
             h.onClick(DatePickerMsg.Select(dpId, date))
           )(h.text(date.getDayOfMonth.toString))
         )
@@ -170,7 +226,7 @@ class DatePicker[M](dpId: Int, get: M => DatePickerModel, set: (M, DatePickerMod
   }
 }
 
-object DatePicker {
+private object DatePicker {
   private final val Days = Seq(
     (DayOfWeek.SUNDAY, "Sunday", "S"),
     (DayOfWeek.MONDAY, "Monday", "M"),
@@ -181,4 +237,16 @@ object DatePicker {
     (DayOfWeek.SATURDAY, "Saturday", "S")
   )
   private final val DateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+  private final val AllModifiers = Set("Alt", "Control", "Meta", "Shift")
+
+  private final val DefaultKeyBindings: DatePickerBindings = Map(
+    DatePickerMovement.PrevDay -> KeyBinding("ArrowLeft"),
+    DatePickerMovement.NextDay -> KeyBinding("ArrowRight"),
+    DatePickerMovement.PrevMonth -> KeyBinding("ArrowLeft", Set("Shift")),
+    DatePickerMovement.NextMonth -> KeyBinding("ArrowRight", Set("Shift")),
+    DatePickerMovement.PrevWeek -> KeyBinding("ArrowUp"),
+    DatePickerMovement.NextWeek -> KeyBinding("ArrowDown"),
+    DatePickerMovement.PrevYear -> KeyBinding("ArrowLeft", Set("Alt")),
+    DatePickerMovement.NextYear -> KeyBinding("ArrowRight", Set("Alt"))
+  )
 }
