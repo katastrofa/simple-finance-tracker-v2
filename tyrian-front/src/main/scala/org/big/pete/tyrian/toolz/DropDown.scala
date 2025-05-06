@@ -1,8 +1,8 @@
 package org.big.pete.tyrian.toolz
 
 import cats.effect.IO
-import org.big.pete.tyrian.{MyMsg, NoOp}
-import org.scalajs.dom.{FocusEvent, HTMLElement, document, window, console}
+import org.big.pete.tyrian.domain.{DropDownItem, ComponentId, Msg}
+import org.scalajs.dom.{FocusEvent, HTMLElement, console, document, window}
 import tyrian.{Cmd, Html, Sub}
 import tyrian.Tyrian.KeyboardEvent
 
@@ -10,14 +10,10 @@ import scala.annotation.tailrec
 import scala.concurrent.duration.DurationInt
 
 
-trait DropDownItem[T] {
-  extension (x: T) def key: String
-  extension (x: T) def display: String
-}
-
-final case class DropDownModel[T](
+final case class DropDownModel[T: DropDownItem](
     id: String,
     label: String,
+    items: List[T],
     selected: Option[T],
     tabIndex: Int,
     extraClasses: List[String],
@@ -28,70 +24,71 @@ final case class DropDownModel[T](
     debouncing: Option[Int]
 )
 
-enum DropDownMsg extends MyMsg {
-  case Activate(id: Int)
-  case Deactivate(id: Int)
-  case Move(id: Int, direction: Int)
-  case TextChange(id: Int, text: String)
-  case Select[T: DropDownItem](id: Int, item: T)
-  case TimePassed(id: Int)
-  case RecalcPosition(id: Int)
-}
-
-
-class DropDown[M, T: DropDownItem](ddId: Int, get: M => DropDownModel[T], set: (M, DropDownModel[T]) => M) {
+class DropDown[M, T: DropDownItem](ddId: ComponentId, get: M => DropDownModel[T], set: (M, DropDownModel[T]) => M) {
   private def browsingIndex(browsing: Option[T], model: DropDownModel[T]): Option[Int] =
     browsing.flatMap { item =>
       val i = model.visible.indexOf(item)
       if (i >= 0) Some(i) else None
     }
 
-  def processMsg(items: List[T], model: M): PartialFunction[MyMsg, (M, Cmd[IO, MyMsg])] = {
-    case DropDownMsg.Activate(id) if id == ddId =>
-      val m = get(model)
-      set(model, m.copy(focused = true)) -> updateUlPosition(m.id, m.visible.length, browsingIndex(m.browsing, m), None)
-
-    case DropDownMsg.Deactivate(id) if id == ddId =>
-      set(model, get(model).copy(focused = false)) -> Cmd.None
-
-    case DropDownMsg.Move(id, direction) if id == ddId =>
-      val m = get(model)
-      val browsing = m.browsing match {
-        case Some(item) =>
-          val index = m.visible.indexOf(item) + direction
-          val newIndex = index match {
-            case i if i < 0 => m.visible.length - 1
-            case i if i >= m.visible.length => 0
-            case i => i
-          }
-          Some(m.visible(newIndex))
-        case None =>
-          if (direction > 0) m.visible.headOption else m.visible.lastOption
-      }
-      set(model, m.copy(browsing = browsing)) -> updateUlPosition(m.id, m.visible.length, browsingIndex(browsing, m), Some(direction))
-
-    case DropDownMsg.TextChange(id, text) if id == ddId =>
-      val visible = filterItems(text, items)
-      val m = get(model)
-      set(model, m.copy(browsing = None, text = text, visible = visible)) -> updateUlPosition(m.id, visible.length, browsingIndex(None, m), None)
-
-    case DropDownMsg.Select(id, item: T) if id == ddId =>
-      set(model, get(model).copy(selected = Some(item), text = item.display, focused = false, browsing = None, visible = items)) -> Cmd.None
-
-    case DropDownMsg.TimePassed(id) if id == ddId =>
-      val m = get(model)
-      m.debouncing match {
-        case Some(remaining) if remaining <= 0 =>
-          set(model, m.copy(debouncing = None)) -> updateUlPosition(m.id, m.visible.length, browsingIndex(m.browsing, m), None)
-        case Some(remaining) =>
-          set(model, m.copy(debouncing = Some(remaining - DropDown.TickInterval))) -> Cmd.None
-        case None =>
-          model -> Cmd.None
-      }
-
-    case DropDownMsg.RecalcPosition(id) if id == ddId =>
-      set(model, get(model).copy(debouncing = Some(DropDown.DebouncingMillis))) -> Cmd.None
+  def handleActivate(model: M): (M, Cmd[IO, Msg]) = {
+    val m = get(model)
+    set(model, m.copy(focused = true)) -> updateUlPosition(m.id, m.visible.length, browsingIndex(m.browsing, m), None)
   }
+
+  def handleDeactivate(model: M): (M, Cmd[IO, Msg]) =
+    set(model, get(model).copy(focused = false)) -> Cmd.None
+
+  def handleMove(direction: Int, model: M): (M, Cmd[IO, Msg]) = {
+    val m = get(model)
+    val browsing = m.browsing match {
+      case Some(item) =>
+        val index = m.visible.indexOf(item) + direction
+        val newIndex = index match {
+          case i if i < 0 => m.visible.length - 1
+          case i if i >= m.visible.length => 0
+          case i => i
+        }
+        Some(m.visible(newIndex))
+      case None =>
+        if (direction > 0) m.visible.headOption else m.visible.lastOption
+    }
+
+    set(model, m.copy(browsing = browsing)) ->
+      updateUlPosition(m.id, m.visible.length, browsingIndex(browsing, m), Some(direction))
+  }
+
+  def handleTextChange(text: String, model: M): (M, Cmd[IO, Msg]) = {
+    val m = get(model)
+    val visible = filterItems(text, m.items)
+    set(model, m.copy(browsing = None, text = text, visible = visible)) ->
+      updateUlPosition(m.id, visible.length, browsingIndex(None, m), None)
+  }
+
+  def handleSelect(item: T, model: M): (M, Cmd[IO, Msg]) = {
+    val m = get(model)
+    set(model, m.copy(selected = Some(item), text = item.display, focused = false, browsing = None, visible = m.items)) -> Cmd.None
+  }
+
+  def handleTick(model: M): (M, Cmd[IO, Msg]) = {
+    val m = get(model)
+    m.debouncing match {
+      case Some(remaining) if remaining <= 0 =>
+        set(model, m.copy(debouncing = None)) ->
+          updateUlPosition(m.id, m.visible.length, browsingIndex(m.browsing, m), None)
+
+      case Some(remaining) =>
+        set(model, m.copy(debouncing = Some(remaining - DropDown.TickInterval))) ->
+          Cmd.None
+
+      case None =>
+        model -> Cmd.None
+    }
+  }
+
+  def handleRecalcPosition(model: M): (M, Cmd[IO, Msg]) =
+    set(model, get(model).copy(debouncing = Some(DropDown.DebouncingMillis))) -> Cmd.None
+
 
   private def prepareSearchables(searchString: String): List[String] =
     searchString.trim
@@ -113,35 +110,35 @@ class DropDown[M, T: DropDownItem](ddId: Int, get: M => DropDownModel[T], set: (
     el.id == id || Option(el.parentElement).exists(isChild(_, id))
   }
 
-  private def handleBlur(id: String)(evt: FocusEvent): MyMsg = {
+  private def handleBlur(id: String)(evt: FocusEvent): Msg = {
     console.log("handling blur on my own")
 
     evt.relatedTarget match {
       case el: HTMLElement if isChild(el, id) =>
         console.log("isChild")
-        NoOp
+        Msg.NoOp
       case _ =>
         console.log("blur deactivate")
-        DropDownMsg.Deactivate(ddId)
+        Msg.DdDeactivate(ddId)
     }
   }
 
-  private def processKey(model: DropDownModel[T])(e: KeyboardEvent): MyMsg = {
+  private def processKey(model: DropDownModel[T])(e: KeyboardEvent): Msg = {
     e.key match {
       case "ArrowUp" =>
         e.preventDefault()
-        DropDownMsg.Move(ddId, -1)
+        Msg.DdMove(ddId, -1)
       case "ArrowDown" =>
         e.preventDefault()
-        DropDownMsg.Move(ddId, 1)
+        Msg.DdMove(ddId, 1)
       case "Enter" =>
         e.preventDefault()
-        DropDownMsg.Select(ddId, model.browsing.getOrElse(model.visible.head))
+        Msg.DdSelect(ddId, model.browsing.getOrElse(model.visible.head))
       case "Escape" =>
         e.preventDefault()
-        DropDownMsg.Deactivate(ddId)
+        Msg.DdDeactivate(ddId)
       case _ =>
-        NoOp
+        Msg.NoOp
     }
   }
 
@@ -175,7 +172,7 @@ class DropDown[M, T: DropDownItem](ddId: Int, get: M => DropDownModel[T], set: (
     }
   }
 
-  private def displayItem(item: T, text: String, browsing: Option[T]): Html[MyMsg] = {
+  private def displayItem(item: T, text: String, browsing: Option[T]): Html[Msg] = {
     val displayText = item.display
     val ranges = prepareSearchables(text)
       .map(search(displayText))
@@ -188,13 +185,13 @@ class DropDown[M, T: DropDownItem](ddId: Int, get: M => DropDownModel[T], set: (
 
     Html.li(
       Html.cls := (if (browsing.contains(item)) "active" else ""),
-      Html.onClick(DropDownMsg.Select(ddId, item))
+      Html.onClick(Msg.DdSelect(ddId, item))
     )(
       Html.span(textSplits*)
     )
   }
 
-  def view(items: List[T], origModel: M): Html[MyMsg] = {
+  def view(origModel: M): Html[Msg] = {
     val model = get(origModel)
     val ulClasses = (if (model.focused) List("visible") else List.empty[String]) ++ List("dropdown-content", "autocomplete-content")
 
@@ -206,10 +203,10 @@ class DropDown[M, T: DropDownItem](ddId: Int, get: M => DropDownModel[T], set: (
         Html.`type` := "text",
         Html.value := model.text,
         Html.cls := "autocomplete",
-        Html.onFocus(DropDownMsg.Activate(ddId)),
-        Html.onInput(str => DropDownMsg.TextChange(ddId, str)),
+        Html.onFocus(Msg.DdActivate(ddId)),
+        Html.onInput(str => Msg.DdTextChange(ddId, str)),
         Html.onKeyDown(processKey(model)).noPreventDefault.noStopImmediatePropagation.noStopPropagation,
-        Html.onEvent[FocusEvent, MyMsg]("blur", handleBlur(model.id))
+        Html.onEvent[FocusEvent, Msg]("blur", handleBlur(model.id))
       ),
       Html.ul(
         Html.id := s"${model.id}-ul",
@@ -270,24 +267,24 @@ class DropDown[M, T: DropDownItem](ddId: Int, get: M => DropDownModel[T], set: (
     }
   }
 
-  private val windowResize: Sub[IO, MyMsg] = Sub.fromEvent("resize", window) { _ =>
-    Option(DropDownMsg.RecalcPosition(ddId))
+  private val windowResize: Sub[IO, Msg] = Sub.fromEvent("resize", window) { _ =>
+    Option(Msg.DdRecalcPosition(ddId))
   }
-  private val documentScroll: Sub[IO, MyMsg] = Sub.fromEvent("scroll", document) { _ =>
-    Option(DropDownMsg.RecalcPosition(ddId))
+  private val documentScroll: Sub[IO, Msg] = Sub.fromEvent("scroll", document) { _ =>
+    Option(Msg.DdRecalcPosition(ddId))
   }
-  private def tick(model: M): Sub[IO, MyMsg] = {
+  private def tick(model: M): Sub[IO, Msg] = {
     get(model).debouncing match {
       case Some(_) =>
         Sub.every[IO](DropDown.TickInterval.millis, "tick")
-          .map(_ => DropDownMsg.TimePassed(ddId))
+          .map(_ => Msg.DdTimePassed(ddId))
       case _ =>
         Sub.None
     }
   }
 
-  def subscriptions(model: M): Sub[IO, MyMsg] =
-    Sub.Batch[IO, MyMsg](List(windowResize, documentScroll, tick(model)))
+  def subscriptions(model: M): Sub[IO, Msg] =
+    Sub.Batch[IO, Msg](List(windowResize, documentScroll, tick(model)))
 
 }
 

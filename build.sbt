@@ -2,15 +2,15 @@ import java.nio.file.StandardCopyOption
 
 val sftFullBuild = taskKey[Unit]("Builds the back-end assembly and front-end and pushes it into the back-end target folder")
 
-val Http4sVersion = "1.0.0-M41"
-val CirceVersion = "0.14.7"
+val Http4sVersion = "1.0.0-M44"
+val CirceVersion = "0.14.13"
 //val MunitVersion = "0.7.29"
-val LogbackVersion = "1.5.6"
+val LogbackVersion = "1.5.18"
 //val MunitCatsEffectVersion = "1.0.6"
 val EnumeratumVersion = "1.7.3"
-val CatsEffectVersion = "3.5.3"
-val MyScalaVersion = "3.4.1"
-val DoobieVersion = "1.0.0-RC5"
+val CatsEffectVersion = "3.6.1"
+val MyScalaVersion = "3.6.4"
+val DoobieVersion = "1.0.0-RC9"
 val ScalaJsReactVersion = "2.1.1"
 val ReactVersion = "17.0.2"
 val MyProjectName = "simple-finance-tracker-v2"
@@ -54,7 +54,7 @@ lazy val db = (project in file("db"))
     name := s"$MyProjectName-db",
     libraryDependencies += "org.tpolecat" %% "doobie-core" % DoobieVersion,
     libraryDependencies += "io.circe" %% "circe-jawn" % CirceVersion,
-    libraryDependencies += "org.wvlet.airframe" %% "airframe-log" % "24.6.0"
+    libraryDependencies += "org.wvlet.airframe" %% "airframe-log" % "2025.1.10"
   )
 
 lazy val backend = (project in file("backend"))
@@ -64,7 +64,7 @@ lazy val backend = (project in file("backend"))
     name := s"$MyProjectName-backend",
 
     libraryDependencies += "org.typelevel" %% "log4cats-slf4j" % "2.7.0",
-    libraryDependencies += "com.softwaremill.sttp.client3" %% "cats" % "3.9.7",
+    libraryDependencies += "com.softwaremill.sttp.client3" %% "cats" % "3.11.0",
     libraryDependencies += "org.tpolecat" %% "doobie-hikari" % DoobieVersion,
     libraryDependencies += "org.http4s" %% "http4s-ember-server" % Http4sVersion,
     libraryDependencies += "org.http4s" %% "http4s-circe" % Http4sVersion,
@@ -122,7 +122,9 @@ lazy val tyrianFront = (project in file("tyrian-front"))
     name := "tyrian-front",
     scalaJSUseMainModuleInitializer := true,
 
-    libraryDependencies += "io.indigoengine" %%% "tyrian-io" % "0.10.0",
+    libraryDependencies += "io.indigoengine" %%% "tyrian-io" % "0.13.0",
+    libraryDependencies += "io.github.cquiroz" %%% "scala-java-time" % "2.6.0",
+    libraryDependencies += "io.github.cquiroz" %%% "scala-java-time-tzdb" % "2.6.0",
     scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.CommonJSModule) },
 
     Compile / fastOptJS / scalaJSLinkerConfig ~= { _.withSourceMap(false) },

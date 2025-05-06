@@ -1,54 +1,86 @@
 package org.big.pete.tyrian
 
 import cats.effect.IO
-import org.big.pete.tyrian.toolz.{DropDown, DropDownItem, DropDownModel}
+import org.big.pete.tyrian.domain.{DropDownItem, Msg, ComponentId}
+import org.big.pete.tyrian.toolz.{DatePicker, DatePickerModel, DropDown, DropDownModel}
 import tyrian.{Cmd, Html, Location, Routing, Sub, TyrianIOApp}
 
+import java.time.LocalDate
 import scala.scalajs.js.annotation.JSExportTopLevel
 
 
-trait MyMsg
-case object NoOp extends MyMsg
-case object Tick extends MyMsg
+
 
 case class AppModel(
     items: List[String],
-    dd: DropDownModel[String]
+    dd: DropDownModel[String],
+    dpm: DatePickerModel
 )
 
 type Model = AppModel
 
 @JSExportTopLevel("TyrianApp")
-object Main extends TyrianIOApp[MyMsg, Model] {
+object Main extends TyrianIOApp[Msg, Model] {
   import Givens.given
 
-  private val testDD = new DropDown[Model, String](1, _.dd, (m, dd) => m.copy(dd = dd))
+  private val dropDowns: Map[ComponentId, DropDown[Model, ?]] = Map(
+    ComponentId.Drop -> new DropDown[Model, String](ComponentId.Drop, _.dd, (m, dd) => m.copy(dd = dd)),
+  )
+  private val pickers: Map[ComponentId, DatePicker[Model]] = Map(
+    ComponentId.Picker -> new DatePicker[Model](ComponentId.Picker, _.dpm, (m, dpm) => m.copy(dpm = dpm))
+  )
 
-  override def router: Location => MyMsg =
-    Routing.none(NoOp)
+  override def router: Location => Msg =
+    Routing.none(Msg.NoOp)
 
-  override def init(flags: Map[String, String]): (Model, Cmd[IO, MyMsg]) = {
+  override def init(flags: Map[String, String]): (Model, Cmd[IO, Msg]) = {
     val items = List("Google", "Apple", "Amazon", "Samsung", "Larian", "Microsoft", "Big Pete", "kokot", "sulin", "piculienka", "kokotinkaz")
-    val dd = DropDownModel[String]("test", "This is my test", None, 4, List.empty[String], false, None, "", items, None)
-    AppModel(items, dd) -> Cmd.None
+    val dd = DropDownModel[String]("test", "This is my test", items, None, 4, List.empty[String], false, None, "", items, None)
+    val dpm = DatePickerModel("dpm-test", List.empty, 10, false, LocalDate.now(), None, None)
+    AppModel(items, dd, dpm) -> Cmd.None
   }
 
-  override def update(model: Model): MyMsg => (Model, Cmd[IO, MyMsg]) = {
-    testDD.processMsg(model.items, model).orElse {
-      case NoOp => model -> Cmd.None
-    }
+  override def update(model: Model): Msg => (Model, Cmd[IO, Msg]) = {
+    case Msg.DpMove(id, move) =>
+      pickers(id).handleMove(move, model)
+    case Msg.DpSelect(id, date) =>
+      pickers(id).handleSelect(date, model)
+    case Msg.DpTextChange(id, text) =>
+      pickers(id).handleTextChange(text, model)
+
+    case Msg.DdMove(id, direction) =>
+      dropDowns(id).handleMove(direction, model)
+    case m: Msg.DdSelect[?] =>
+      m.item match {
+        case i: String =>
+          dropDowns(m.id).asInstanceOf[DropDown[Model, String]].handleSelect(i, model)    
+      }
+    case Msg.DdActivate(id) =>
+      dropDowns(id).handleActivate(model)
+    case Msg.DdDeactivate(id) =>
+      dropDowns(id).handleDeactivate(model)
+    case Msg.DdTextChange(id, text) =>
+      dropDowns(id).handleTextChange(text, model)
+    case Msg.DdTimePassed(id) =>
+      dropDowns(id).handleTick(model)
+    case Msg.DdRecalcPosition(id) =>
+      dropDowns(id).handleRecalcPosition(model)
+
+    case Msg.NoOp =>
+      model -> Cmd.None
   }
 
-  override def view(model: Model): Html[MyMsg] =
+  override def view(model: Model): Html[Msg] =
     Html.div(
       Html.button("-"),
       Html.button("+"),
       Html.div(s"Counter: pici"),
-      testDD.view(model.items, model)
+      dropDowns.head._2.view(model),
+      pickers.head._2.view(model)
     )
 
-  override def subscriptions(model: Model): Sub[IO, MyMsg] =
-    testDD.subscriptions(model)
+  override def subscriptions(model: Model): Sub[IO, Msg] =
+    dropDowns.head._2.subscriptions(model)
 
   def main(args: Array[String]): Unit =
     launch("myapp")
