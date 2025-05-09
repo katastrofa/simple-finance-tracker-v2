@@ -33,15 +33,28 @@ object Views {
   }
 
   def icon[T](iconName: String): h[T] = {
-    icon(DomType.I, Size.Small, iconName)
+    icon(DomType.I, Size.Small, iconName, List.empty)
   }
 
-  def icon[T](tag: DomType, size: Size, iconName: String, classes: List[String] = List.empty): h[T] = {
+  def icon[T](iconName: String, classes: List[String]): h[T] = {
+    icon(DomType.I, Size.Small, iconName, classes)
+  }
+
+  def icon[T](tag: DomType, size: Size, iconName: String, classes: List[String]): h[T] = {
     val mainClasses = List("material-icons", size.className) ++ classes
 
     tag match {
       case DomType.Span => h.span(h.cls := mainClasses.mkString(" "))(iconName)
       case DomType.I => h.i(h.cls := mainClasses.mkString(" "))(iconName)
+    }
+  }
+
+  def icon[T](tag: DomType, size: Size, iconName: String, classes: List[String], onClick: T): h[T] = {
+    val mainClasses = List("material-icons", size.className) ++ classes
+
+    tag match {
+      case DomType.Span => h.span(h.cls := mainClasses.mkString(" "), h.onClick(onClick))(iconName)
+      case DomType.I => h.i(h.cls := mainClasses.mkString(" "), h.onClick(onClick))(iconName)
     }
   }
 }

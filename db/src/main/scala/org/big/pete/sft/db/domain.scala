@@ -34,8 +34,7 @@ object domain {
   def localDateTimeToString(time: LocalDateTime): String =
     time.format(MySqlDateTimeFormatter)
 
-
-  final case class User(id: Int, email: String, displayName: String, permissions: UserPermissions)
+  
   final case class Login(id: Int, userId: Int, lastAccess: LocalDateTime, accessToken: String, refreshToken: String)
 
   object Givens extends LogSupport with EitherSyntax with ShowSyntax {

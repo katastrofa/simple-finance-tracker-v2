@@ -9,8 +9,7 @@ import doobie.syntax.ToConnectionIOOps
 import fs2.io.net.tls.TLSContext
 import org.big.pete.cache.{FullBpCache, FullRefreshBpCache}
 import org.big.pete.sft.db.dao.{General, Users}
-import org.big.pete.sft.db.domain.User
-import org.big.pete.sft.domain.{Wallet, Currency}
+import org.big.pete.sft.domain.{Wallet, Currency, User}
 import org.big.pete.sft.server.api.{Categories, Accounts, Transactions, General => GeneralApi}
 import org.big.pete.sft.server.auth.AuthHelper
 import org.big.pete.sft.server.security.AccessHelper

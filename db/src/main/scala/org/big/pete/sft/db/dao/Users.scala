@@ -1,7 +1,8 @@
 package org.big.pete.sft.db.dao
 
 import doobie.ConnectionIO
-import org.big.pete.sft.db.domain.{Login, User}
+import org.big.pete.sft.db.domain.Login
+import org.big.pete.sft.domain.User
 import doobie.implicits._
 import doobie.implicits.javatimedrivernative._
 import org.big.pete.sft.domain.UserPermissions

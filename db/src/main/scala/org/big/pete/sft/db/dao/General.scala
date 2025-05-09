@@ -4,8 +4,7 @@ import cats.data.NonEmptyList
 import doobie.ConnectionIO
 import doobie.implicits._
 import doobie.Fragments.in
-import org.big.pete.sft.db.domain.User
-import org.big.pete.sft.domain.{Wallet, WalletEdit, Currency}
+import org.big.pete.sft.domain.{User, Wallet, WalletEdit, Currency}
 
 
 object General {

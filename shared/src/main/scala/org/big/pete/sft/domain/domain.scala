@@ -124,7 +124,8 @@ case class EnhancedAccount(
 )
 case class CurrencyBalance(currency: Currency, startAmount: BigDecimal, start: BigDecimal, end: BigDecimal)
 
-case class UserPermissions(global: Set[ApiAction], perWallet: Map[Int, Set[ApiAction]], default: Set[ApiAction])
+final case class User(id: Int, email: String, displayName: String, permissions: UserPermissions)
+final case class UserPermissions(global: Set[ApiAction], perWallet: Map[Int, Set[ApiAction]], default: Set[ApiAction])
 
 
 case class ShiftStrategy(newId: Option[Int])
@@ -165,6 +166,8 @@ object Givens {
   implicit val walletEditDecoder: Decoder[WalletEdit] = deriveDecoder[WalletEdit]
   implicit val statusEditDecoder: Decoder[StatusEdit] = deriveDecoder[StatusEdit]
 
+  implicit val userEncoder: Encoder[User] = deriveEncoder[User]
+  implicit val userDecoder: Decoder[User] = deriveDecoder[User]
   implicit val userPermissionsEncoder: Encoder[UserPermissions] = deriveEncoder[UserPermissions]
   implicit val userPermissionsDecoder: Decoder[UserPermissions] = deriveDecoder[UserPermissions]
 

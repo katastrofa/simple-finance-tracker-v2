@@ -1,9 +1,13 @@
 package org.big.pete.tyrian
 
 import cats.effect.IO
-import org.big.pete.tyrian.domain.{DropDownItem, Msg, ComponentId}
-import org.big.pete.tyrian.toolz.{DatePicker, DatePickerModel, DropDown, DropDownModel}
-import tyrian.{Cmd, Html, Location, Routing, Sub, TyrianIOApp}
+import org.big.pete.sft.domain.User
+import org.big.pete.tyrian.component.{DatePicker, DropDown, DropDownItem}
+import org.big.pete.tyrian.domain.{Msg, Page}
+import org.big.pete.tyrian.parts.Sidebar
+import org.big.pete.tyrian.sample.Data
+import org.big.pete.tyrian.toolz.Routes
+import tyrian.{Cmd, Html, Location, Sub, TyrianIOApp}
 
 import java.time.LocalDate
 import scala.scalajs.js.annotation.JSExportTopLevel
@@ -12,9 +16,16 @@ import scala.scalajs.js.annotation.JSExportTopLevel
 
 
 case class AppModel(
-    items: List[String],
-    dd: DropDownModel[String],
-    dpm: DatePickerModel
+    activePage: Page,
+    user: User,
+    sidebar: Sidebar.Model,
+
+    from: DatePicker.Model,
+    to: DatePicker.Model
+    /// test
+//    items: List[String],
+//    picker1: DatePicker.Model,
+//    drop1: DropDown.Model[String]
 )
 
 type Model = AppModel
@@ -23,67 +34,60 @@ type Model = AppModel
 object Main extends TyrianIOApp[Msg, Model] {
   import Givens.given
 
-  private val dropDowns: Map[ComponentId, DropDown[Model, ?]] = Map(
-    ComponentId.Drop -> new DropDown[Model, String](ComponentId.Drop, _.dd, (m, dd) => m.copy(dd = dd)),
-  )
-  private val pickers: Map[ComponentId, DatePicker[Model]] = Map(
-    ComponentId.Picker -> new DatePicker[Model](ComponentId.Picker, _.dpm, (m, dpm) => m.copy(dpm = dpm))
-  )
-
-  override def router: Location => Msg =
-    Routing.none(Msg.NoOp)
+  override def router: Location => Msg = Routes.router
 
   override def init(flags: Map[String, String]): (Model, Cmd[IO, Msg]) = {
-    val items = List("Google", "Apple", "Amazon", "Samsung", "Larian", "Microsoft", "Big Pete", "kokot", "sulin", "piculienka", "kokotinkaz")
-    val dd = DropDownModel[String]("test", "This is my test", items, None, 4, List.empty[String], false, None, "", items, None)
-    val dpm = DatePickerModel("dpm-test", List.empty, 10, false, LocalDate.now(), None, None)
-    AppModel(items, dd, dpm) -> Cmd.None
+    initSample() -> Cmd.None
   }
 
-  override def update(model: Model): Msg => (Model, Cmd[IO, Msg]) = {
-    case Msg.DpMove(id, move) =>
-      pickers(id).handleMove(move, model)
-    case Msg.DpSelect(id, date) =>
-      pickers(id).handleSelect(date, model)
-    case Msg.DpTextChange(id, text) =>
-      pickers(id).handleTextChange(text, model)
-
-    case Msg.DdMove(id, direction) =>
-      dropDowns(id).handleMove(direction, model)
-    case m: Msg.DdSelect[?] =>
-      m.item match {
-        case i: String =>
-          dropDowns(m.id).asInstanceOf[DropDown[Model, String]].handleSelect(i, model)    
-      }
-    case Msg.DdActivate(id) =>
-      dropDowns(id).handleActivate(model)
-    case Msg.DdDeactivate(id) =>
-      dropDowns(id).handleDeactivate(model)
-    case Msg.DdTextChange(id, text) =>
-      dropDowns(id).handleTextChange(text, model)
-    case Msg.DdTimePassed(id) =>
-      dropDowns(id).handleTick(model)
-    case Msg.DdRecalcPosition(id) =>
-      dropDowns(id).handleRecalcPosition(model)
-
-    case Msg.NoOp =>
-      model -> Cmd.None
-  }
-
-  override def view(model: Model): Html[Msg] =
-    Html.div(
-      Html.button("-"),
-      Html.button("+"),
-      Html.div(s"Counter: pici"),
-      dropDowns.head._2.view(model),
-      pickers.head._2.view(model)
+  private def initSample(): Model = {
+    AppModel(
+      Page.Wallets,
+      Data.user,
+      Sidebar.init(),
+      DatePicker.init("from-date", List("date-select", "date-select-from"), 15, Some(LocalDate.of(2025, 5, 1))),
+      DatePicker.init("to-date", List("date-select", "date-select-to"), 15, Some(LocalDate.of(2025, 5, 1))),
     )
+  }
+
+  override def update(m: Model): Msg => (Model, Cmd[IO, Msg]) = {
+    case Msg.NoOp =>
+      m -> Cmd.None
+    case Msg.Navigate(page) =>
+      m.copy(activePage = page) -> Cmd.None
+    case Msg.MenuClick =>
+      m.copy(sidebar = m.sidebar.copy(isOpen = !m.sidebar.isOpen)) -> Cmd.None
+    case Msg.FromDate(msg) =>
+      m.copy(from = DatePicker.update(msg, m.from)) -> Cmd.None
+    case Msg.ToDate(msg) =>
+      m.copy(to = DatePicker.update(msg, m.to)) -> Cmd.None
+
+//    case Msg.Picker1(msg) =>
+//      model.copy(picker1 = DatePicker.update(msg, model.picker1)) -> Cmd.None
+//    case Msg.Drop1(msg) =>
+//      val result = DropDown.update(items, msg, model.drop1)
+//      model.copy(drop1 = result._1) -> result._2.map(Msg.Drop1.apply)
+  }
+
+  override def view(model: Model): Html[Msg] = {
+    Html.div(
+      Html.header(
+        Html.div(Html.cls := "navbar-fixed")("bla"),
+        Sidebar.view(model.sidebar, model.activePage, model.user)
+      ),
+      Html.main(
+        Html.div(Html.cls := "padding")("Bla")
+      )
+    )
+  }
+
 
   override def subscriptions(model: Model): Sub[IO, Msg] =
-    dropDowns.head._2.subscriptions(model)
+    Sub.None
+//    DropDown.subscriptions(model.drop1).map(Msg.Drop1.apply)
 
   def main(args: Array[String]): Unit =
-    launch("myapp")
+    launch("sft-full")
 }
 
 

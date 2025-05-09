@@ -2,7 +2,8 @@ package org.big.pete.sft.server.auth
 
 import io.circe.Decoder
 import io.circe.generic.semiauto.*
-import org.big.pete.sft.db.domain.{Login, User}
+import org.big.pete.sft.db.domain.Login
+import org.big.pete.sft.domain.User
 import org.http4s.Uri
 
 

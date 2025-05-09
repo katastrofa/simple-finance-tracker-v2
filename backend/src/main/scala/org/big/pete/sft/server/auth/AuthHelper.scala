@@ -10,7 +10,7 @@ import doobie.util.transactor.Transactor
 import io.circe.jawn
 import org.big.pete.cache.BpCache
 import org.big.pete.sft.db.dao.Users
-import org.big.pete.sft.db.domain.User
+import org.big.pete.sft.domain.User
 import org.big.pete.sft.server.auth.domain._
 import org.big.pete.sft.server.auth.domain.Implicits.{googleTokenResponseDecoder, personResponseDecoder}
 import org.http4s.dsl.Http4sDsl

@@ -8,13 +8,13 @@ import scala.scalajs.js.|
 
 
 @js.native
-trait ChartData[DS <: Dataset[_]] extends js.Object {
+trait ChartData[DS <: Dataset[?]] extends js.Object {
   @nowarn var datasets: js.Array[DS] = js.native
   @nowarn var labels: js.UndefOr[js.Array[String]] = js.native
 }
 
 object ChartData {
-  def apply[DS <: Dataset[_]](datasets: Array[DS], labels: Option[Array[String]] = None): ChartData[DS] =
+  def apply[DS <: Dataset[?]](datasets: Array[DS], labels: Option[Array[String]] = None): ChartData[DS] =
     js.Dynamic.literal(
       datasets = datasets.toJSArray,
       labels = labels.map(_.toJSArray).orUndefined

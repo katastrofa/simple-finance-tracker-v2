@@ -34,7 +34,7 @@ class PieChart(element: Element, settings: js.Object)
   extends Chart[ChartData[PieDataset], PieChartOptions](element, settings)
 
 class FullChart(element: Element, settings: js.Object)
-  extends Chart[ChartData[Dataset[ChJsNumber | ComplexData] with PieDatasetExtra], ChartOptions with PieChartExtraOptions](element, settings)
+  extends Chart[ChartData[Dataset[ChJsNumber | ComplexData] & PieDatasetExtra], ChartOptions & PieChartExtraOptions](element, settings)
 
 @js.native
 @JSImport("chart.js/auto", JSImport.Default)
@@ -47,7 +47,7 @@ object Chart extends js.Object {
 }
 
 @js.native
-trait ChConfig[D <: ChartData[_], O <: ChartOptions] extends js.Object {
+trait ChConfig[D <: ChartData[?], O <: ChartOptions] extends js.Object {
   @nowarn var `type`: String = js.native
   @nowarn var data: D = js.native
   @nowarn var options: js.UndefOr[O] = js.native
@@ -55,7 +55,7 @@ trait ChConfig[D <: ChartData[_], O <: ChartOptions] extends js.Object {
 }
 
 object ChConfig {
-  def apply[D <: ChartData[_], O <: ChartOptions](
+  def apply[D <: ChartData[?], O <: ChartOptions](
       `type`: String,
       data: D,
       options: Option[O] = None,

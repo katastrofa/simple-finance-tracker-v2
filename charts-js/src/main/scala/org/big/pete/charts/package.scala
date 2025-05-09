@@ -2,6 +2,7 @@ package org.big.pete
 
 import org.scalajs.dom.{CanvasGradient, CanvasPattern}
 
+import scala.language.implicitConversions
 import scala.scalajs.js
 import scala.scalajs.js.special.objectLiteral
 import scala.scalajs.js.|
@@ -26,7 +27,7 @@ package object charts {
 
   def cleanObject(attr: Map[String, scala.Any]): js.Object = {
     val cleanAttr = attr.filter { case (_, value) => !js.isUndefined(value) }
-    objectLiteral(cleanAttr.toSeq: _*)
+    objectLiteral(cleanAttr.toSeq*)
   }
 
   def labelsWithValues(chart: FullChart): js.Array[LegendItem] = {

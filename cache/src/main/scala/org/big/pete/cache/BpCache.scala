@@ -1,6 +1,7 @@
 package org.big.pete.cache
 
-import cats.syntax._
+//import cats.syntax._
+import cats.syntax.{MonadSyntax, FlatMapSyntax, FunctorSyntax, TraverseSyntax}
 import cats.syntax.option.catsSyntaxOptionId
 import cats.syntax.parallel.catsSyntaxParallelSequence1
 //import cats.syntax.all._
@@ -17,7 +18,7 @@ import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
 case class Entry[V](inserted: FiniteDuration, value: V)
 
-trait BpCache[F[_]: Monad: Clock, K, V] extends MonadSyntax with FlatMapSyntax with FunctorSyntax {
+trait BpCache[F[_]: {Monad, Clock}, K, V] extends MonadSyntax with FlatMapSyntax with FunctorSyntax {
   protected val data: Ref[F, mutable.Map[K, Entry[V]]]
 
   def contains(key: K): F[Boolean] =
@@ -59,7 +60,7 @@ trait BpCache[F[_]: Monad: Clock, K, V] extends MonadSyntax with FlatMapSyntax w
   }
 }
 
-trait MaxSizeBpCache[F[_]: Monad: Clock, K, V] extends BpCache[F, K, V] with TraverseSyntax {
+trait MaxSizeBpCache[F[_]: {Monad, Clock}, K, V] extends BpCache[F, K, V] with TraverseSyntax {
   protected val keyAges: Ref[F, mutable.SortedMap[FiniteDuration, mutable.Set[K]]]
   protected val canModify: Semaphore[F]
   val maxSize: Int
@@ -140,7 +141,7 @@ trait MaxSizeBpCache[F[_]: Monad: Clock, K, V] extends BpCache[F, K, V] with Tra
   }
 }
 
-trait AutoFetchBpCache[F[_]: Monad: Clock: Async, K, V] extends BpCache[F, K, V] {
+trait AutoFetchBpCache[F[_]: {Monad, Clock, Async}, K, V] extends BpCache[F, K, V] {
   val fetchMethod: K => F[Option[V]]
   val fetchAttempts: Ref[F, Map[K, Deferred[F, Option[Entry[V]]]]]
 
@@ -177,7 +178,7 @@ trait AutoFetchBpCache[F[_]: Monad: Clock: Async, K, V] extends BpCache[F, K, V]
 }
 
 
-trait FullRefreshBpCache[F[_]: Monad: Clock: Async, K, V] extends BpCache[F, K, V] {
+trait FullRefreshBpCache[F[_]: {Monad, Clock, Async}, K, V] extends BpCache[F, K, V] {
   val supervisor: Supervisor[F]
   val refreshMethod: () => F[List[(K, V)]]
   val refreshing: Semaphore[F]
@@ -237,7 +238,7 @@ object FullRefreshBpCache {
 }
 
 
-class SimpleBpCache[F[_]: Monad: Clock, K, V](val data: Ref[F, mutable.Map[K, Entry[V]]])
+class SimpleBpCache[F[_]: {Monad, Clock}, K, V](val data: Ref[F, mutable.Map[K, Entry[V]]])
   extends BpCache[F, K, V]
 
 object SimpleBpCache {
@@ -247,7 +248,7 @@ object SimpleBpCache {
 }
 
 
-class MaxSizeBpCacheImpl[F[_]: Monad: Clock, K, V](
+class MaxSizeBpCacheImpl[F[_]: {Monad, Clock}, K, V](
     val maxSize: Int,
     val data: Ref[F, mutable.Map[K, Entry[V]]],
     val keyAges: Ref[F, mutable.SortedMap[FiniteDuration, mutable.Set[K]]],
@@ -268,7 +269,7 @@ object MaxSizeBpCache {
 }
 
 
-class FullBpCache[F[_]: Monad: Clock: Async, K, V](
+class FullBpCache[F[_]: {Monad, Clock, Async}, K, V](
     val maxSize: Int,
     val fetchMethod: K => F[Option[V]],
     val data: Ref[F, mutable.Map[K, Entry[V]]],
