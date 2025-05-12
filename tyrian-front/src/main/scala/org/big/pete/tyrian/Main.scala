@@ -1,10 +1,10 @@
 package org.big.pete.tyrian
 
 import cats.effect.IO
-import org.big.pete.sft.domain.User
+import org.big.pete.sft.domain.{User, Wallet}
 import org.big.pete.tyrian.component.{DatePicker, DropDown, DropDownItem}
 import org.big.pete.tyrian.domain.{Msg, Page}
-import org.big.pete.tyrian.parts.Sidebar
+import org.big.pete.tyrian.parts.{Header, Sidebar, Wallets}
 import org.big.pete.tyrian.sample.Data
 import org.big.pete.tyrian.toolz.Routes
 import tyrian.{Cmd, Html, Location, Sub, TyrianIOApp}
@@ -21,7 +21,11 @@ case class AppModel(
     sidebar: Sidebar.Model,
 
     from: DatePicker.Model,
-    to: DatePicker.Model
+    to: DatePicker.Model,
+    
+    walletsPage: Wallets.Model,
+    
+    wallets: List[Wallet]
     /// test
 //    items: List[String],
 //    picker1: DatePicker.Model,
@@ -42,11 +46,13 @@ object Main extends TyrianIOApp[Msg, Model] {
 
   private def initSample(): Model = {
     AppModel(
-      Page.Wallets,
-      Data.user,
-      Sidebar.init(),
-      DatePicker.init("from-date", List("date-select", "date-select-from"), 15, Some(LocalDate.of(2025, 5, 1))),
-      DatePicker.init("to-date", List("date-select", "date-select-to"), 15, Some(LocalDate.of(2025, 5, 1))),
+      activePage = Page.Wallets,
+      user =  Data.user,
+      sidebar = Sidebar.init(),
+      from = DatePicker.init("from-date", List("date-select", "date-select-from"), 15, Some(LocalDate.of(2025, 5, 1))),
+      to = DatePicker.init("to-date", List("date-select", "date-select-to"), 15, Some(LocalDate.of(2025, 5, 1))),
+      walletsPage = Wallets.init(),
+      wallets = Data.wallets
     )
   }
 
@@ -57,30 +63,36 @@ object Main extends TyrianIOApp[Msg, Model] {
       m.copy(activePage = page) -> Cmd.None
     case Msg.MenuClick =>
       m.copy(sidebar = m.sidebar.copy(isOpen = !m.sidebar.isOpen)) -> Cmd.None
+
     case Msg.FromDate(msg) =>
       m.copy(from = DatePicker.update(msg, m.from)) -> Cmd.None
     case Msg.ToDate(msg) =>
       m.copy(to = DatePicker.update(msg, m.to)) -> Cmd.None
 
-//    case Msg.Picker1(msg) =>
-//      model.copy(picker1 = DatePicker.update(msg, model.picker1)) -> Cmd.None
-//    case Msg.Drop1(msg) =>
-//      val result = DropDown.update(items, msg, model.drop1)
-//      model.copy(drop1 = result._1) -> result._2.map(Msg.Drop1.apply)
+    case Msg.WalletsPageMsg(msg) =>
+      m.copy(walletsPage = Wallets.update(msg, m.walletsPage)) -> Cmd.None
   }
 
   override def view(model: Model): Html[Msg] = {
-    Html.div(
+    Html.div(Html.id := "sft-full")(
       Html.header(
-        Html.div(Html.cls := "navbar-fixed")("bla"),
+        Header.view(model),
         Sidebar.view(model.sidebar, model.activePage, model.user)
       ),
       Html.main(
-        Html.div(Html.cls := "padding")("Bla")
+        model.activePage match {
+          case Page.Wallets =>
+            Wallets.view(model.walletsPage, model.wallets).map(msg => Msg.WalletsPageMsg(msg))
+          case Page.Transactions(wallet) =>
+            Html.div(Html.cls := "padding")("Bla")
+          case Page.Categories(wallet) =>
+            Html.div(Html.cls := "padding")("Bla")
+          case Page.Accounts(wallet) =>
+            Html.div(Html.cls := "padding")("Bla")
+        }
       )
     )
   }
-
 
   override def subscriptions(model: Model): Sub[IO, Msg] =
     Sub.None

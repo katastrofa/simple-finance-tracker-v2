@@ -4,7 +4,7 @@ import cats.effect.IO
 import org.big.pete.tyrian.component.Base
 import org.scalajs.dom.{FocusEvent, HTMLElement, document, window}
 import tyrian.Tyrian.KeyboardEvent
-import tyrian.{Cmd, Html, Sub}
+import tyrian.{Cmd, Html as <, Html as ^, Sub}
 
 import scala.annotation.tailrec
 import scala.concurrent.duration.DurationInt
@@ -17,9 +17,7 @@ trait DropDownItem[T] {
 
 final case class DropDownModel[T: DropDownItem](
     id: String,
-    label: String,
     selected: Option[T],
-    tabIndex: Int,
     extraClasses: List[String],
     focused: Boolean,
     browsing: Option[T],
@@ -51,12 +49,10 @@ object DropDown extends Base {
   def init[T: DropDownItem](
       id: String,
       items: List[T],
-      label: String,
       selected: Option[T],
-      tabIndex: Int,
       extraClasses: List[String]
   ): Model[T] =
-    DropDownModel[T](id, label, selected, tabIndex, extraClasses, false, None, selected.map(_.display).getOrElse(""), items, None)
+    DropDownModel[T](id, selected, extraClasses, false, None, selected.map(_.display).getOrElse(""), items, None)
 
   def update[T: DropDownItem](items: List[T], msg: Msg[T], m: Model[T]): (Model[T], Cmd[IO, Msg[T]]) = {
     msg match {
@@ -82,30 +78,31 @@ object DropDown extends Base {
     }
   }
 
-  def view[T: DropDownItem](m: Model[T]): Html[Msg[T]] = {
+  def view[T: DropDownItem](m: Model[T], label: String, tabIndex: Int): <[Msg[T]] = {
     val ulClasses = (if (m.focused) List("visible") else List
       .empty[String]) ++ List("dropdown-content", "autocomplete-content")
 
-    Html.div(
-      Html.id := m.id,
-      Html.`class` := (List("input-field") ++ m.extraClasses).mkString(" ")
+    <.div(
+      ^.id := m.id,
+      ^.cls := (List("input-field") ++ m.extraClasses).mkString(" ")
     )(
-      Html.input(
-        Html.`type` := "text",
-        Html.value := m.text,
-        Html.cls := "autocomplete",
-        Html.onFocus(Activate[T]()),
-        Html.onInput(str => TextChange(str)),
-        Html.onKeyDown(processKey(m)).noPreventDefault.noStopImmediatePropagation.noStopPropagation,
-        Html.onEvent[FocusEvent, Msg[T]]("blur", handleBlur[T](m.id))
+      <.input(
+        ^.`type` := "text",
+        ^.value := m.text,
+        ^.cls := "autocomplete",
+        ^.onFocus(Activate[T]()),
+        ^.onInput(str => TextChange(str)),
+        ^.onKeyDown(processKey(m)).noPreventDefault.noStopImmediatePropagation.noStopPropagation,
+        ^.onEvent[FocusEvent, Msg[T]]("blur", handleBlur[T](m.id))
       ),
-      Html.ul(
-        Html.id := s"${m.id}-ul",
-        Html.`class` := ulClasses.mkString(" "),
-        Html.tabIndex := m.tabIndex
+      <.ul(
+        ^.id := s"${m.id}-ul",
+        ^.cls := ulClasses.mkString(" "),
+        ^.tabIndex := tabIndex
       )(
         m.visible.map(item => displayItem(item, m.text, m.browsing))
-      )
+      ),
+      <.label(^.`for` := m.id, setClass(Set("active" -> (m.text.nonEmpty || m.focused))))(label)
     )
   }
 
@@ -190,22 +187,22 @@ object DropDown extends Base {
     }
 
 
-  private def displayItem[T: DropDownItem](item: T, text: String, browsing: Option[T]): Html[Msg[T]] = {
+  private def displayItem[T: DropDownItem](item: T, text: String, browsing: Option[T]): <[Msg[T]] = {
     val displayText = item.display
     val ranges = prepareSearchables(text)
       .map(search(displayText))
       .sortBy(_._1)
     val highlights = if (ranges.nonEmpty) mergeRanges(ranges.head, ranges.tail, List.empty) else List.empty
     val textSplits = splitText(highlights, displayText, List.empty).map {
-      case (str, false) => Html.text(str)
-      case (str, true) => Html.span(Html.cls := "highlight")(str)
+      case (str, false) => <.text(str)
+      case (str, true) => <.span(^.cls := "highlight")(str)
     }
 
-    Html.li(
-      Html.cls := (if (browsing.contains(item)) "active" else ""),
-      Html.onClick(Select(item))
+    <.li(
+      ^.cls := (if (browsing.contains(item)) "active" else ""),
+      ^.onClick(Select(item))
     )(
-      Html.span(textSplits *)
+      <.span(textSplits *)
     )
   }
 
