@@ -4,15 +4,14 @@ import cats.effect.IO
 import org.big.pete.sft.domain.{User, Wallet}
 import org.big.pete.tyrian.component.{DatePicker, DropDown, DropDownItem}
 import org.big.pete.tyrian.domain.{Msg, Page}
-import org.big.pete.tyrian.parts.{Header, Sidebar, Wallets}
+import org.big.pete.tyrian.parts.{ApiMsgHelper, Header, Sidebar, Wallets, WalletsMsg}
 import org.big.pete.tyrian.sample.Data
-import org.big.pete.tyrian.toolz.Routes
+import org.big.pete.tyrian.toolz.{HttpHelper, Routes}
+import org.big.pete.tyrian.toolz.HttpHelper.ApiCalls
 import tyrian.{Cmd, Html, Location, Sub, TyrianIOApp}
 
 import java.time.LocalDate
 import scala.scalajs.js.annotation.JSExportTopLevel
-
-
 
 
 case class AppModel(
@@ -25,11 +24,10 @@ case class AppModel(
     
     walletsPage: Wallets.Model,
     
-    wallets: List[Wallet]
-    /// test
-//    items: List[String],
-//    picker1: DatePicker.Model,
-//    drop1: DropDown.Model[String]
+    wallets: List[Wallet],
+
+    apiBase: String,
+    httpError: String
 )
 
 type Model = AppModel
@@ -52,7 +50,9 @@ object Main extends TyrianIOApp[Msg, Model] {
       from = DatePicker.init("from-date", List("date-select", "date-select-from"), 15, Some(LocalDate.of(2025, 5, 1))),
       to = DatePicker.init("to-date", List("date-select", "date-select-to"), 15, Some(LocalDate.of(2025, 5, 1))),
       walletsPage = Wallets.init(),
-      wallets = Data.wallets
+      wallets = Data.wallets,
+      apiBase = "http://localhost:8080/api",
+      httpError = ""
     )
   }
 
@@ -69,8 +69,16 @@ object Main extends TyrianIOApp[Msg, Model] {
     case Msg.ToDate(msg) =>
       m.copy(to = DatePicker.update(msg, m.to)) -> Cmd.None
 
+    case Msg.WalletsPageMsg(WalletsMsg.ConfirmClick) =>
+      ApiMsgHelper.saveWallet(m)
+
     case Msg.WalletsPageMsg(msg) =>
       m.copy(walletsPage = Wallets.update(msg, m.walletsPage)) -> Cmd.None
+
+    case Msg.HttpError(errMsg) =>
+      m.copy(httpError = errMsg) -> Cmd.None
+    case Msg.HttpSuccess(response) =>
+      ApiMsgHelper.parseApiResponseAndUpdate(response, m)
   }
 
   override def view(model: Model): Html[Msg] = {
@@ -100,6 +108,11 @@ object Main extends TyrianIOApp[Msg, Model] {
 
   def main(args: Array[String]): Unit =
     launch("sft-full")
+    
+    
+    def processWalletEdit(wallet: Wallet): Cmd[IO, Msg] = Cmd.SideEffect {
+      
+    }
 }
 
 

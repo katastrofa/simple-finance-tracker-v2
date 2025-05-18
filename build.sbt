@@ -116,7 +116,7 @@ lazy val chartsJs = (project in file("charts-js"))
   )
 
 lazy val tyrianFront = (project in file("tyrian-front"))
-  .dependsOn(sharedJs)
+  .dependsOn(sharedJs, scalajsToolz)
   .enablePlugins(ScalaJSPlugin, ScalaJSWeb, ScalaJSBundlerPlugin)
   .settings(basicSettings)
   .settings(

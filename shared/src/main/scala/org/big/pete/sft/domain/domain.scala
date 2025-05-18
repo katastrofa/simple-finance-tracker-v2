@@ -40,7 +40,10 @@ enum ApiAction derives JsonTaggedAdt.Codec {
   case DeleteTransactions
 }
 
-case class Wallet(id: Int, name: String, permalink: String, owner: Option[Int])
+sealed trait ApiResponse
+sealed trait ApiRequest
+
+case class Wallet(id: Int, name: String, permalink: String, owner: Option[Int]) extends ApiResponse with ApiRequest
 
 case class Currency(id: String, name: String, symbol: String)
 
@@ -140,51 +143,55 @@ case class MassEditTransactions(ids: List[Int], changeCat: ShiftStrategy, change
 
 
 object Givens {
-  implicit val walletEncoder: Encoder[Wallet] = deriveEncoder[Wallet]
-  implicit val currencyEncoder: Encoder[Currency] = deriveEncoder[Currency]
-  implicit val accountCurrencyEncoder: Encoder[AccountCurrency] = deriveEncoder[AccountCurrency]
-  implicit val expandedAccountCurrencyEncoder: Encoder[ExpandedAccountCurrency] = deriveEncoder[ExpandedAccountCurrency]
-  implicit val pureAccountEncoder: Encoder[PureAccount] = deriveEncoder[PureAccount]
-  implicit val accountEncoder: Encoder[Account] = deriveEncoder[Account]
-  implicit val categoryEncoder: Encoder[Category] = deriveEncoder[Category]
-  implicit val transactionEncoder: Encoder[Transaction] = deriveEncoder[Transaction]
-  implicit val currencyBalanceEncoder: Encoder[CurrencyBalance] = deriveEncoder[CurrencyBalance]
-  implicit val enhancedAccountEncoder: Encoder[EnhancedAccount] = deriveEncoder[EnhancedAccount]
-  implicit val walletEditEncoder: Encoder[WalletEdit] = deriveEncoder[WalletEdit]
-  implicit val statusEditEncoder: Encoder[StatusEdit] = deriveEncoder[StatusEdit]
+  given walletEncoder: Encoder[Wallet] = deriveEncoder[Wallet]
+  given currencyEncoder: Encoder[Currency] = deriveEncoder[Currency]
+  given accountCurrencyEncoder: Encoder[AccountCurrency] = deriveEncoder[AccountCurrency]
+  given expandedAccountCurrencyEncoder: Encoder[ExpandedAccountCurrency] = deriveEncoder[ExpandedAccountCurrency]
+  given pureAccountEncoder: Encoder[PureAccount] = deriveEncoder[PureAccount]
+  given accountEncoder: Encoder[Account] = deriveEncoder[Account]
+  given categoryEncoder: Encoder[Category] = deriveEncoder[Category]
+  given transactionEncoder: Encoder[Transaction] = deriveEncoder[Transaction]
+  given currencyBalanceEncoder: Encoder[CurrencyBalance] = deriveEncoder[CurrencyBalance]
+  given enhancedAccountEncoder: Encoder[EnhancedAccount] = deriveEncoder[EnhancedAccount]
+  given walletEditEncoder: Encoder[WalletEdit] = deriveEncoder[WalletEdit]
+  given statusEditEncoder: Encoder[StatusEdit] = deriveEncoder[StatusEdit]
 
-  implicit val walletDecoder: Decoder[Wallet] = deriveDecoder[Wallet]
-  implicit val currencyDecoder: Decoder[Currency] = deriveDecoder[Currency]
-  implicit val accountCurrencyDecoder: Decoder[AccountCurrency] = deriveDecoder[AccountCurrency]
-  implicit val expandedAccountCurrencyDecoder: Decoder[ExpandedAccountCurrency] = deriveDecoder[ExpandedAccountCurrency]
-  implicit val pureAccountDecoder: Decoder[PureAccount] = deriveDecoder[PureAccount]
-  implicit val accountDecoder: Decoder[Account] = deriveDecoder[Account]
-  implicit val categoryDecoder: Decoder[Category] = deriveDecoder[Category]
-  implicit val transactionDecoder: Decoder[Transaction] = deriveDecoder[Transaction]
-  implicit val currencyBalanceDecoder: Decoder[CurrencyBalance] = deriveDecoder[CurrencyBalance]
-  implicit val enhancedAccountDecoder: Decoder[EnhancedAccount] = deriveDecoder[EnhancedAccount]
-  implicit val walletEditDecoder: Decoder[WalletEdit] = deriveDecoder[WalletEdit]
-  implicit val statusEditDecoder: Decoder[StatusEdit] = deriveDecoder[StatusEdit]
+  given walletDecoder: Decoder[Wallet] = deriveDecoder[Wallet]
+  given currencyDecoder: Decoder[Currency] = deriveDecoder[Currency]
+  given accountCurrencyDecoder: Decoder[AccountCurrency] = deriveDecoder[AccountCurrency]
+  given expandedAccountCurrencyDecoder: Decoder[ExpandedAccountCurrency] = deriveDecoder[ExpandedAccountCurrency]
+  given pureAccountDecoder: Decoder[PureAccount] = deriveDecoder[PureAccount]
+  given accountDecoder: Decoder[Account] = deriveDecoder[Account]
+  given categoryDecoder: Decoder[Category] = deriveDecoder[Category]
+  given transactionDecoder: Decoder[Transaction] = deriveDecoder[Transaction]
+  given currencyBalanceDecoder: Decoder[CurrencyBalance] = deriveDecoder[CurrencyBalance]
+  given enhancedAccountDecoder: Decoder[EnhancedAccount] = deriveDecoder[EnhancedAccount]
+  given walletEditDecoder: Decoder[WalletEdit] = deriveDecoder[WalletEdit]
+  given statusEditDecoder: Decoder[StatusEdit] = deriveDecoder[StatusEdit]
 
-  implicit val userEncoder: Encoder[User] = deriveEncoder[User]
-  implicit val userDecoder: Decoder[User] = deriveDecoder[User]
-  implicit val userPermissionsEncoder: Encoder[UserPermissions] = deriveEncoder[UserPermissions]
-  implicit val userPermissionsDecoder: Decoder[UserPermissions] = deriveDecoder[UserPermissions]
+  given userEncoder: Encoder[User] = deriveEncoder[User]
+  given userDecoder: Decoder[User] = deriveDecoder[User]
+  given userPermissionsEncoder: Encoder[UserPermissions] = deriveEncoder[UserPermissions]
+  given userPermissionsDecoder: Decoder[UserPermissions] = deriveDecoder[UserPermissions]
 
-  implicit val notAllowedResponseEncoder: Encoder[NotAllowedResponse] = deriveEncoder[NotAllowedResponse]
-  implicit val notAllowedResponseDecoder: Decoder[NotAllowedResponse] = deriveDecoder[NotAllowedResponse]
-  implicit val shiftStrategyEncoder: Encoder[ShiftStrategy] = deriveEncoder[ShiftStrategy]
-  implicit val shiftStrategyDecoder: Decoder[ShiftStrategy] = deriveDecoder[ShiftStrategy]
-  implicit val shiftStrategyPerCurrencyEncoder: Encoder[ShiftStrategyPerCurrency] = deriveEncoder[ShiftStrategyPerCurrency]
-  implicit val shiftStrategyPerCurrencyDecoder: Decoder[ShiftStrategyPerCurrency] = deriveDecoder[ShiftStrategyPerCurrency]
-  implicit val categoryDeleteStrategiesEncoder: Encoder[CategoryDeleteStrategies] = deriveEncoder[CategoryDeleteStrategies]
-  implicit val categoryDeleteStrategiesDecoder: Decoder[CategoryDeleteStrategies] = deriveDecoder[CategoryDeleteStrategies]
-  implicit val accountDeleteStrategyEncoder: Encoder[AccountDeleteStrategy] = deriveEncoder[AccountDeleteStrategy]
-  implicit val accountDeleteStrategyDecoder: Decoder[AccountDeleteStrategy] = deriveDecoder[AccountDeleteStrategy]
-  implicit val deleteTransactionsEncoder: Encoder[DeleteTransactions] = deriveEncoder[DeleteTransactions]
-  implicit val deleteTransactionsDecoder: Decoder[DeleteTransactions] = deriveDecoder[DeleteTransactions]
-  implicit val massEditTransactionsEncoder: Encoder[MassEditTransactions] = deriveEncoder[MassEditTransactions]
-  implicit val massEditTransactionsDecoder: Decoder[MassEditTransactions] = deriveDecoder[MassEditTransactions]
+  given notAllowedResponseEncoder: Encoder[NotAllowedResponse] = deriveEncoder[NotAllowedResponse]
+  given notAllowedResponseDecoder: Decoder[NotAllowedResponse] = deriveDecoder[NotAllowedResponse]
+  given shiftStrategyEncoder: Encoder[ShiftStrategy] = deriveEncoder[ShiftStrategy]
+  given shiftStrategyDecoder: Decoder[ShiftStrategy] = deriveDecoder[ShiftStrategy]
+  given shiftStrategyPerCurrencyEncoder: Encoder[ShiftStrategyPerCurrency] = deriveEncoder[ShiftStrategyPerCurrency]
+  given shiftStrategyPerCurrencyDecoder: Decoder[ShiftStrategyPerCurrency] = deriveDecoder[ShiftStrategyPerCurrency]
+  given categoryDeleteStrategiesEncoder: Encoder[CategoryDeleteStrategies] = deriveEncoder[CategoryDeleteStrategies]
+  given categoryDeleteStrategiesDecoder: Decoder[CategoryDeleteStrategies] = deriveDecoder[CategoryDeleteStrategies]
+  given accountDeleteStrategyEncoder: Encoder[AccountDeleteStrategy] = deriveEncoder[AccountDeleteStrategy]
+  given accountDeleteStrategyDecoder: Decoder[AccountDeleteStrategy] = deriveDecoder[AccountDeleteStrategy]
+  given deleteTransactionsEncoder: Encoder[DeleteTransactions] = deriveEncoder[DeleteTransactions]
+  given deleteTransactionsDecoder: Decoder[DeleteTransactions] = deriveDecoder[DeleteTransactions]
+  given massEditTransactionsEncoder: Encoder[MassEditTransactions] = deriveEncoder[MassEditTransactions]
+  given massEditTransactionsDecoder: Decoder[MassEditTransactions] = deriveDecoder[MassEditTransactions]
+  
+  given apiRequestEncoder: Encoder[ApiRequest] = Encoder.instance {
+    case wallet: Wallet => walletEncoder(wallet)
+  }
 }
 
 object domain {

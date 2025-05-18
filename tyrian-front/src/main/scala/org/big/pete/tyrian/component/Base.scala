@@ -1,13 +1,13 @@
 package org.big.pete.tyrian.component
 
 import org.scalajs.dom.HTMLElement
-import tyrian.{Attribute, Html as h}
+import tyrian.{Attribute, Html as ^}
 
 
 trait Base {
   def setClass(classes: Set[(String, Boolean)]): Attribute = {
     val clsString = classes.filter(_._2).map(_._1).mkString(" ")
-    h.cls := clsString
+    ^.cls := clsString
   }
 
   def isChild(el: HTMLElement, id: String): Boolean =
