@@ -108,11 +108,6 @@ object Main extends TyrianIOApp[Msg, Model] {
 
   def main(args: Array[String]): Unit =
     launch("sft-full")
-    
-    
-    def processWalletEdit(wallet: Wallet): Cmd[IO, Msg] = Cmd.SideEffect {
-      
-    }
 }
 
 

@@ -33,7 +33,9 @@ lazy val shared = crossProject(JSPlatform, JVMPlatform)
   .settings(basicSettings)
   .settings(
     libraryDependencies += "io.circe" %%% "circe-generic" % CirceVersion,
-    libraryDependencies += "org.latestbit" %% "circe-tagged-adt-codec" % "0.11.0"
+    libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.19" % Test,
+    libraryDependencies += "io.circe" %% "circe-jawn" % CirceVersion % Test,
+//    libraryDependencies += "org.latestbit" %% "circe-tagged-adt-codec" % "0.11.0"
   )
 //  .jsConfigure(_.enablePlugins(ScalaJSWeb))
 
@@ -133,7 +135,18 @@ lazy val tyrianFront = (project in file("tyrian-front"))
 
     webpack / version := "5.75.0",
     startWebpackDevServer / version := "4.11.1",
-    webpackCliVersion := "5.0.1"
+    webpackCliVersion := "5.0.1",
+
+    Compile / fastOptJS / webpack := {
+      val compiled = (Compile / fastOptJS / webpack).value
+      val log = streams.value.log
+      compiled.foreach { attributed =>
+        val destinationPath = file(s"tyrian-front/src/main/resources/ignore/${attributed.data.name}").toPath
+        log.info(s"Copying: ${attributed.data} -> ${destinationPath.toString}")
+        java.nio.file.Files.copy(attributed.data.toPath, destinationPath, StandardCopyOption.REPLACE_EXISTING)
+      }
+      compiled
+    }
   )
 
 

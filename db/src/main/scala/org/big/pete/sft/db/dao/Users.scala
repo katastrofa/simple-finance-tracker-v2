@@ -9,7 +9,7 @@ import org.big.pete.sft.domain.UserPermissions
 
 
 object Users {
-  import org.big.pete.sft.db.domain.Givens._
+  import org.big.pete.sft.db.domain.Givens.given
 
 //  protected def userHasPermissionQuery(userId: Int, accountCondition: Fragment): ConnectionIO[Option[Account]] = {
 //    sql"""SELECT a.* FROM accounts AS a

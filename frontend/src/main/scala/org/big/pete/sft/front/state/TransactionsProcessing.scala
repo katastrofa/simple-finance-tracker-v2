@@ -12,7 +12,7 @@ import java.time.LocalDate
 
 
 trait TransactionsProcessing extends DataLoad {
-  import org.big.pete.sft.domain.Givens._
+  import org.big.pete.sft.domain.Givens.given
 
   def checkTransaction(status: MICheckbox.Status, id: String): Callback = $.modState { state =>
     if (id == CheckAllId) {

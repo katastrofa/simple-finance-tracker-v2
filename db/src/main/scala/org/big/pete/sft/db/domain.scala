@@ -7,7 +7,7 @@ import doobie.implicits._
 import io.circe.Json
 import io.circe.jawn.parse
 import org.big.pete.sft.domain.{ApiAction, Op, Status, UserPermissions}
-import org.big.pete.sft.domain.Givens.*
+import org.big.pete.sft.domain.Givens.given
 import org.big.pete.sft.json.BpJson
 import wvlet.log.LogSupport
 
@@ -38,12 +38,12 @@ object domain {
   final case class Login(id: Int, userId: Int, lastAccess: LocalDateTime, accessToken: String, refreshToken: String)
 
   object Givens extends LogSupport with EitherSyntax with ShowSyntax {
-    implicit val opGet: Get[Op] = Get[String].temap(str => Try(Op.valueOf(str)).toEither.leftMap(_.getMessage))
-    implicit val opPut: Put[Op] = Put[String].tcontramap(_.toString)
-    implicit val statusGet: Get[Status] = Get[String].temap(str => Try(Status.valueOf(str)).toEither.leftMap(_.getMessage))
-    implicit val statusPut: Put[Status] = Put[String].tcontramap(_.toString)
-    implicit val apiActionGet: Get[ApiAction] = Get[String].temap(str => Try(ApiAction.valueOf(str)).toEither.leftMap(_.getMessage))
-    implicit val apiActionPut: Put[ApiAction] = Put[String].tcontramap(_.toString)
+    given opGet: Get[Op] = Get[String].temap(str => Try(Op.valueOf(str)).toEither.leftMap(_.getMessage))
+    given opPut: Put[Op] = Put[String].tcontramap(_.toString)
+    given statusGet: Get[Status] = Get[String].temap(str => Try(Status.valueOf(str)).toEither.leftMap(_.getMessage))
+    given statusPut: Put[Status] = Put[String].tcontramap(_.toString)
+    given apiActionGet: Get[ApiAction] = Get[String].temap(str => Try(ApiAction.valueOf(str)).toEither.leftMap(_.getMessage))
+    given apiActionPut: Put[ApiAction] = Put[String].tcontramap(_.toString)
 
     private def jsonEncoder(strJson: String): Either[String, Json] =
       parse(strJson).leftMap { parsingFailure =>
@@ -57,10 +57,10 @@ object domain {
         failure.getMessage
       }
 
-    implicit val mysqlJsonGet: Get[Json] = Get[String].temap[Json](jsonEncoder)
-    implicit val mysqlJsonPut: Put[Json] = Put[String].tcontramap(_.noSpaces)
-    implicit val userPermissionsGet: Get[UserPermissions] = Get[String].temap[UserPermissions](userPermissionsEncoder)
-    implicit val userPermissionsPut: Put[UserPermissions] = Put[String].tcontramap(obj => BpJson.write(obj))
+    given mysqlJsonGet: Get[Json] = Get[String].temap[Json](jsonEncoder)
+    given mysqlJsonPut: Put[Json] = Put[String].tcontramap(_.noSpaces)
+    given userPermissionsGet: Get[UserPermissions] = Get[String].temap[UserPermissions](userPermissionsEncoder)
+    given userPermissionsPut: Put[UserPermissions] = Put[String].tcontramap(obj => BpJson.write(obj))
 
   }
 }

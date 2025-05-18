@@ -9,7 +9,7 @@ import java.time.LocalDate
 
 
 trait DataLoad extends Base {
-  import org.big.pete.sft.domain.Givens._
+  import org.big.pete.sft.domain.Givens.given
 
   def loadAccounts: AsyncCallback[List[Wallet]] = {
     ajaxCall[List[Wallet]]("GET", "/accounts", None, List.empty)

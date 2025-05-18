@@ -11,7 +11,7 @@ import java.time.LocalDate
 
 
 trait DataUpdate extends DataLoad {
-  import org.big.pete.sft.domain.Givens._
+  import org.big.pete.sft.domain.Givens.given
 
   def saveAccount(oldPermalink: Option[String], id: Option[Int], name: String, permalink: String): Callback = {
     val method = if (id.isDefined) "POST" else "PUT"

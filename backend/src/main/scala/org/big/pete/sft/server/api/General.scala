@@ -9,7 +9,7 @@ import io.circe.syntax.EncoderOps
 import org.big.pete.cache.{BpCache, FullRefreshBpCache}
 import org.big.pete.sft.db.dao.{Users, General => DBG}
 import org.big.pete.sft.domain.{User, Wallet, WalletEdit, Currency}
-import org.big.pete.sft.domain.Givens._
+import org.big.pete.sft.domain.Givens.given
 import org.big.pete.sft.server.auth.domain.AuthUser
 import org.http4s.Response
 import org.http4s.dsl.Http4sDsl

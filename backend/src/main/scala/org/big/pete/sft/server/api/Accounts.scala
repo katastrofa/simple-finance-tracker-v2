@@ -12,7 +12,7 @@ import org.big.pete.cache.FullRefreshBpCache
 import org.big.pete.sft.db.dao.{Accounts => DBMA, Transactions => DBT}
 import org.big.pete.sft.db.domain.Balance
 import org.big.pete.sft.domain.{Currency, CurrencyBalance, EnhancedAccount, ExpandedAccountCurrency, Account, AccountWithCurrency, ShiftStrategyPerCurrency, Op}
-import org.big.pete.sft.domain.Givens._
+import org.big.pete.sft.domain.Givens.given
 import org.http4s.Response
 import org.http4s.dsl.Http4sDsl
 import org.http4s.circe.CirceEntityEncoder._
@@ -20,7 +20,7 @@ import org.http4s.circe.CirceEntityEncoder._
 import java.time.LocalDate
 
 
-class Accounts[F[_]: Async: Parallel](
+class Accounts[F[_]: {Async, Parallel}](
     dsl: Http4sDsl[F],
     currencyCache: FullRefreshBpCache[F, String, Currency]
 )(

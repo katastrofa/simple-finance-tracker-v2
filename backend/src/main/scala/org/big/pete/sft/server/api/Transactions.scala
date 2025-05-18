@@ -9,7 +9,7 @@ import doobie.util.transactor.Transactor
 import io.circe.syntax.EncoderOps
 import org.big.pete.sft.db.dao.{Transactions => DBT}
 import org.big.pete.sft.domain.{ShiftStrategy, StatusEdit, Transaction}
-import org.big.pete.sft.domain.Givens._
+import org.big.pete.sft.domain.Givens.given
 import org.http4s.Response
 import org.http4s.dsl.Http4sDsl
 import org.http4s.circe.CirceEntityEncoder._

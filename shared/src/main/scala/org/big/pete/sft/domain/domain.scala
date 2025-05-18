@@ -1,25 +1,59 @@
 package org.big.pete.sft.domain
 
 import io.circe.{Decoder, Encoder}
-import io.circe.generic.semiauto._
-import org.latestbit.circe.adt.codec.*
+import io.circe.generic.semiauto.*
+//import org.latestbit.circe.adt.codec.*
 
 import java.time.LocalDate
 
+import scala.compiletime.summonAll
+import scala.deriving.Mirror
 
-enum Op derives JsonTaggedAdt.Codec {
+
+inline def getMapping[T](using m: Mirror.SumOf[T]) = {
+  val elemInstances = summonAll[Tuple.Map[m.MirroredElemTypes, ValueOf]]
+    .productIterator.asInstanceOf[Iterator[ValueOf[T]]].map(_.value)
+  val elemNames = summonAll[Tuple.Map[m.MirroredElemLabels, ValueOf]]
+    .productIterator.asInstanceOf[Iterator[ValueOf[String]]].map(_.value)
+  elemInstances -> elemNames
+}
+
+inline def stringEnumDecoder[T](using m: Mirror.SumOf[T]): Decoder[T] = {
+  val (elemInstances, elemNames) = getMapping[T]
+  val mapping = (elemNames zip elemInstances).toMap
+  Decoder[String].emap { name =>
+    mapping.get(name).fold(Left(s"Name $name is invalid value"))(Right(_))
+  }
+}
+
+inline def stringEnumEncoder[T](using m: Mirror.SumOf[T]): Encoder[T] = {
+  val (elemInstances, elemNames) = getMapping[T]
+  val mapping = (elemInstances zip elemNames).toMap
+  Encoder[String].contramap[T](mapping.apply)
+}
+
+
+enum Op {
   case Income
   case Expense
   case Transfer
 }
+object Op {
+  given decoder: Decoder[Op] = stringEnumDecoder[Op]
+  given encoder: Encoder[Op] = stringEnumEncoder[Op]
+}
 
-enum Status derives JsonTaggedAdt.Codec {
+enum Status {
   case None
   case Auto
   case Verified
 }
+object Status {
+  given decoder: Decoder[Status] = stringEnumDecoder[Status]
+  given encoder: Encoder[Status] = stringEnumEncoder[Status]
+}
 
-enum ApiAction derives JsonTaggedAdt.Codec {
+enum ApiAction {
   case Basic
 
   case ModifyOwnWallet
@@ -38,6 +72,10 @@ enum ApiAction derives JsonTaggedAdt.Codec {
   case DeleteCategory
   case DeleteAccount
   case DeleteTransactions
+}
+object ApiAction {
+  given decoder: Decoder[ApiAction] = stringEnumDecoder[ApiAction]
+  given encoder: Encoder[ApiAction] = stringEnumEncoder[ApiAction]
 }
 
 sealed trait ApiResponse
@@ -184,8 +222,8 @@ object Givens {
   given categoryDeleteStrategiesDecoder: Decoder[CategoryDeleteStrategies] = deriveDecoder[CategoryDeleteStrategies]
   given accountDeleteStrategyEncoder: Encoder[AccountDeleteStrategy] = deriveEncoder[AccountDeleteStrategy]
   given accountDeleteStrategyDecoder: Decoder[AccountDeleteStrategy] = deriveDecoder[AccountDeleteStrategy]
-  given deleteTransactionsEncoder: Encoder[DeleteTransactions] = deriveEncoder[DeleteTransactions]
-  given deleteTransactionsDecoder: Decoder[DeleteTransactions] = deriveDecoder[DeleteTransactions]
+  given transactionsDeleteEncoder: Encoder[DeleteTransactions] = deriveEncoder[DeleteTransactions]
+  given transactionsDeleteDecoder: Decoder[DeleteTransactions] = deriveDecoder[DeleteTransactions]
   given massEditTransactionsEncoder: Encoder[MassEditTransactions] = deriveEncoder[MassEditTransactions]
   given massEditTransactionsDecoder: Decoder[MassEditTransactions] = deriveDecoder[MassEditTransactions]
   

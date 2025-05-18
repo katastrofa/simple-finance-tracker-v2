@@ -14,7 +14,7 @@ import java.time.LocalDate
 
 
 object Transactions {
-  import org.big.pete.sft.db.domain.Givens._
+  import org.big.pete.sft.db.domain.Givens.given
 
   def changeCategory(oldCat: Int, newCat: Int, wallet: Int): ConnectionIO[Int] =
     sql"""UPDATE transactions AS t JOIN categories AS c ON t.category = c.id

@@ -6,7 +6,7 @@ import doobie.util.transactor.Transactor
 import io.circe.syntax.EncoderOps
 import org.big.pete.cache.BpCache
 import org.big.pete.sft.domain.{Wallet, ApiAction, NotAllowedResponse}
-import org.big.pete.sft.domain.Givens._
+import org.big.pete.sft.domain.Givens.given
 import org.big.pete.sft.server.auth.domain.AuthUser
 import org.http4s.Response
 import org.http4s.circe.CirceEntityEncoder._

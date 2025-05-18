@@ -12,7 +12,7 @@ import fs2.io.net.Network
 import fs2.io.net.tls.TLSContext
 import org.big.pete.cache.BpCache
 import org.big.pete.sft.domain.{Account, AccountDeleteStrategy, ApiAction, Category, CategoryDeleteStrategies, DeleteTransactions, MassEditTransactions, StatusEdit, Transaction, Wallet, WalletEdit}
-import org.big.pete.sft.domain.Givens.*
+import org.big.pete.sft.domain.Givens.given
 import org.big.pete.sft.server.api.{Accounts, Categories, General, Transactions}
 import org.big.pete.sft.server.auth.AuthHelper
 import org.big.pete.sft.server.auth.domain.AuthUser
@@ -33,7 +33,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 
-class SftV2Server[F[_]: Async: Files: Network](
+class SftV2Server[F[_]: {Async, Files, Network}](
     walletsCache: BpCache[F, String, Wallet],
     authHelper: AuthHelper[F],
     accessHelper: AccessHelper[F],
@@ -58,7 +58,7 @@ class SftV2Server[F[_]: Async: Files: Network](
   private val mainHtmlPath = if (environment.toLowerCase == "prod")
     "./static-assets/index-main.html"
   else
-    "./frontend/src/main/resources/index-main.html"
+    "./tyrian-front/src/main/resources/index-main.html"
 
   private val hostObj = if (environment.toLowerCase == "prod")
     Hostname.fromString(host)
@@ -241,7 +241,7 @@ class SftV2Server[F[_]: Async: Files: Network](
     val httpApp: Kleisli[F, Request[F], Response[F]] = Router(
       "" -> loginSupportRoutes.combineK(authMiddleware(apiRoutes)),
       "static" -> fileService[F](FileService.Config("./static-assets")),
-      "dev-assets" -> fileService[F](FileService.Config("./frontend/src/main/resources"))
+      "dev-assets" -> fileService[F](FileService.Config("./tyrian-front/src/main/resources"))
     ).orNotFound
 
     EmberServerBuilder.default[F]
