@@ -15,15 +15,15 @@ object Page {
   }
 
   case object Wallets extends Page {
-    override def permalink: String = "/"
+    override def permalink: String = "#/"
   }
   final case class Transactions(wallet: String) extends Page {
-    override def permalink: String = s"/$wallet/transactions"
+    override def permalink: String = s"#/$wallet/transactions"
   }
   final case class Categories(wallet: String) extends Page {
-    override def permalink: String = s"/$wallet/categories"
+    override def permalink: String = s"#/$wallet/categories"
   }
   final case class Accounts(wallet: String) extends Page {
-    override def permalink: String = s"/$wallet/accounts"
+    override def permalink: String = s"#/$wallet/accounts"
   }
 }

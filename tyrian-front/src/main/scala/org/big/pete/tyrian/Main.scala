@@ -1,30 +1,29 @@
 package org.big.pete.tyrian
 
 import cats.effect.IO
-import org.big.pete.sft.domain.{User, Wallet}
-import org.big.pete.tyrian.component.{DatePicker, DropDown, DropDownItem}
+import org.big.pete.sft.domain.{Currency, User, UserPermissions, Wallet}
+import org.big.pete.tyrian.component.{DatePicker, DropDownItem}
 import org.big.pete.tyrian.domain.{Msg, Page}
-import org.big.pete.tyrian.parts.{ApiMsgHelper, Header, Sidebar, Wallets, WalletsMsg}
-import org.big.pete.tyrian.sample.Data
-import org.big.pete.tyrian.toolz.{HttpHelper, Routes}
-import org.big.pete.tyrian.toolz.HttpHelper.ApiCalls
+import org.big.pete.tyrian.parts.{ApiMsgHelper, Header, Sidebar, WalletsMsg, WalletsPage}
+import org.big.pete.tyrian.toolz.{CookieStorage, Routes}
+import org.scalajs.dom
 import tyrian.{Cmd, Html, Location, Sub, TyrianIOApp}
 
-import java.time.LocalDate
 import scala.scalajs.js.annotation.JSExportTopLevel
 
 
 case class AppModel(
     activePage: Page,
-    user: User,
+
     sidebar: Sidebar.Model,
+    walletsPage: WalletsPage.Model,
 
     from: DatePicker.Model,
     to: DatePicker.Model,
-    
-    walletsPage: Wallets.Model,
-    
+
+    user: User,
     wallets: List[Wallet],
+    currencies: List[Currency],
 
     apiBase: String,
     httpError: String
@@ -34,26 +33,27 @@ type Model = AppModel
 
 @JSExportTopLevel("TyrianApp")
 object Main extends TyrianIOApp[Msg, Model] {
-  import Givens.given
+//  import Givens.given
 
   override def router: Location => Msg = Routes.router
 
   override def init(flags: Map[String, String]): (Model, Cmd[IO, Msg]) = {
-    initSample() -> Cmd.None
-  }
+    val apiBase = flags("apiBase")
 
-  private def initSample(): Model = {
-    AppModel(
+    val m = AppModel(
       activePage = Page.Wallets,
-      user =  Data.user,
       sidebar = Sidebar.init(),
-      from = DatePicker.init("from-date", List("date-select", "date-select-from"), 15, Some(LocalDate.of(2025, 5, 1))),
-      to = DatePicker.init("to-date", List("date-select", "date-select-to"), 15, Some(LocalDate.of(2025, 5, 1))),
-      walletsPage = Wallets.init(),
-      wallets = Data.wallets,
-      apiBase = "http://localhost:8080/api",
+      walletsPage = WalletsPage.init(),
+      from = DatePicker.init(Some(CookieStorage.getBrowserSettings.from)),
+      to = DatePicker.init(Some(CookieStorage.getBrowserSettings.to)),
+      user = User(-1, "", "", UserPermissions(Set.empty, Map.empty, Set.empty)),
+      wallets = List.empty,
+      currencies = List.empty,
+      apiBase = apiBase,
       httpError = ""
     )
+
+    m -> ApiMsgHelper.initialLoad(m)
   }
 
   override def update(m: Model): Msg => (Model, Cmd[IO, Msg]) = {
@@ -73,7 +73,7 @@ object Main extends TyrianIOApp[Msg, Model] {
       ApiMsgHelper.saveWallet(m)
 
     case Msg.WalletsPageMsg(msg) =>
-      m.copy(walletsPage = Wallets.update(msg, m.walletsPage)) -> Cmd.None
+      m.copy(walletsPage = WalletsPage.update(msg, m.walletsPage)) -> Cmd.None
 
     case Msg.HttpError(errMsg) =>
       m.copy(httpError = errMsg) -> Cmd.None
@@ -90,7 +90,7 @@ object Main extends TyrianIOApp[Msg, Model] {
       Html.main(
         model.activePage match {
           case Page.Wallets =>
-            Wallets.view(model.walletsPage, model.wallets).map(msg => Msg.WalletsPageMsg(msg))
+            WalletsPage.view(model.walletsPage, model.wallets).map(msg => Msg.WalletsPageMsg(msg))
           case Page.Transactions(wallet) =>
             Html.div(Html.cls := "padding")("Bla")
           case Page.Categories(wallet) =>
@@ -106,8 +106,12 @@ object Main extends TyrianIOApp[Msg, Model] {
     Sub.None
 //    DropDown.subscriptions(model.drop1).map(Msg.Drop1.apply)
 
-  def main(args: Array[String]): Unit =
-    launch("sft-full")
+  def main(args: Array[String]): Unit = {
+    val loc = dom.window.location
+    val url = loc.protocol + "//" + loc.host + (if (loc.port.matches("^(?:80)?$")) ":" + loc.port else "")
+    val baseUrl = url + "/api"
+    launch("sft-full", Map("apiBase" -> baseUrl))
+  }
 }
 
 

@@ -1,7 +1,7 @@
 package org.big.pete.tyrian.component
 
 import cats.effect.IO
-import org.big.pete.tyrian.component.Base
+//import org.big.pete.tyrian.component.Base
 import org.scalajs.dom.{FocusEvent, HTMLElement, document, window}
 import tyrian.Tyrian.KeyboardEvent
 import tyrian.{Cmd, Html as <, Html as ^, Sub}
@@ -18,7 +18,6 @@ trait DropDownItem[T] {
 final case class DropDownModel[T: DropDownItem](
     id: String,
     selected: Option[T],
-    extraClasses: List[String],
     focused: Boolean,
     browsing: Option[T],
     text: String,
@@ -40,8 +39,8 @@ object DropDown extends Base {
   private final case class TimePassed[T: DropDownItem]() extends DropDownMsg[T]
   private final case class RecalcPosition[T: DropDownItem]() extends DropDownMsg[T]
 
-  final private val DebouncingMillis: Int = 250
-  final private val TickInterval: Int = 50
+  final private val DebouncingMillis: Int = 400
+  final private val TickInterval: Int = 100
 
   type Model[T] = DropDownModel[T]
   type Msg[T] = DropDownMsg[T]
@@ -49,10 +48,9 @@ object DropDown extends Base {
   def init[T: DropDownItem](
       id: String,
       items: List[T],
-      selected: Option[T],
-      extraClasses: List[String]
+      selected: Option[T]
   ): Model[T] =
-    DropDownModel[T](id, selected, extraClasses, false, None, selected.map(_.display).getOrElse(""), items, None)
+    DropDownModel[T](id, selected, false, None, selected.map(_.display).getOrElse(""), items, None)
 
   def update[T: DropDownItem](items: List[T], msg: Msg[T], m: Model[T]): (Model[T], Cmd[IO, Msg[T]]) = {
     msg match {
@@ -78,13 +76,13 @@ object DropDown extends Base {
     }
   }
 
-  def view[T: DropDownItem](m: Model[T], label: String, tabIndex: Int): <[Msg[T]] = {
+  def view[T: DropDownItem](m: Model[T], label: String, tabIndex: Int, extraClasses: List[String]): <[Msg[T]] = {
     val ulClasses = (if (m.focused) List("visible") else List
       .empty[String]) ++ List("dropdown-content", "autocomplete-content")
 
     <.div(
       ^.id := m.id,
-      ^.cls := (List("input-field") ++ m.extraClasses).mkString(" ")
+      ^.cls := (List("input-field") ++ extraClasses).mkString(" ")
     )(
       <.input(
         ^.`type` := "text",
@@ -301,7 +299,7 @@ object DropDown extends Base {
   private def tick[T: DropDownItem](m: Model[T]): Sub[IO, Msg[T]] = {
     m.debouncing match {
       case Some(_) =>
-        Sub.every[IO](DropDown.TickInterval.millis, "tick")
+        Sub.every[IO](DropDown.TickInterval.millis, s"dropdown-${m.id}")
           .map(_ => TimePassed())
       case _ =>
         Sub.None

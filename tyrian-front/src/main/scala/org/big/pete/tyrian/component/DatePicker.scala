@@ -2,7 +2,7 @@ package org.big.pete.tyrian.component
 
 import org.big.pete.tyrian.toolz.Views
 import org.scalajs.dom.{FocusEvent, HTMLElement, console}
-import tyrian.Html as h
+import tyrian.{Html as <, Html as ^}
 import tyrian.Tyrian.KeyboardEvent
 
 import java.time.format.DateTimeFormatter
@@ -25,9 +25,6 @@ final case class KeyBinding(key: String, modifiers: Set[String] = Set.empty[Stri
 type DatePickerBindings = Map[DatePickerMovement, KeyBinding]
 
 final case class DatePickerModel(
-    id: String,
-    cls: List[String],
-    tabIndex: Int,
     active: Boolean,
     selected: LocalDate,
     browsing: Option[LocalDate],
@@ -73,8 +70,8 @@ object DatePicker extends Base {
     DatePickerMovement.NextYear -> KeyBinding("ArrowRight", Set("Alt"))
   )
 
-  def init(id: String, cls: List[String], tabIndex: Int, selected: Option[LocalDate]): Model =
-    DatePickerModel(id, cls, tabIndex, false, selected.getOrElse(LocalDate.now()), None, None)
+  def init(selected: Option[LocalDate]): Model =
+    DatePickerModel(false, selected.getOrElse(LocalDate.now()), None, None)
 
   def update(msg: Msg, m: Model): Model = {
     msg match {
@@ -95,17 +92,17 @@ object DatePicker extends Base {
     }
   }
 
-  def view(m: Model): h[Msg] = {
-    h.div(h.id := wrapId(m.id), h.cls := (m.cls ++ List("input-field")).mkString(" "))(
-      Views.modal(s"modal-${m.id}", m.active, List("datepicker-modal"), List("datepicker-container"))(
-        h.div(h.cls := "datepicker-calendar-container", h.id := s"date-picker-container-div-${m.id}")(
-          h.div(h.cls := "datepicker-calendar")(
-            navigationButtons(m.id, m.browsing.getOrElse(m.selected)),
+  def view(m: Model, id: String, cls: List[String], tabIndex: Int): <[Msg] = {
+    <.div(^.id := wrapId(id), ^.cls := (cls ++ List("input-field")).mkString(" "))(
+      Views.modal(s"modal-$id", m.active, List("datepicker-modal"), List("datepicker-container"))(
+        <.div(^.cls := "datepicker-calendar-container", ^.id := s"date-picker-container-div-$id")(
+          <.div(^.cls := "datepicker-calendar")(
+            navigationButtons(id, m.browsing.getOrElse(m.selected)),
 
-            h.div(h.cls := "datepicker-table-wrapper")(
-              h.table(h.cls := "datepicker-table", h.role := "grid")(
+            <.div(^.cls := "datepicker-table-wrapper")(
+              <.table(^.cls := "datepicker-table", ^.role := "grid")(
                 datesHeader,
-                h.tbody(
+                <.tbody(
                   generateCalendar(m.browsing.getOrElse(m.selected))
                 )
               )
@@ -113,14 +110,14 @@ object DatePicker extends Base {
           )
         )
       ),
-      h.input(
-        h.id := m.id, h.`type` := "text", h.cls := "datepicker", h.tabIndex := m.tabIndex,
-        h.value := fillInput(m.editing, m.browsing, m.selected),
-        h.onFocus(DatePickerMsg.Activate),
-        h.onInput(DatePickerMsg.TextChange(_)),
-        h.onKeyDown(handleBackspace(m)).noPreventDefault.noStopPropagation.noStopImmediatePropagation,
-        h.onKeyPress(processKey(m)).noPreventDefault.noStopPropagation.noStopImmediatePropagation,
-        h.onEvent[FocusEvent, Msg]("blur", handleBlur(wrapId(m.id)))
+      <.input(
+        ^.id := id, ^.`type` := "text", ^.cls := "datepicker", ^.tabIndex := tabIndex,
+        ^.value := fillInput(m.editing, m.browsing, m.selected),
+        ^.onFocus(DatePickerMsg.Activate),
+        ^.onInput(DatePickerMsg.TextChange(_)),
+        ^.onKeyDown(handleBackspace(m)).noPreventDefault.noStopPropagation.noStopImmediatePropagation,
+        ^.onKeyPress(processKey(m)).noPreventDefault.noStopPropagation.noStopImmediatePropagation,
+        ^.onEvent[FocusEvent, Msg]("blur", handleBlur(wrapId(id)))
       )
     )
   }
@@ -236,38 +233,38 @@ object DatePicker extends Base {
     modifiers == eventModifiers
   }
 
-  private def navigationButtons(id: String, titleDate: LocalDate): h[Msg] = {
+  private def navigationButtons(id: String, titleDate: LocalDate): <[Msg] = {
     import DatePickerMsg.Move
-    h.div(h.id := s"datepicker-title-$id", h.cls := "datepicker-controls", h.role := "heading")(
-      h.button(h.cls := "year-prev month-prev", h.`type` := "button", h.onClick(Move(DatePickerMovement.PrevYear)))(
+    <.div(^.id := s"datepicker-title-$id", ^.cls := "datepicker-controls", ^.role := "heading")(
+      <.button(^.cls := "year-prev month-prev", ^.`type` := "button", ^.onClick(Move(DatePickerMovement.PrevYear)))(
         Views.icon("keyboard_double_arrow_left")
       ),
-      h.button(h.cls := "month-prev", h.`type` := "button", h.onClick(Move(DatePickerMovement.PrevMonth)))(
+      <.button(^.cls := "month-prev", ^.`type` := "button", ^.onClick(Move(DatePickerMovement.PrevMonth)))(
         Views.icon("keyboard_arrow_left")
       ),
-      h.div(h.cls := "selects-container")(
-        h.h5(s"${titleDate.getYear}-${titleDate.getMonthValue}")
+      <.div(^.cls := "selects-container")(
+        <.h5(s"${titleDate.getYear}-${titleDate.getMonthValue}")
       ),
-      h.button(h.cls := "month-next", h.`type` := "button", h.onClick(Move(DatePickerMovement.NextMonth)))(
+      <.button(^.cls := "month-next", ^.`type` := "button", ^.onClick(Move(DatePickerMovement.NextMonth)))(
         Views.icon("keyboard_arrow_right")
       ),
-      h.button(h.cls := "year-next month-next", h.`type` := "button", h.onClick(Move(DatePickerMovement.NextYear)))(
+      <.button(^.cls := "year-next month-next", ^.`type` := "button", ^.onClick(Move(DatePickerMovement.NextYear)))(
         Views.icon("keyboard_double_arrow_right")
       )
     )
   }
 
-  private def datesHeader: h[Msg] = {
-    h.thead(
-      h.tr(
+  private def datesHeader: <[Msg] = {
+    <.thead(
+      <.tr(
         DatePicker.Days.map { case (_, name, abbr) =>
-          h.th(h.scope := "col")(h.abbr(h.title := name)(abbr))
+          <.th(^.scope := "col")(<.abbr(^.title := name)(abbr))
         }.toList
       )
     )
   }
 
-  private def generateCalendar(date: LocalDate): List[h[Msg]] = {
+  private def generateCalendar(date: LocalDate): List[<[Msg]] = {
     def step(date: LocalDate): LocalDate = {
       if (date.getDayOfWeek == DayOfWeek.SUNDAY) date.plusDays(7L)
       else date.plusDays(7L - date.getDayOfWeek.getValue)
@@ -280,7 +277,7 @@ object DatePicker extends Base {
       .toList
   }
 
-  private def calendarWeekLine(selected: Int)(start: LocalDate): h[Msg] = {
+  private def calendarWeekLine(selected: Int)(start: LocalDate): <[Msg] = {
     val now = LocalDate.now()
     val days = Range(0, 7).map { i =>
       val date = start.plusDays(((0 - start.getDayOfWeek.getValue) % 7).toLong + i)
@@ -290,18 +287,18 @@ object DatePicker extends Base {
       ).filter(_._2).map(_._1).mkString(" ")
 
       if (start.getMonthValue == date.getMonthValue) {
-        h.td(h.cls := classes)(
-          h.button(
-            h.cls := "datepicker-day-button",
-            h.`type` := "button",
-            h.onClick(DatePickerMsg.Select(date))
-          )(h.text(date.getDayOfMonth.toString))
+        <.td(^.cls := classes)(
+          <.button(
+            ^.cls := "datepicker-day-button",
+            ^.`type` := "button",
+            ^.onClick(DatePickerMsg.Select(date))
+          )(<.text(date.getDayOfMonth.toString))
         )
       } else {
-        h.td(h.cls := s"is-empty empty-day-$i")(h.text(""))
+        <.td(^.cls := s"is-empty empty-day-$i")(<.text(""))
       }
     }
 
-    h.tr(h.cls := "datepicker-row")(days*)
+    <.tr(^.cls := "datepicker-row")(days*)
   }
 }

@@ -171,7 +171,7 @@ trait AutoFetchBpCache[F[_]: {Monad, Clock, Async}, K, V] extends BpCache[F, K, 
   private def rawFetchData(key: K): F[Option[Entry[V]]] = {
     val dataT = for {
       value <- OptionT(fetchMethod(key))
-      ts <- OptionT.liftF(Clock[F].realTime)
+      ts <- OptionT.liftF[F, FiniteDuration](Clock[F].realTime)
     } yield Entry(ts, value)
     dataT.value
   }
@@ -295,44 +295,53 @@ object FullBpCache {
 
 
 object Test extends IOApp with AsyncSyntax {
-  def fetch(key: Int): IO[Option[String]] =
+  private def fetch(key: Int): IO[Option[String]] =
     IO.println(s"fetching $key") >> IO.sleep(1000.millis).map(_ => Some(s"$key - stored"))
 
-  def getMultiple(cache: FullBpCache[IO, Int, String], count: Int): IO[List[Option[String]]] = {
+  private def getMultiple(cache: FullBpCache[IO, Int, String], count: Int): IO[List[Option[String]]] = {
     Range.apply(0, count).map(_ => cache.get(42)).toList.parSequence
   }
+
+  private def getDiffMultiple(cache: FullBpCache[IO, Int, String], keys: List[Int]): IO[List[Option[String]]] =
+    keys.map(cache.get).parSequence
 
   private def fullRefresh(): IO[List[(Int, String)]] = {
     IO.println("Refreshing ... ") >> IO.pure(List(1 -> "Fuck", 2 -> "this", 3 -> "Shit"))
   }
 
   override def run(args: List[String]): IO[ExitCode] = {
-    FullRefreshBpCache.apply(5.seconds, fullRefresh).use { cacheIO =>
-      for {
-        cache <- cacheIO
-        _ <- IO.sleep(1.second)
-        val1 <- cache.get(1)
-        _ <- IO.println(val1)
-        _ <- IO.sleep(10.seconds)
-        val2 <- cache.get(3)
-        _ <- IO.println(val2)
-      } yield ExitCode.Success
-    }
-//    for {
-//      cache <- FullBpCache(10, fetch, Some(1))
-//      val1 <- cache.get(3)
-//      _ <- IO.println(val1)
-//      val2 <- cache.get(1)
-//      _ <- IO.println(val2)
-//      val3 <- cache.get(3)
-//      _ <- IO.println(val3)
-//      val4 <- cache.get(2)
-//      _ <- IO.println(val4)
-//
-//      data <- getMultiple(cache, 5)
-//      _ <- IO.println(data)
+//    FullRefreshBpCache.apply(5.seconds, fullRefresh).use { cacheIO =>
+//      for {
+//        cache <- cacheIO
+//        _ <- IO.sleep(1.second)
+//        val1 <- cache.get(1)
+//        _ <- IO.println(val1)
+//        _ <- IO.sleep(10.seconds)
+//        val2 <- cache.get(3)
+//        _ <- IO.println(val2)
+//      } yield ExitCode.Success
+//    }
+    for {
+      cache <- FullBpCache(10, fetch, Some(1))
+      val1 <- cache.get(3)
+      _ <- IO.println(val1)
+      val2 <- cache.get(1)
+      _ <- IO.println(val2)
+      val3 <- cache.get(3)
+      _ <- IO.println(val3)
+      val4 <- cache.get(2)
+      _ <- IO.println(val4)
 
+      data <- getDiffMultiple(cache, List(1, 2, 3, 4, 5))
+      _ <- IO.println(data)
+      _ <- IO.sleep(1.second)
+      data2 <- getDiffMultiple(cache, List(8, 9, 0, 10, 11, 12, 13, 14))
+      _ <- IO.println(data2)
+      _ <- getDiffMultiple(cache, List(5, 6, 7, 8, 9, 0, 10, 11, 12, 13))
+      _ <- IO.sleep(2.second)
+      _ <- getDiffMultiple(cache, List(1, 2, 3, 4, 5, 10, 11))
+      _ <- IO.println("Done")
 
-//    } yield ExitCode.Success
+    } yield ExitCode.Success
   }
 }

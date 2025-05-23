@@ -88,26 +88,26 @@ object Main extends IOApp with LogSupport with ToConnectionIOOps {
       sttp <- HttpClientCatsBackend.resource[IO]()
       transactor <- HikariTransactor.fromHikariConfig[IO](dbConfig)
       tls <- createTLSContext(mainConfig)
-      accountsCache <- Resource.eval(FullBpCache.apply[String, Wallet](100, General.getWallet(_).transact(transactor)))
+      walletsCache <- Resource.eval(FullBpCache.apply[String, Wallet](100, General.getWallet(_).transact(transactor)))
       usersCache <- Resource.eval(FullBpCache.apply[Int, User](100, Users.getUser(_).transact(transactor)))
       currencyCache <- FullRefreshBpCache[String, Currency](() => General.listCurrencies.transact(transactor).map(_.map(cur => cur.id -> cur)))
-    } yield (sttp, transactor, tls, accountsCache, usersCache, currencyCache)
+    } yield (sttp, transactor, tls, walletsCache, usersCache, currencyCache)
 
   override def run(args: List[String]): IO[ExitCode] = {
-    resources.use { case (sttp, transactor, tls, accountsCache, usersCache, currencyCacheIO) =>
+    resources.use { case (sttp, transactor, tls, walletsCache, usersCache, currencyCacheIO) =>
       given transactorImpl: HikariTransactor[IO] = transactor
       
       val currencyCache = currencyCacheIO.unsafeRunSync()(runtime)
       val dsl = Http4sDsl[IO]
       val authHelper = new AuthHelper[IO](mainConfig, dsl, sttp, usersCache)
-      val accessHelper = new AccessHelper[IO](accountsCache, dsl)
-      val accountsApi = new GeneralApi[IO](usersCache, accountsCache, currencyCache, dsl)
+      val accessHelper = new AccessHelper[IO](walletsCache, dsl)
+      val accountsApi = new GeneralApi[IO](usersCache, walletsCache, currencyCache, dsl)
       val categoriesApi = new Categories[IO](dsl)
       val moneyAccountsApi = new Accounts[IO](dsl, currencyCache)
       val transactionsApi = new Transactions[IO](dsl)
 
       val server = new SftV2Server[IO](
-        accountsCache,
+        walletsCache,
         authHelper,
         accessHelper,
         accountsApi,

@@ -1,11 +1,11 @@
 package org.big.pete.tyrian.parts
 
 import cats.effect.IO
-import org.big.pete.sft.domain.{ApiResponse, Wallet}
+import org.big.pete.sft.domain.{ApiResponse, Currencies, User, Wallet, Wallets}
 import org.big.pete.tyrian.Model
 import org.big.pete.tyrian.domain.Msg
 import org.big.pete.tyrian.toolz.HttpHelper
-import org.big.pete.tyrian.toolz.HttpHelper.ApiCalls
+import org.big.pete.tyrian.toolz.HttpHelper.{ApiCalls, apiCall}
 import tyrian.Cmd
 
 
@@ -15,6 +15,14 @@ object ApiMsgHelper {
       case wallet: Wallet =>
         val wallets = (wallet :: m.wallets.filter(_.id != wallet.id)).sortBy(_.id)
         m.copy(wallets = wallets) -> Cmd.None
+      case Wallets(wallets) =>
+        m.copy(wallets = wallets) -> Cmd.None
+
+      case Currencies(currencies) =>
+        m.copy(currencies = currencies) -> Cmd.None
+
+      case usr: User =>
+        m.copy(user = usr) -> Cmd.None
     }
   }
 
@@ -27,7 +35,15 @@ object ApiMsgHelper {
       None
     )
 
-    m.copy(walletsPage = Wallets.update(WalletsMsg.ConfirmClick, m.walletsPage)) ->
+    m.copy(walletsPage = WalletsPage.update(WalletsMsg.ConfirmClick, m.walletsPage)) ->
       HttpHelper.apiCall(m.apiBase, call, Some(wallet))
+  }
+
+  def initialLoad(m: Model): Cmd.Batch[IO, Msg] = {
+    Cmd.Batch(
+      apiCall(m.apiBase, ApiCalls.ListWallets, None),
+      apiCall(m.apiBase, ApiCalls.ListCurrencies, None),
+      apiCall(m.apiBase, ApiCalls.Me, None)
+    )
   }
 }

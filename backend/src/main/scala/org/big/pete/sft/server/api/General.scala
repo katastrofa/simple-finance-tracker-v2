@@ -7,13 +7,13 @@ import doobie.syntax.ToConnectionIOOps
 import doobie.util.transactor.Transactor
 import io.circe.syntax.EncoderOps
 import org.big.pete.cache.{BpCache, FullRefreshBpCache}
-import org.big.pete.sft.db.dao.{Users, General => DBG}
-import org.big.pete.sft.domain.{User, Wallet, WalletEdit, Currency}
+import org.big.pete.sft.db.dao.{Users, General as DBG}
+import org.big.pete.sft.domain.{Currencies, Currency, User, Wallet, WalletEdit, Wallets}
 import org.big.pete.sft.domain.Givens.given
 import org.big.pete.sft.server.auth.domain.AuthUser
 import org.http4s.Response
 import org.http4s.dsl.Http4sDsl
-import org.http4s.circe.CirceEntityEncoder._
+import org.http4s.circe.CirceEntityEncoder.*
 
 
 class General[F[_]: MonadCancelThrow](
@@ -26,10 +26,13 @@ class General[F[_]: MonadCancelThrow](
 ) extends ToConnectionIOOps with FunctorSyntax with FlatMapSyntax {
   import dsl._
 
+  def me(authUser: AuthUser): F[Response[F]] =
+    Ok(authUser.db.asJson)
+  
   def listCurrencies: F[Response[F]] = {
     for {
       currencies <- currencyCache.getValues
-      response <- Ok(currencies.asJson)
+      response <- Ok(Currencies(currencies).asJson)
     } yield response
   }
 
@@ -37,7 +40,7 @@ class General[F[_]: MonadCancelThrow](
     for {
       wallets <- DBG.listWallets(authUser.db).transact(transactor)
       _ <- wallets.map(wallet => walletsCache.put(wallet.permalink, wallet)).sequence
-      response <- Ok(wallets.asJson)
+      response <- Ok(Wallets(wallets).asJson)
     } yield response
   }
 

@@ -102,6 +102,9 @@ class SftV2Server[F[_]: {Async, Files, Network}](
     case GET -> Root / "api" as user =>
       Ok(s"api for ${user.db.displayName}")
 
+    case GET -> Root / "api" / "me" as user =>
+      accessHelper.verifyAccess(ApiAction.Basic, user)(generalApi.me(user))
+
     case GET -> Root / "api" / "currencies" as user =>
       accessHelper.verifyAccess(ApiAction.Basic, user)(generalApi.listCurrencies)
 

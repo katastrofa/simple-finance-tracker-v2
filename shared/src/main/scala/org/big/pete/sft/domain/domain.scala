@@ -1,6 +1,7 @@
 package org.big.pete.sft.domain
 
-import io.circe.{Decoder, Encoder}
+import io.circe.Decoder.Result
+import io.circe.{Decoder, Encoder, HCursor, Json}
 import io.circe.generic.semiauto.*
 //import org.latestbit.circe.adt.codec.*
 
@@ -82,6 +83,7 @@ sealed trait ApiResponse
 sealed trait ApiRequest
 
 case class Wallet(id: Int, name: String, permalink: String, owner: Option[Int]) extends ApiResponse with ApiRequest
+
 
 case class Currency(id: String, name: String, symbol: String)
 
@@ -165,8 +167,15 @@ case class EnhancedAccount(
 )
 case class CurrencyBalance(currency: Currency, startAmount: BigDecimal, start: BigDecimal, end: BigDecimal)
 
-final case class User(id: Int, email: String, displayName: String, permissions: UserPermissions)
+final case class User(id: Int, email: String, displayName: String, permissions: UserPermissions) extends ApiResponse
 final case class UserPermissions(global: Set[ApiAction], perWallet: Map[Int, Set[ApiAction]], default: Set[ApiAction])
+
+
+case class Wallets(value: List[Wallet]) extends ApiResponse
+case class Currencies(value: List[Currency]) extends ApiResponse
+case class Transactions(value: List[Transaction]) extends ApiResponse
+case class Accounts(value: List[Account]) extends ApiResponse
+case class Categories(value: List[Category]) extends ApiResponse
 
 
 case class ShiftStrategy(newId: Option[Int])
@@ -212,6 +221,17 @@ object Givens {
   given userPermissionsEncoder: Encoder[UserPermissions] = deriveEncoder[UserPermissions]
   given userPermissionsDecoder: Decoder[UserPermissions] = deriveDecoder[UserPermissions]
 
+  given walletsEncoder: Encoder[Wallets] = deriveEncoder[Wallets]
+  given walletsDecoder: Decoder[Wallets] = deriveDecoder[Wallets]
+  given currenciesEncoder: Encoder[Currencies] = deriveEncoder[Currencies]
+  given currenciesDecoder: Decoder[Currencies] = deriveDecoder[Currencies]
+  given transactionsEncoder: Encoder[Transactions] = deriveEncoder[Transactions]
+  given transactionsDecoder: Decoder[Transactions] = deriveDecoder[Transactions]
+  given accountsEncoder: Encoder[Accounts] = deriveEncoder[Accounts]
+  given accountsDecoder: Decoder[Accounts] = deriveDecoder[Accounts]
+  given categoriesEncoder: Encoder[Categories] = deriveEncoder[Categories]
+  given categoriesDecoder: Decoder[Categories] = deriveDecoder[Categories]
+  
   given notAllowedResponseEncoder: Encoder[NotAllowedResponse] = deriveEncoder[NotAllowedResponse]
   given notAllowedResponseDecoder: Decoder[NotAllowedResponse] = deriveDecoder[NotAllowedResponse]
   given shiftStrategyEncoder: Encoder[ShiftStrategy] = deriveEncoder[ShiftStrategy]

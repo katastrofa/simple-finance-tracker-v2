@@ -16,6 +16,7 @@ object Views {
     case Add extends MBIcon("add_task")
     case Edit extends MBIcon("")
     case Cancel extends MBIcon("highlight_off")
+    case Other(theName: String) extends MBIcon(theName)
   }
 
   enum DomType {
@@ -66,6 +67,12 @@ object Views {
   def icon[T](iconName: String): Html[T] = {
     icon(DomType.I, Size.Small, iconName, List.empty)
   }
+  
+  def icon[T](iconName: String, onClick: T): Html[T] =
+    icon(DomType.I, Size.Small, iconName, List.empty, onClick)
+
+  def icon[T](iconName: String, classes: List[String], onClick: T): Html[T] =
+    icon(DomType.I, Size.Small, iconName, classes, onClick)
 
   def icon[T](iconName: String, classes: List[String]): Html[T] = {
     icon(DomType.I, Size.Small, iconName, classes)

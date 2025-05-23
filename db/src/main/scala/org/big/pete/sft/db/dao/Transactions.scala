@@ -8,7 +8,7 @@ import doobie.implicits.javatimedrivernative.*
 import doobie.Fragments.in
 import doobie.util.{Get, Read}
 import org.big.pete.sft.db.domain.Balance
-import org.big.pete.sft.domain.{Op, Status, Transaction}
+import org.big.pete.sft.domain.{Currency, Op, PureAccount, Status, Transaction}
 
 import java.time.LocalDate
 
