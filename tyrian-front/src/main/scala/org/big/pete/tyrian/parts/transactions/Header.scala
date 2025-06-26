@@ -10,9 +10,9 @@ object Header {
   private def thWrapper(attributes: List[Attr[ICheckbox.Msg]])(children: List[Elem[ICheckbox.Msg]]): <[ICheckbox.Msg] =
     <.th(attributes)(children)
 
-  def viewHeader(m: Model): <[Msg] = {
+  def viewHeader(m: Model, headerCheckbox: ICheckbox.Model): <[Msg] = {
     <.tr(
-      ICheckbox.view(m.headerCheckbox, thWrapper, "check hide-on-med-and-down center-align", "sft-all", "")
+      ICheckbox.view(headerCheckbox, thWrapper, "check hide-on-med-and-down center-align", 101, "sft-all", "")
         .map(msg => Msg.MainCheckboxClick(msg)),
       <.th(^.cls := "date")(
         <.text("Date"),

@@ -20,11 +20,4 @@ object TransactionExtension {
     def categoryName(using categories: Map[Int, Category]): String =
       categories(t.category).name
   }
-
-  @tailrec
-  private def parentCats(id: Option[Int], parents: List[Category])(using categories: Map[Int, Category]): List[Category] =
-    id match {
-      case None => List.empty
-      case Some(value) => parentCats(categories(value).parent, categories(value) :: parents)
-    }
 }

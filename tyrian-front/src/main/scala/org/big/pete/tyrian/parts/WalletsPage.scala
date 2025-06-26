@@ -1,11 +1,13 @@
 package org.big.pete.tyrian.parts
 
+import cats.effect.IO
 import org.big.pete.sft.domain.Wallet
-import org.big.pete.tyrian.component.{TextInput, TextInputMsg}
+import org.big.pete.tyrian.component.inputs.{BaseMsg, TextInput}
 import org.big.pete.tyrian.domain.Page
 import org.big.pete.tyrian.toolz.Views.MBIcon
 import org.big.pete.tyrian.toolz.{Views, createPermalink}
-import tyrian.{Html as <, Html as ^}
+import tyrian.{Cmd, Html as ^, Html as <}
+//import tyrian.{Cmd, Html as ^, Html as <}
 
 
 final case class WalletsModel(
@@ -47,10 +49,10 @@ object WalletsPage {
         
       case WalletsMsg.PermalinkInputMsg(msg) =>
         m.copy(permalinkInput = TextInput.update(msg, m.permalinkInput))
-      case WalletsMsg.NameInputMsg(TextInputMsg.TextChange(text)) =>
+      case WalletsMsg.NameInputMsg(BaseMsg.TextChange(text)) =>
         val permalink = createPermalink(text)
         m.copy(
-          nameInput = TextInput.update(TextInputMsg.TextChange(text), m.nameInput),
+          nameInput = TextInput.update(BaseMsg.TextChange(text), m.nameInput),
           permalinkInput = m.permalinkInput.copy(text = permalink)
         )
       case WalletsMsg.NameInputMsg(msg) =>
@@ -105,7 +107,7 @@ object WalletsPage {
   }
 
   private def modalPart(m: Model): <[Msg] = {
-    val (buttonLabel, buttonIcon) = m.editing.map(_ => "Add" -> MBIcon.Add).getOrElse("Edit" -> MBIcon.Edit)
+    val (buttonLabel, buttonIcon) = m.editing.map(_ => "Update" -> MBIcon.Edit).getOrElse("Add" -> MBIcon.Add)
 
     Views.modal("wallet-modal", m.isModalOpen)(
       <.div(^.cls := "container")(

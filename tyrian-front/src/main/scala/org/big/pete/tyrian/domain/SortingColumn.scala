@@ -51,6 +51,14 @@ case class Amount(order: SortingOrder) extends SortingColumn[BigDecimal] {
   }
 }
 
+object SortingColumn {
+  def apply(name: SortingName, order: SortingOrder): SortingColumn[?] = name match {
+    case SortingName.Date => Date(order)
+    case SortingName.Description => Description(order)
+    case SortingName.Amount => Amount(order)
+  }
+}
+
 final class TransactionOrdering(sorting: List[SortingColumn[?]]) extends Ordering[Transaction] {
   override def compare(x: Transaction, y: Transaction): Int =
     recurse(x, y, sorting)

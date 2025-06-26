@@ -15,71 +15,87 @@ trait DropDownItem[T] {
   extension (x: T) def display: String
 }
 
-final case class DropDownModel[T: DropDownItem](
-    id: String,
-    selected: Option[T],
-    focused: Boolean,
-    browsing: Option[T],
-    text: String,
-    visible: List[T],
-    debouncing: Option[Int]
-)
-
-sealed abstract class DropDownMsg[T: DropDownItem]
-
-
 object DropDown extends Base {
 
-  private final case class NoOp[T: DropDownItem]() extends DropDownMsg[T]
-  private final case class Activate[T: DropDownItem]() extends DropDownMsg[T]
-  private final case class Deactivate[T: DropDownItem]() extends DropDownMsg[T]
-  private final case class Move[T: DropDownItem](direction: Int) extends DropDownMsg[T]
-  private final case class TextChange[T: DropDownItem](text: String) extends DropDownMsg[T]
-  private final case class Select[T: DropDownItem](item: T) extends DropDownMsg[T]
-  private final case class TimePassed[T: DropDownItem]() extends DropDownMsg[T]
-  private final case class RecalcPosition[T: DropDownItem]() extends DropDownMsg[T]
+  case class Model[T: DropDownItem](
+      id: String,
+      items: List[T],
+      focused: Boolean,
+      text: String,
+      selected: Option[T],
+      browsing: Option[T],
+      visible: List[T],
+      debouncing: Option[Int]
+  )
 
+  sealed trait Msg[T]
+  case class NoOp[T]() extends Msg[T]
+  case class Activate[T]() extends Msg[T]
+  case class Deactivate[T]() extends Msg[T]
+  case class Move[T](direction: Int) extends Msg[T]
+  case class TextChange[T](text: String) extends Msg[T]
+  case class Select[T](item: T) extends Msg[T]
+  case class TimePassed[T]() extends Msg[T]
+  case class RecalcPosition[T]() extends Msg[T]
+  
   final private val DebouncingMillis: Int = 400
   final private val TickInterval: Int = 100
 
-  type Model[T] = DropDownModel[T]
-  type Msg[T] = DropDownMsg[T]
 
   def init[T: DropDownItem](
       id: String,
       items: List[T],
       selected: Option[T]
   ): Model[T] =
-    DropDownModel[T](id, selected, false, None, selected.map(_.display).getOrElse(""), items, None)
+    Model(id, items, false, selected.map(_.display).getOrElse(""), selected, None, items, None)
 
-  def update[T: DropDownItem](items: List[T], msg: Msg[T], m: Model[T]): (Model[T], Cmd[IO, Msg[T]]) = {
+  def update[T: DropDownItem](msg: Msg[T], m: Model[T]): (Model[T], Cmd[IO, Msg[T]]) = {
     msg match {
       case NoOp() =>
         m -> Cmd.None
       case Activate() =>
-        m.copy(focused = true) -> updateUlPosition(m.id, m.visible.length, browsingIndex(m.browsing, m), None)
+        m.copy(focused = true) -> updateUlPosition(m.id, browsingIndex(m.browsing, m), None)
       case Deactivate() =>
         m.copy(focused = false) -> Cmd.None
       case Move(direction) =>
         handleMove(direction, m)
       case TextChange(text) =>
-        val visible = filterItems(text, items)
+        val visible = filterItems(text, m.items)
         m.copy(browsing = None, text = text, visible = visible) ->
-          updateUlPosition(m.id, visible.length, browsingIndex(None, m), None)
+          updateUlPosition(m.id, browsingIndex(None, m), None)
 
-      case Select[T](item) =>
-        m.copy(selected = Some(item), text = item.display, focused = false, browsing = None, visible = items) -> Cmd.None
+      case Select(item) =>
+        m.copy(
+          selected = Some(item),
+          text = item.display,
+          focused = false,
+          browsing = None
+        ) -> Cmd.None
       case TimePassed() =>
         handleTick(m)
       case RecalcPosition() =>
         m.copy(debouncing = Some(DropDown.DebouncingMillis)) -> Cmd.None
     }
   }
+  
+  def updateItems[T: DropDownItem](items: List[T], m: Model[T]): (Model[T], Cmd[IO, Msg[T]]) = {
+    val selected = m.selected.flatMap(item => items.find(_ == item))
+    val browsing = m.browsing.flatMap(item => items.find(_ == item))
+    val (visible, text) = (selected, m.selected, m.text) match {
+      case (None, Some(item), text) if item.display == text =>
+        items -> ""
+      case (_, _, text) =>
+        filterItems(text, items) -> text
+    }
+    
+    m.copy(items = items, selected = selected, browsing = browsing, text = text) ->
+      updateUlPosition(m.id, browsingIndex(browsing, m), None)
+  }
 
   def view[T: DropDownItem](m: Model[T], label: String, tabIndex: Int, extraClasses: List[String]): <[Msg[T]] = {
     val ulClasses = (if (m.focused) List("visible") else List
       .empty[String]) ++ List("dropdown-content", "autocomplete-content")
-
+    
     <.div(
       ^.id := m.id,
       ^.cls := (List("input-field") ++ extraClasses).mkString(" ")
@@ -89,7 +105,7 @@ object DropDown extends Base {
         ^.value := m.text,
         ^.cls := "autocomplete",
         ^.onFocus(Activate[T]()),
-        ^.onInput(str => TextChange(str)),
+        ^.onInput(str => TextChange[T](str)),
         ^.onKeyDown(processKey(m)).noPreventDefault.noStopImmediatePropagation.noStopPropagation,
         ^.onEvent[FocusEvent, Msg[T]]("blur", handleBlur[T](m.id))
       ),
@@ -112,20 +128,20 @@ object DropDown extends Base {
         val newIndex = index match {
           case i if i < 0 => m.visible.length - 1
           case i if i >= m.visible.length => 0
-          case i => i
+          case _ => index
         }
         Some(m.visible(newIndex))
       case None =>
         if (direction > 0) m.visible.headOption else m.visible.lastOption
     }
 
-    m.copy(browsing = browsing) -> updateUlPosition(m.id, m.visible.length, browsingIndex(browsing, m), Some(direction))
+    m.copy(browsing = browsing) -> updateUlPosition(m.id, browsingIndex(browsing, m), Some(direction))
   }
 
   private def handleTick[T: DropDownItem](m: Model[T]): (Model[T], Cmd[IO, Msg[T]]) = {
     m.debouncing match {
       case Some(remaining) if remaining <= 0 =>
-        m.copy(debouncing = None) -> updateUlPosition(m.id, m.visible.length, browsingIndex(m.browsing, m), None)
+        m.copy(debouncing = None) -> updateUlPosition(m.id, browsingIndex(m.browsing, m), None)
       case Some(remaining) =>
         m.copy(debouncing = Some(remaining - DropDown.TickInterval)) -> Cmd.None
       case None =>
@@ -136,28 +152,28 @@ object DropDown extends Base {
   private def handleBlur[T: DropDownItem](id: String)(evt: FocusEvent): Msg[T] = {
     evt.relatedTarget match {
       case el: HTMLElement if isChild(el, id) =>
-        NoOp()
+        NoOp[T]()
       case _ =>
-        Deactivate()
+        Deactivate[T]()
     }
   }
 
-  private def processKey[T: DropDownItem](model: DropDownModel[T])(e: KeyboardEvent): Msg[T] = {
+  private def processKey[T: DropDownItem](m: Model[T])(e: KeyboardEvent): Msg[T] = {
     e.key match {
       case "ArrowUp" =>
         e.preventDefault()
-        Move(-1)
+        Move[T](-1)
       case "ArrowDown" =>
         e.preventDefault()
-        Move(1)
+        Move[T](1)
       case "Enter" =>
         e.preventDefault()
-        Select(model.browsing.getOrElse(model.visible.head))
+        Select(m.browsing.getOrElse(m.items.head))
       case "Escape" =>
         e.preventDefault()
-        Deactivate()
+        Deactivate[T]()
       case _ =>
-        NoOp()
+        NoOp[T]()
     }
   }
 
@@ -178,9 +194,9 @@ object DropDown extends Base {
       .filter(_.nonEmpty)
       .map(_.toLowerCase)
 
-  private def browsingIndex[T: DropDownItem](browsing: Option[T], model: Model[T]): Option[Int] =
+  private def browsingIndex[T: DropDownItem](browsing: Option[T], m: Model[T]): Option[Int] =
     browsing.flatMap { item =>
-      val i = model.visible.indexOf(item)
+      val i = m.visible.indexOf(item)
       if (i >= 0) Some(i) else None
     }
 
@@ -198,6 +214,7 @@ object DropDown extends Base {
 
     <.li(
       ^.cls := (if (browsing.contains(item)) "active" else ""),
+      ^.dataAttr("key", item.key),
       ^.onClick(Select(item))
     )(
       <.span(textSplits *)
@@ -241,12 +258,12 @@ object DropDown extends Base {
 
   private def updateUlPosition(
       id: String,
-      visibleItems: Int,
       browsing: Option[Int],
       lastDirection: Option[Int]
   ): Cmd.SideEffect[IO, Unit] = Cmd.SideEffect {
     Option(document.getElementById(s"$id-ul")).foreach { ulRaw =>
       val ul = ulRaw.asInstanceOf[HTMLElement]
+      val visibleItems = ul.children.length
       val itemHeight = ul.children.headOption
         .map(_.getBoundingClientRect().height.toInt)
         .filter(_ > 0)
@@ -290,17 +307,17 @@ object DropDown extends Base {
 
 
   private def windowResize[T: DropDownItem](): Sub[IO, Msg[T]] = Sub.fromEvent("resize", window) { _ =>
-    Option(RecalcPosition())
+    Option(RecalcPosition[T]())
   }
   private def documentScroll[T: DropDownItem](): Sub[IO, Msg[T]] = Sub.fromEvent("scroll", document) { _ =>
-    Option(RecalcPosition())
+    Option(RecalcPosition[T]())
   }
 
   private def tick[T: DropDownItem](m: Model[T]): Sub[IO, Msg[T]] = {
     m.debouncing match {
       case Some(_) =>
         Sub.every[IO](DropDown.TickInterval.millis, s"dropdown-${m.id}")
-          .map(_ => TimePassed())
+          .map(_ => TimePassed[T]())
       case _ =>
         Sub.None
     }

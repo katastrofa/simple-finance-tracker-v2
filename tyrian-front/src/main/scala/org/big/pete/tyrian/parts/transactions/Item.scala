@@ -10,14 +10,14 @@ import tyrian.{Attr, Elem, Html as <, Html as ^}
 
 object Item {
 
-  def tdWrapper(attributes: List[Attr[ICheckbox.Msg]])(children: List[Elem[ICheckbox.Msg]]): <[ICheckbox.Msg] =
+  private def tdWrapper(attributes: List[Attr[ICheckbox.Msg]])(children: List[Elem[ICheckbox.Msg]]): <[ICheckbox.Msg] =
     <.td(attributes)(children)
 
-  def view(m: Model, t: Transaction)
+  def view(m: Model, t: Transaction, checkboxes: Map[Int, ICheckbox.Model])
     (using currencies: Map[String, Currency], accounts: Map[Int, Account], categories: Map[Int, Category]): <[Msg] =
   {
     <.tr(^.cls := "show-hoverable")(
-      ICheckbox.view(m.checkboxes(t.id), tdWrapper, "check hide-on-med-and-down center-align", s"t-${t.id}", "")
+      ICheckbox.view(checkboxes(t.id), tdWrapper, "check hide-on-med-and-down center-align", 402, s"t-${t.id}", "")
         .map(msg => Msg.TransactionCheckbox(t.id, msg)),
       <.td(^.cls := "date")(
         <.div(^.cls := "hide-on-small-only")(t.date.format(DateFormat)),

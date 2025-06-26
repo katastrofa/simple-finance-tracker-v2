@@ -16,21 +16,19 @@ object ICheckbox {
     case Partial
   }
 
-  private object Status {
-    val statusToIcon: Map[Status, String] = Map(
-      None -> "check_box_outline_blank",
-      Partial -> "indeterminate_check_box",
-      Checked -> "check_box"
-    )
-    val statusToChecked: Map[Status, Boolean] = Map(
-      None -> false,
-      Partial -> false,
-      Checked -> true
-    )
+  private val statusToIcon: Map[Status, String] = Map(
+    Status.None -> "check_box_outline_blank",
+    Status.Partial -> "indeterminate_check_box",
+    Status.Checked -> "check_box"
+  )
+  private val statusToChecked: Map[Status, Boolean] = Map(
+    Status.None -> false,
+    Status.Partial -> false,
+    Status.Checked -> true
+  )
 
-    def fromBoolean(status: Boolean): Status =
-      if (status) Checked else None
-  }
+  def fromBoolean(status: Boolean): Status =
+    if (status) Status.Checked else Status.None
 
   type Model = ICheckboxModel
   type Msg = ICheckboxMsg
@@ -52,24 +50,26 @@ object ICheckbox {
       m: Model,
       wrappingTag: (attributes: List[Attr[Msg]]) => (children: List[Elem[Msg]]) => <[Msg],
       classes: Map[String, Boolean],
+      tabIndex: Int,
       value: String,
       text: String
   ): <[Msg] = {
     val cls = ("checkbox" :: classes.filter(_._2).keys.toList).mkString(" ")
-    view(m, wrappingTag, cls, value, text)
+    view(m, wrappingTag, cls, tabIndex, value, text)
   }
 
   def view(
       m: Model,
       wrappingTag: (attributes: List[Attr[Msg]]) => (children: List[Elem[Msg]]) => <[Msg],
       cls: String,
+      tabIndex: Int,
       value: String,
       text: String
   ): <[Msg] = {
     wrappingTag(List(^.cls := cls))(List(
       <.label(
-        <.input(^.`type` := "checkbox", ^.value := value, ^.checked(Status.statusToChecked(m.status))),
-        Views.icon(Status.statusToIcon(m.status), ICheckboxMsg.Toggle),
+        <.input(^.`type` := "checkbox", ^.value := value, ^.tabIndex := tabIndex, ^.checked(statusToChecked(m.status))),
+        Views.icon(statusToIcon(m.status), ICheckboxMsg.Toggle),
         <.span(text)
       )
     ))
