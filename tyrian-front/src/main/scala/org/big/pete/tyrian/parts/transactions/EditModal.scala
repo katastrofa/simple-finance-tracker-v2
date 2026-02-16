@@ -39,7 +39,7 @@ object EditModal {
             .map(msg => Msg.EditDate(msg))
         ),
         <.div(^.cls := "row")(
-          DropDown.view(m.editOp, Op.values.toList, "Operation", 402, List("col", "s12"))
+          DropDown.view(m.editOp, "Operation", 402, List("col", "s12"))
             .map(msg => Msg.EditOp(msg))
         ),
         <.div(^.cls := "row")(
@@ -51,26 +51,26 @@ object EditModal {
             .map(msg => Msg.EditDescription(msg))
         ),
         <.div(^.cls := "row")(
-          DropDown.view(m.editCategory, sortedCategories, "Category", 405, List("col", "s12"))
+          DropDown.view(m.editCategory, "Category", 405, List("col", "s12"))
             .map(msg => Msg.EditCategory(msg))
         ),
         <.div(^.cls := "row")(
-          DropDown.view(m.editAccount, sortedAccounts, "Account", 406, List("col", "s12"))
+          DropDown.view(m.editAccount, "Account", 406, List("col", "s12"))
             .map(msg => Msg.EditAccount(msg))
         ),
         <.div(^.cls := "row")(
-          DropDown.view(m.editCurrency, availableCurrencies, "Currency", 407, List("col", "s12"))
+          DropDown.view(m.editCurrency, "Currency", 407, List("col", "s12"))
             .map(msg => Msg.EditCurrency(msg))
         ),
         m.editOp.selected.filter(Op.valueOf(_) == Op.Transfer).map { _ =>
           <.div(^.cls := "row")(
-            DropDown.view(m.editDestAccount, destAccounts, "Destination Account", 408, List("col", "s12"))
+            DropDown.view(m.editDestAccount, "Destination Account", 408, List("col", "s12"))
               .map(msg => Msg.EditDestAccount(msg))
           )
         }.orEmpty,
         m.editOp.selected.filter(_ == Op.Transfer.toString).map { _ =>
           <.div(^.cls := "row")(
-            DropDown.view(m.editDestCurrency, destCurrencies, "Destination Currency", 409, List("col", "s12"))
+            DropDown.view(m.editDestCurrency, "Destination Currency", 409, List("col", "s12"))
               .map(msg => Msg.EditDestCurrency(msg))
           )
         }.orEmpty,

@@ -24,14 +24,14 @@ final case class Model(
 
     editing: Option[Transaction],
     editDate: DatePicker.Model,
-    editOp: DropDown.Model,
+    editOp: DropDown.Model[Op],
     editAmount: MoneyTextBox.Model,
     editDescription: TextInput.Model,
-    editCategory: DropDown.Model,
-    editAccount: DropDown.Model,
-    editCurrency: DropDown.Model,
-    editDestAccount: DropDown.Model,
-    editDestCurrency: DropDown.Model,
+    editCategory: DropDown.Model[Category],
+    editAccount: DropDown.Model[Account],
+    editCurrency: DropDown.Model[Currency],
+    editDestAccount: DropDown.Model[Account],
+    editDestCurrency: DropDown.Model[Currency],
     editDestAmount: MoneyTextBox.Model,
     editAddAnother: ICheckbox.Model,
 
@@ -48,14 +48,14 @@ enum Msg {
   case OpenModalMassDelete
 
   case EditDate(msg: DatePicker.Msg)
-  case EditOp(msg: DropDown.Msg)
+  case EditOp(msg: DropDown.Msg[Op])
   case EditAmount(msg: MoneyTextBox.Msg)
   case EditDescription(msg: TextInput.Msg)
-  case EditCategory(msg: DropDown.Msg)
-  case EditAccount(msg: DropDown.Msg)
-  case EditCurrency(msg: DropDown.Msg)
-  case EditDestAccount(msg: DropDown.Msg)
-  case EditDestCurrency(msg: DropDown.Msg)
+  case EditCategory(msg: DropDown.Msg[Category])
+  case EditAccount(msg: DropDown.Msg[Account])
+  case EditCurrency(msg: DropDown.Msg[Currency])
+  case EditDestAccount(msg: DropDown.Msg[Account])
+  case EditDestCurrency(msg: DropDown.Msg[Currency])
   case EditDestAmount(msg: MoneyTextBox.Msg)
   case EditAddAnother(msg: ICheckbox.Msg)
   case EditModalConfirm
@@ -142,7 +142,7 @@ object Page {
       case Msg.EditDate(msg) =>
         m.copy(editDate = DatePicker.update(msg, m.editDate)) -> Cmd.None
       case Msg.EditOp(msg) =>
-        val ddUpdate = DropDown.update(Op.values.toList, msg, m.editOp)
+        val ddUpdate = DropDown.update(msg, m.editOp)
         m.copy(editOp = ddUpdate._1) -> ddUpdate._2.map(Msg.EditOp(_))
 
 
@@ -198,18 +198,20 @@ object Page {
   }
 
 
-  private def openAddModal(m: Model): Model = {
+  private def openAddModal(m: Model)
+    (using categories: Map[Int, Category], accounts: Map[Int, Account], currencies: Map[String, Currency]): Model =
+  {
     val storedSettings = CookieStorage.getAddTransactionSetup(m.wallet)
     /// TODO: verify existence of stored things
     m.copy(
       isModalOpen = true,
       editDate = m.editDate.copy(selected = storedSettings.date),
-      editOp = m.editOp.copy(selected = Some(storedSettings.operation.key)),
-      editCategory = m.editCategory.copy(selected = storedSettings.category),
-      editAccount = m.editAccount.copy(selected = storedSettings.account),
-      editCurrency = m.editCurrency.copy(selected = storedSettings.currency),
-      editDestAccount = m.editDestAccount.copy(selected = storedSettings.destAccount),
-      editDestCurrency = m.editDestCurrency.copy(selected = storedSettings.destCurrency)
+      editOp = m.editOp.copy(selected = Some(storedSettings.operation)),
+      editCategory = m.editCategory.copy(selected = storedSettings.category.map(_.toInt).flatMap(categories.get)),
+      editAccount = m.editAccount.copy(selected = storedSettings.account.map(_.toInt).flatMap(accounts.get)),
+      editCurrency = m.editCurrency.copy(selected = storedSettings.currency.flatMap(currencies.get)),
+      editDestAccount = m.editDestAccount.copy(selected = storedSettings.destAccount.map(_.toInt).flatMap(accounts.get)),
+      editDestCurrency = m.editDestCurrency.copy(selected = storedSettings.destCurrency.flatMap(currencies.get))
     )
   }
 
@@ -218,7 +220,7 @@ object Page {
       isModalOpen = true,
       editing = Some(tx),
       editDate = m.editDate.copy(selected = tx.date),
-      editOp = m.editOp.copy(selected = Some(tx.op.key)),
+      editOp = m.editOp.copy(selected = Some(tx.op)),
       editAmount = MoneyTextBox.init(tx.amount, false),
       editDescription = TextInput.init(tx.description),
       editCategory = m.editCategory.copy(selected = Some(tx.category.toString)),
