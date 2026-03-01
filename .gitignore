@@ -3,6 +3,9 @@
 target/
 .idea/
 .bsp/
+.bloop/
+.metals/
+.claude/
 backend/src/main/resources/application.conf
 backend/src/main/resources/prod.conf
 ignore/
