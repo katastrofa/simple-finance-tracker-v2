@@ -1,7 +1,7 @@
 package org.big.pete.sft.domain
 
-import io.circe.Decoder.Result
-import io.circe.{Decoder, Encoder, HCursor, Json}
+//import io.circe.Decoder.Result
+import io.circe.{Decoder, Encoder/*, HCursor, Json*/}
 import io.circe.generic.semiauto.*
 //import org.latestbit.circe.adt.codec.*
 

@@ -121,7 +121,7 @@ object Page {
   }
 
   def update(msg: Msg, m: Model)
-    (using categories: Map[Int, Category], accounts: Map[Int, Account], currencies: Map[String, Currency]): (Model, Cmd[IO, Msg]) = 
+    (using categories: Map[Int, Category], accounts: Map[Int, Account], currencies: Map[String, Currency]): (Model, Cmd[IO, Msg]) =
   {
     msg match {
       case Msg.OpenModal =>
@@ -153,6 +153,18 @@ object Page {
         handleTick(m) -> Cmd.None
       case Msg.RecalcSpan =>
         m.copy(colSpan = calculateColSpan) -> Cmd.None
+
+      case Msg.EditAmount(_) => ???
+      case Msg.EditDescription(_) => ???
+      case Msg.EditCategory(_) => ???
+      case Msg.EditAccount(_) => ???
+      case Msg.EditCurrency(_) => ???
+      case Msg.EditDestAccount(_) => ???
+      case Msg.EditDestCurrency(_) => ???
+      case Msg.EditDestAmount(_) => ???
+      case Msg.EditAddAnother(_) => ???
+      case Msg.EditModalConfirm => ???
+      case Msg.EditModalCancel => ???
     }
   }
 

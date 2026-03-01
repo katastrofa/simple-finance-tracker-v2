@@ -125,6 +125,8 @@ lazy val tyrianFront = (project in file("tyrian-front"))
     name := "tyrian-front",
     scalaJSUseMainModuleInitializer := true,
 
+    scalacOptions := scalacOptions.value.filterNot(_.startsWith("-Wunused")),
+
     libraryDependencies += "io.indigoengine" %%% "tyrian-io" % "0.14.0",
     libraryDependencies += "io.github.cquiroz" %%% "scala-java-time" % "2.6.0",
     libraryDependencies += "io.github.cquiroz" %%% "scala-java-time-tzdb" % "2.6.0",

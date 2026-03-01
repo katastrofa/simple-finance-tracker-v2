@@ -2,7 +2,7 @@ package org.big.pete
 
 import scala.annotation.nowarn
 import scalajs.js
-import scalajs.js.|
+//import scalajs.js.|
 import scalajs.js.annotation.JSImport
 
 

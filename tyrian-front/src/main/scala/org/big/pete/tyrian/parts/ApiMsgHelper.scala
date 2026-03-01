@@ -1,7 +1,7 @@
 package org.big.pete.tyrian.parts
 
 import cats.effect.IO
-import org.big.pete.sft.domain.{ApiResponse, Currencies, User, Wallet, Wallets}
+import org.big.pete.sft.domain.{ApiResponse, Currencies, User, Wallet, Wallets, Transactions, Accounts, Categories}
 import org.big.pete.tyrian.Model
 import org.big.pete.tyrian.domain.Msg
 import org.big.pete.tyrian.toolz.HttpHelper
@@ -23,6 +23,10 @@ object ApiMsgHelper {
 
       case usr: User =>
         m.copy(user = usr) -> Cmd.None
+
+      case Transactions(_) => ???
+      case Accounts(_) => ???
+      case Categories(_) => ???
     }
   }
 
