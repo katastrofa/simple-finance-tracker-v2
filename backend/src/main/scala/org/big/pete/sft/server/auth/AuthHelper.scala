@@ -10,8 +10,9 @@ import doobie.util.transactor.Transactor
 import io.circe.jawn
 import org.big.pete.cache.BpCache
 import org.big.pete.sft.db.dao.Users
+import org.big.pete.sft.db.domain.Login
 import org.big.pete.sft.domain.User
-import org.big.pete.sft.server.auth.domain._
+import org.big.pete.sft.server.auth.domain.*
 import org.big.pete.sft.server.auth.domain.Implicits.{googleTokenResponseDecoder, personResponseDecoder}
 import org.http4s.dsl.Http4sDsl
 import org.http4s.{AuthedRequest, HttpDate, Request, RequestCookie, Response, ResponseCookie}
@@ -26,7 +27,8 @@ class AuthHelper[F[_]: MonadCancelThrow](
     config: Config,
     dsl: Http4sDsl[F],
     sttpBackend: SttpBackend[F, Any],
-    usersCache: BpCache[F, Int, User]
+    usersCache: BpCache[F, Int, User],
+    devMode: Boolean = false
 )(
     using transactor: Transactor[F]
 ) extends FunctorSyntax with FlatMapSyntax with MonadCancelSyntax with ToConnectionIOOps with LogSupport
@@ -37,7 +39,19 @@ class AuthHelper[F[_]: MonadCancelThrow](
   final private val Scopes = List("https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile")
     .mkString(" ")
 
-  def authSftUser: Kleisli[F, Request[F], Either[LoginRedirect, AuthUser]] = Kleisli { request =>
+  private def devBypassAuth: Kleisli[F, Request[F], Either[LoginRedirect, AuthUser]] = Kleisli { _ =>
+    val syntheticLogin = Login(0, 1, java.time.LocalDateTime.now(), "dev-token", "")
+    usersCache.get(1).map {
+      case Some(user) => Right[LoginRedirect, AuthUser](AuthUser(user, syntheticLogin))
+      case None => throw new RuntimeException("Dev mode: user ID 1 not found in database. Run seed data first.")
+    }
+  }
+
+  def authSftUser: Kleisli[F, Request[F], Either[LoginRedirect, AuthUser]] =
+    if (devMode) devBypassAuth
+    else normalAuth
+
+  private def normalAuth: Kleisli[F, Request[F], Either[LoginRedirect, AuthUser]] = Kleisli { request =>
     val loginOption = for {
       cookieAuthData <- OptionT.fromOption(extractAuthData(request.cookies))
       authUser <- verifyLogin(cookieAuthData, parseBrowserInfo(request))

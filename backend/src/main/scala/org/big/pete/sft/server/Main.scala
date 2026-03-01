@@ -99,7 +99,9 @@ object Main extends IOApp with LogSupport with ToConnectionIOOps {
       
       val currencyCache = currencyCacheIO.unsafeRunSync()(runtime)
       val dsl = Http4sDsl[IO]
-      val authHelper = new AuthHelper[IO](mainConfig, dsl, sttp, usersCache)
+      val isDev = mainConfig.getString("server.environment").equalsIgnoreCase("dev")
+      val hasGoogleCreds = mainConfig.getString("google.client-id").nonEmpty
+      val authHelper = new AuthHelper[IO](mainConfig, dsl, sttp, usersCache, devMode = isDev && !hasGoogleCreds)
       val accessHelper = new AccessHelper[IO](walletsCache, dsl)
       val accountsApi = new GeneralApi[IO](usersCache, walletsCache, currencyCache, dsl)
       val categoriesApi = new Categories[IO](dsl)

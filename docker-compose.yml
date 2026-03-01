@@ -1,0 +1,19 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: sftv2-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: sftv2
+      MYSQL_USER: sftv2_usr
+      MYSQL_PASSWORD: asdf1234
+    ports:
+      - "3307:3306"
+    volumes:
+      - sftv2-data:/var/lib/mysql
+      - ./deploy/docker-init.sh:/docker-entrypoint-initdb.d/01-init.sh:ro
+      - ./db/src/main/resources/db:/migrations:ro
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+volumes:
+  sftv2-data:
