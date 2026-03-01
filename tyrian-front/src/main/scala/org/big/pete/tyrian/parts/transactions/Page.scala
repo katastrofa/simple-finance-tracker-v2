@@ -120,9 +120,12 @@ object Page {
     )
   }
 
-  def update(msg: Msg, m: Model): (Model, Cmd[IO, Msg]) = {
+  def update(msg: Msg, m: Model)
+    (using categories: Map[Int, Category], accounts: Map[Int, Account], currencies: Map[String, Currency]): (Model, Cmd[IO, Msg]) = 
+  {
     msg match {
       case Msg.OpenModal =>
+        given catDropDownSupport(using categories: Map[Int, Category]): DropDownItem[Category] = new CatDropDownItem
         openAddModal(m) -> Cmd.None
       case Msg.OpenModalMassEdit =>
         m.copy(isMassEditOpen = true) -> Cmd.None
@@ -202,6 +205,7 @@ object Page {
     (using categories: Map[Int, Category], accounts: Map[Int, Account], currencies: Map[String, Currency]): Model =
   {
     val storedSettings = CookieStorage.getAddTransactionSetup(m.wallet)
+    given catDropDownSupport(using categories: Map[Int, Category]): DropDownItem[Category] = new CatDropDownItem
     /// TODO: verify existence of stored things
     m.copy(
       isModalOpen = true,
@@ -215,7 +219,11 @@ object Page {
     )
   }
 
-  private def openEditModal(m: Model, tx: Transaction): Model = {
+  private def openEditModal(m: Model, tx: Transaction)
+    (using categories: Map[Int, Category], accounts: Map[Int, Account], currencies: Map[String, Currency]): Model =
+  {
+    given catDropDownSupport(using categories: Map[Int, Category]): DropDownItem[Category] = new CatDropDownItem
+
     m.copy(
       isModalOpen = true,
       editing = Some(tx),
@@ -223,11 +231,11 @@ object Page {
       editOp = m.editOp.copy(selected = Some(tx.op)),
       editAmount = MoneyTextBox.init(tx.amount, false),
       editDescription = TextInput.init(tx.description),
-      editCategory = m.editCategory.copy(selected = Some(tx.category.toString)),
-      editAccount = m.editAccount.copy(selected = Some(tx.account.toString)),
-      editCurrency = m.editCurrency.copy(selected = Some(tx.currency)),
-      editDestAccount = m.editDestAccount.copy(selected = tx.destinationAccount.map(_.toString)),
-      editDestCurrency = m.editDestCurrency.copy(selected = tx.destinationCurrency),
+      editCategory = m.editCategory.copy(selected = categories.get(tx.category)),
+      editAccount = m.editAccount.copy(selected = accounts.get(tx.account)),
+      editCurrency = m.editCurrency.copy(selected = currencies.get(tx.currency)),
+      editDestAccount = m.editDestAccount.copy(selected = tx.destinationAccount.flatMap(id => accounts.get(id))),
+      editDestCurrency = m.editDestCurrency.copy(selected = tx.destinationCurrency.flatMap(curr => currencies.get(curr))),
       editDestAmount = MoneyTextBox.init(tx.destinationAmount.getOrElse(0), false)
     )
   }

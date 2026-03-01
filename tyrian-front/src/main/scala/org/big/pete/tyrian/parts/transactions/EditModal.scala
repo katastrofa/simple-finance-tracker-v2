@@ -20,15 +20,23 @@ object EditModal {
     val sortedCategories = sortCategories(categories)
 
     val sortedAccounts = accounts.values.toList.sortBy(_.name)
-    val destAccounts = m.editAccount.selected.map { id =>
-      if (accounts(id.toInt).currencies.length > 1)
+    val destAccounts = m.editAccount.selected.map { account =>
+      if (account.currencies.length > 1)
         sortedAccounts
       else
-        accounts.filter(_._1 != id.toInt).values.toList.sortBy(_.name)
+        accounts.filter(_._1 != account.id).values.toList.sortBy(_.name)
     }.getOrElse(sortedAccounts)
 
-    val availableCurrencies = filterCurrencies(m.editAccount.selected, m.editDestAccount.selected, m.editDestCurrency.selected)
-    val destCurrencies = filterCurrencies(m.editDestAccount.selected, m.editAccount.selected, m.editCurrency.selected)
+    val availableCurrencies = filterCurrencies(
+      m.editAccount.selected.map(_.id),
+      m.editDestAccount.selected.map(_.id),
+      m.editDestCurrency.selected.map(_.id)
+    )
+    val destCurrencies = filterCurrencies(
+      m.editDestAccount.selected.map(_.id),
+      m.editAccount.selected.map(_.id),
+      m.editCurrency.selected.map(_.id)
+    )
 
     val (buttonLabel, buttonIcon) = m.editing.map(_ => "Update" -> MBIcon.Edit).getOrElse("Add" -> MBIcon.Add)
 
@@ -62,19 +70,19 @@ object EditModal {
           DropDown.view(m.editCurrency, "Currency", 407, List("col", "s12"))
             .map(msg => Msg.EditCurrency(msg))
         ),
-        m.editOp.selected.filter(Op.valueOf(_) == Op.Transfer).map { _ =>
+        m.editOp.selected.filter(_ == Op.Transfer).map { _ =>
           <.div(^.cls := "row")(
             DropDown.view(m.editDestAccount, "Destination Account", 408, List("col", "s12"))
               .map(msg => Msg.EditDestAccount(msg))
           )
         }.orEmpty,
-        m.editOp.selected.filter(_ == Op.Transfer.toString).map { _ =>
+        m.editOp.selected.filter(_ == Op.Transfer).map { _ =>
           <.div(^.cls := "row")(
             DropDown.view(m.editDestCurrency, "Destination Currency", 409, List("col", "s12"))
               .map(msg => Msg.EditDestCurrency(msg))
           )
         }.orEmpty,
-        m.editOp.selected.filter(_ == Op.Transfer.toString).map { _ =>
+        m.editOp.selected.filter(_ == Op.Transfer).map { _ =>
           <.div(^.cls := "row")(
             MoneyTextBox.view(m.editDestAmount, "tx-edit-dest-amount", "Destination Amount", 410, List("col", "s12"))
               .map(msg => Msg.EditDestAmount(msg))
@@ -94,19 +102,19 @@ object EditModal {
   private def divWrapper(attributes: List[Attr[ICheckbox.Msg]])(children: List[Elem[ICheckbox.Msg]]): <[ICheckbox.Msg] =
     <.div(attributes)(children)
 
-  def filterCurrencies(account: Option[String], otherAccount: Option[String], otherCurrency: Option[String])
+  def filterCurrencies(account: Option[Int], otherAccount: Option[Int], otherCurrency: Option[String])
     (using accounts: Map[Int, Account], currencies: Map[String, Currency]): List[Currency] =
   {
     (account, otherAccount, otherCurrency) match {
       case (Some(id), Some(otherId), Some(curr)) if id == otherId =>
-        currenciesByAccount(accounts(id.toInt))
+        currenciesByAccount(accounts(id))
           .filter(_.id == curr)
 
       case (Some(id), Some(otherId), None) if id == otherId =>
-        currenciesByAccount(accounts(id.toInt))
+        currenciesByAccount(accounts(id))
 
       case (Some(id), _, _) =>
-        currenciesByAccount(accounts(id.toInt))
+        currenciesByAccount(accounts(id))
 
       case _ =>
         List.empty
