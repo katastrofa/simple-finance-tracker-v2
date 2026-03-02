@@ -123,9 +123,10 @@ object Page {
   def update(msg: Msg, m: Model)
     (using categories: Map[Int, Category], accounts: Map[Int, Account], currencies: Map[String, Currency]): (Model, Cmd[IO, Msg]) =
   {
+    given catDropDownSupport(using categories: Map[Int, Category]): DropDownItem[Category] = new CatDropDownItem
+
     msg match {
       case Msg.OpenModal =>
-        given catDropDownSupport(using categories: Map[Int, Category]): DropDownItem[Category] = new CatDropDownItem
         openAddModal(m) -> Cmd.None
       case Msg.OpenModalMassEdit =>
         m.copy(isMassEditOpen = true) -> Cmd.None
@@ -147,6 +148,23 @@ object Page {
       case Msg.EditOp(msg) =>
         val ddUpdate = DropDown.update(msg, m.editOp)
         m.copy(editOp = ddUpdate._1) -> ddUpdate._2.map(Msg.EditOp(_))
+      case Msg.EditAmount(msg) =>
+        m.copy(editAmount = MoneyTextBox.update(msg, m.editAmount)) -> Cmd.None
+      case Msg.EditDescription(msg) =>
+        m.copy(editDescription = TextInput.update(msg, m.editDescription)) -> Cmd.None
+      case Msg.EditCategory(msg) =>
+        val ddUpdate = DropDown.update(msg, m.editCategory)
+        m.copy(editCategory = ddUpdate._1) -> ddUpdate._2.map(Msg.EditCategory(_))
+      case Msg.EditAccount(msg) =>
+        val ddUpdate = DropDown.update(msg, m.editAccount)
+        /// TODO: if account changes, maybe also update currency and destination account/currency?
+        m.copy(editAccount = ddUpdate._1) -> ddUpdate._2.map(Msg.EditAccount(_))
+      case Msg.EditCurrency(msg) =>
+        val ddUpdate = DropDown.update(msg, m.editCurrency)
+        /// TODO: if currency changes, maybe also update destination currency (if it's the same account dest account)?
+        m.copy(editCurrency = ddUpdate._1) -> ddUpdate._2.map(Msg.EditCurrency(_))
+
+
 
 
       case Msg.TimePassed =>
@@ -154,11 +172,7 @@ object Page {
       case Msg.RecalcSpan =>
         m.copy(colSpan = calculateColSpan) -> Cmd.None
 
-      case Msg.EditAmount(_) => ???
-      case Msg.EditDescription(_) => ???
-      case Msg.EditCategory(_) => ???
-      case Msg.EditAccount(_) => ???
-      case Msg.EditCurrency(_) => ???
+
       case Msg.EditDestAccount(_) => ???
       case Msg.EditDestCurrency(_) => ???
       case Msg.EditDestAmount(_) => ???
