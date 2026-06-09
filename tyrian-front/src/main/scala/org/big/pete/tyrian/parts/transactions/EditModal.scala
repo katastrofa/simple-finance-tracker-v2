@@ -44,7 +44,7 @@ object EditModal {
       <.form(
         <.div(^.cls := "row")(
           DatePicker.view(m.editDate, "tx-edit-date", List("col", "s12"), 401)
-            .map(msg => Msg.EditDate(msg))
+            .map(Page.editDateMsg)
         ),
         <.div(^.cls := "row")(
           DropDown.view(m.editOp, "Operation", 402, List("col", "s12"))
@@ -52,11 +52,11 @@ object EditModal {
         ),
         <.div(^.cls := "row")(
           MoneyTextBox.view(m.editAmount, "tx-edit-amount", "Amount", 403, List("col", "s12"))
-            .map(msg => Msg.EditAmount(msg))
+            .map(Page.editAmountMsg)
         ),
         <.div(^.cls := "row")(
           TextInput.view(m.editDescription, "tx-edit-description", "Description", 404, List("col", "s12"))
-            .map(msg => Msg.EditDescription(msg))
+            .map(Page.editDescMsg)
         ),
         <.div(^.cls := "row")(
           DropDown.view(m.editCategory, "Category", 405, List("col", "s12"))
@@ -85,13 +85,13 @@ object EditModal {
         m.editOp.selected.filter(_ == Op.Transfer).map { _ =>
           <.div(^.cls := "row")(
             MoneyTextBox.view(m.editDestAmount, "tx-edit-dest-amount", "Destination Amount", 410, List("col", "s12"))
-              .map(msg => Msg.EditDestAmount(msg))
+              .map(Page.editDestAmtMsg)
           )
         }.orEmpty,
         (if (m.editing.isDefined) None else Some("")).map { _ =>
           <.div(^.cls := "row")(
             ICheckbox.view(m.editAddAnother, divWrapper, "col s12", 411, "add-another", "Add Another")
-              .map(msg => Msg.EditAddAnother(msg))
+              .map(Page.editAddAnotherMsg)
           )
         }.orEmpty,
         Views.modalButtons(buttonLabel, buttonIcon, 412, Msg.EditModalConfirm, Msg.EditModalCancel)

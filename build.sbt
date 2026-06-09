@@ -33,7 +33,7 @@ lazy val shared = crossProject(JSPlatform, JVMPlatform)
   .settings(basicSettings)
   .settings(
     libraryDependencies += "io.circe" %%% "circe-generic" % CirceVersion,
-    libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.19" % Test,
+    libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.20" % Test,
     libraryDependencies += "io.circe" %% "circe-jawn" % CirceVersion % Test,
 //    libraryDependencies += "org.latestbit" %% "circe-tagged-adt-codec" % "0.11.0"
   )
@@ -125,9 +125,12 @@ lazy val tyrianFront = (project in file("tyrian-front"))
     name := "tyrian-front",
     scalaJSUseMainModuleInitializer := true,
 
+    // Add "-explain" here
+    scalacOptions ++= Seq("-explain"),
     scalacOptions := scalacOptions.value.filterNot(_.startsWith("-Wunused")),
 
     libraryDependencies += "io.indigoengine" %%% "tyrian-io" % "0.14.0",
+    libraryDependencies += "dev.optics" %%% "monocle-core" % "3.3.0",
     libraryDependencies += "io.github.cquiroz" %%% "scala-java-time" % "2.6.0",
     libraryDependencies += "io.github.cquiroz" %%% "scala-java-time-tzdb" % "2.6.0",
     scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.CommonJSModule) },

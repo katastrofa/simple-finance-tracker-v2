@@ -1,6 +1,7 @@
 package org.big.pete.tyrian.parts.transactions
 
 import cats.effect.IO
+import monocle.Lens
 import org.big.pete.sft.domain.{Account, Category, Currency, Op, Transaction}
 import org.big.pete.tyrian.component.{DatePicker, DropDown, DropDownItem, ICheckbox}
 import org.big.pete.tyrian.component.inputs.{MoneyTextBox, TextInput}
@@ -47,17 +48,13 @@ enum Msg {
   case OpenModalMassEdit
   case OpenModalMassDelete
 
-  case EditDate(msg: DatePicker.Msg)
+  case PassThrough(fn: Model => Model)
   case EditOp(msg: DropDown.Msg[Op])
-  case EditAmount(msg: MoneyTextBox.Msg)
-  case EditDescription(msg: TextInput.Msg)
   case EditCategory(msg: DropDown.Msg[Category])
   case EditAccount(msg: DropDown.Msg[Account])
   case EditCurrency(msg: DropDown.Msg[Currency])
   case EditDestAccount(msg: DropDown.Msg[Account])
   case EditDestCurrency(msg: DropDown.Msg[Currency])
-  case EditDestAmount(msg: MoneyTextBox.Msg)
-  case EditAddAnother(msg: ICheckbox.Msg)
   case EditModalConfirm
   case EditModalCancel
 
@@ -78,6 +75,40 @@ object Page {
 
   final private val DebouncingMillis: Int = 600
   final private val TickInterval: Int = 200
+
+  // Lenses for each delegated sub-model field
+  private val editDateL         = Lens[Model, DatePicker.Model](_.editDate)(d => _.copy(editDate = d))
+  private val editOpL           = Lens[Model, DropDown.Model[Op]](_.editOp)(v => _.copy(editOp = v))
+  private val editAmountL       = Lens[Model, MoneyTextBox.Model](_.editAmount)(v => _.copy(editAmount = v))
+  private val editDescriptionL  = Lens[Model, TextInput.Model](_.editDescription)(v => _.copy(editDescription = v))
+  private val editCategoryL     = Lens[Model, DropDown.Model[Category]](_.editCategory)(v => _.copy(editCategory = v))
+  private val editAccountL      = Lens[Model, DropDown.Model[Account]](_.editAccount)(v => _.copy(editAccount = v))
+  private val editCurrencyL     = Lens[Model, DropDown.Model[Currency]](_.editCurrency)(v => _.copy(editCurrency = v))
+  private val editDestAccountL  = Lens[Model, DropDown.Model[Account]](_.editDestAccount)(v => _.copy(editDestAccount = v))
+  private val editDestCurrencyL = Lens[Model, DropDown.Model[Currency]](_.editDestCurrency)(v => _.copy(editDestCurrency = v))
+  private val editDestAmountL   = Lens[Model, MoneyTextBox.Model](_.editDestAmount)(v => _.copy(editDestAmount = v))
+  private val editAddAnotherL   = Lens[Model, ICheckbox.Model](_.editAddAnother)(v => _.copy(editAddAnother = v))
+
+  // Factory: creates a (ComponentMsg => Msg.PassThrough) function from a lens + component update fn
+  private def mkPassThrough[SM, IM](lens: Lens[Model, SM], updateFn: (IM, SM) => SM): IM => Msg =
+    msg => Msg.PassThrough(m => lens.replace(updateFn(msg, lens.get(m)))(m))
+
+  // Per-component PassThrough helpers — used in EditModal.view as .map(Page.editXMsg)
+  private[transactions] val editDateMsg       = mkPassThrough(editDateL, DatePicker.update)
+  private[transactions] val editAmountMsg     = mkPassThrough(editAmountL, MoneyTextBox.update)
+  private[transactions] val editDescMsg       = mkPassThrough(editDescriptionL, TextInput.update)
+  private[transactions] val editDestAmtMsg    = mkPassThrough(editDestAmountL, MoneyTextBox.update)
+  private[transactions] val editAddAnotherMsg = mkPassThrough(editAddAnotherL, ICheckbox.update)
+
+  // Extension method for DropDown components (which return (Model, Cmd))
+  extension (m: Model)
+    private def updateDD[T: DropDownItem](
+      msg: DropDown.Msg[T],
+      lens: Lens[Model, DropDown.Model[T]],
+      wrap: DropDown.Msg[T] => Msg
+    ): (Model, Cmd[IO, Msg]) =
+      val (newDd, cmd) = DropDown.update(msg, lens.get(m))
+      lens.replace(newDd)(m) -> cmd.map(wrap)
 
   def init(
       wallet: String,
@@ -143,26 +174,13 @@ object Page {
 
       case Msg.TransactionEdit(tx) =>
         openEditModal(m, tx) -> Cmd.None
-      case Msg.EditDate(msg) =>
-        m.copy(editDate = DatePicker.update(msg, m.editDate)) -> Cmd.None
-      case Msg.EditOp(msg) =>
-        val ddUpdate = DropDown.update(msg, m.editOp)
-        m.copy(editOp = ddUpdate._1) -> ddUpdate._2.map(Msg.EditOp(_))
-      case Msg.EditAmount(msg) =>
-        m.copy(editAmount = MoneyTextBox.update(msg, m.editAmount)) -> Cmd.None
-      case Msg.EditDescription(msg) =>
-        m.copy(editDescription = TextInput.update(msg, m.editDescription)) -> Cmd.None
-      case Msg.EditCategory(msg) =>
-        val ddUpdate = DropDown.update(msg, m.editCategory)
-        m.copy(editCategory = ddUpdate._1) -> ddUpdate._2.map(Msg.EditCategory(_))
-      case Msg.EditAccount(msg) =>
-        val ddUpdate = DropDown.update(msg, m.editAccount)
-        /// TODO: if account changes, maybe also update currency and destination account/currency?
-        m.copy(editAccount = ddUpdate._1) -> ddUpdate._2.map(Msg.EditAccount(_))
-      case Msg.EditCurrency(msg) =>
-        val ddUpdate = DropDown.update(msg, m.editCurrency)
-        /// TODO: if currency changes, maybe also update destination currency (if it's the same account dest account)?
-        m.copy(editCurrency = ddUpdate._1) -> ddUpdate._2.map(Msg.EditCurrency(_))
+      case Msg.PassThrough(fn)      => fn(m) -> Cmd.None
+      case Msg.EditOp(msg)          => m.updateDD(msg, editOpL, Msg.EditOp(_))
+      case Msg.EditCategory(msg)    => m.updateDD(msg, editCategoryL, Msg.EditCategory(_))
+      case Msg.EditAccount(msg)     => m.updateDD(msg, editAccountL, Msg.EditAccount(_))
+      /// TODO: if account changes, maybe also update currency and destination account/currency?
+      case Msg.EditCurrency(msg)    => m.updateDD(msg, editCurrencyL, Msg.EditCurrency(_))
+      /// TODO: if currency changes, maybe also update destination currency (if it's the same account dest account)?
 
 
 
@@ -173,10 +191,8 @@ object Page {
         m.copy(colSpan = calculateColSpan) -> Cmd.None
 
 
-      case Msg.EditDestAccount(_) => ???
-      case Msg.EditDestCurrency(_) => ???
-      case Msg.EditDestAmount(_) => ???
-      case Msg.EditAddAnother(_) => ???
+      case Msg.EditDestAccount(msg)  => m.updateDD(msg, editDestAccountL, Msg.EditDestAccount(_))
+      case Msg.EditDestCurrency(msg) => m.updateDD(msg, editDestCurrencyL, Msg.EditDestCurrency(_))
       case Msg.EditModalConfirm => ???
       case Msg.EditModalCancel => ???
     }

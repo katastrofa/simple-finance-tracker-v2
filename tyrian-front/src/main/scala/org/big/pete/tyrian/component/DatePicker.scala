@@ -1,5 +1,6 @@
 package org.big.pete.tyrian.component
 
+import org.big.pete.tyrian.domain.PassModel
 import org.big.pete.tyrian.toolz.Views
 import org.scalajs.dom.{FocusEvent, HTMLElement, console}
 import tyrian.{Html as <, Html as ^}
@@ -29,7 +30,7 @@ final case class DatePickerModel(
     selected: LocalDate,
     browsing: Option[LocalDate],
     editing: Option[String]
-)
+) extends PassModel
 
 enum DatePickerMsg {
   case NoOp

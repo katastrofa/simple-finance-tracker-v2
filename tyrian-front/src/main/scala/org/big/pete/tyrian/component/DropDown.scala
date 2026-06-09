@@ -1,6 +1,7 @@
 package org.big.pete.tyrian.component
 
 import cats.effect.IO
+import org.big.pete.tyrian.domain.PassModel
 //import org.big.pete.tyrian.component.Base
 import org.scalajs.dom.{FocusEvent, HTMLElement, document, window}
 import tyrian.Tyrian.KeyboardEvent
@@ -26,7 +27,7 @@ object DropDown extends Base {
       browsing: Option[T],
       visible: List[T],
       debouncing: Option[Int]
-  )
+  ) extends PassModel
 
   sealed trait Msg[T]
   case class NoOp[T]() extends Msg[T]
@@ -42,11 +43,7 @@ object DropDown extends Base {
   final private val TickInterval: Int = 100
 
 
-  def init[T: DropDownItem](
-      id: String,
-      items: List[T],
-      selected: Option[T]
-  ): Model[T] =
+  def init[T: DropDownItem](id: String, items: List[T], selected: Option[T]): Model[T] =
     Model(id, items, false, selected.map(_.display).getOrElse(""), selected, None, items, None)
 
   def update[T: DropDownItem](msg: Msg[T], m: Model[T]): (Model[T], Cmd[IO, Msg[T]]) = {

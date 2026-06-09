@@ -1,10 +1,11 @@
 package org.big.pete.tyrian.component
 
+import org.big.pete.tyrian.domain.PassModel
 import org.big.pete.tyrian.toolz.Views
 import tyrian.{Attr, Elem, Html as <, Html as ^}
 
 
-case class ICheckboxModel(status: ICheckbox.Status)
+case class ICheckboxModel(status: ICheckbox.Status) extends PassModel
 enum ICheckboxMsg {
   case Toggle
 }
