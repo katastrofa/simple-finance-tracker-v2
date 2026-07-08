@@ -12,3 +12,5 @@ ignore/
 frontend/package-lock.json
 charts-js/package-lock.json
 tyrian-front/package-lock.json
+
+graphify-out/
